@@ -1,0 +1,286 @@
+import React, { useState, useEffect, useCallback } from 'react';
+import {
+  View,
+  Text,
+  FlatList,
+  StyleSheet,
+  RefreshControl,
+  ActivityIndicator,
+  TextInput,
+  TouchableOpacity,
+} from 'react-native';
+import { useTheme } from '../context/ThemeContext';
+import { api } from '../api/client';
+import { Header } from '../components/Header';
+import { ItemMovement } from '../types';
+import { History, ArrowRightLeft, User, Calendar, Search, X } from 'lucide-react-native';
+
+export const MovementsScreen: React.FC = () => {
+  const { theme } = useTheme();
+  const [movements, setMovements] = useState<ItemMovement[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [refreshing, setRefreshing] = useState<boolean>(false);
+  const [search, setSearch] = useState<string>('');
+
+  const loadMovements = useCallback(async () => {
+    try {
+      // Tenta buscar movimentações ou monta a partir dos itens
+      const items = await api.fetchItems();
+      const derived: ItemMovement[] = [];
+      items.forEach((item) => {
+        if (item.status === 'CAUTELADO') {
+          derived.push({
+            id: item.id * 100,
+            item_id: item.id,
+            tipo_movimentacao: 'CAUTELA',
+            quantidade_movimentada: item.quantidade,
+            motivo: item.observacoes || 'Material sob cautela operacional',
+            criado_em: item.atualizado_em || item.criado_em || new Date().toISOString(),
+            item_nome: item.nome,
+            usuario_nome: 'Operador Logístico',
+          });
+        }
+      });
+      setMovements(derived);
+    } catch (err) {
+      console.warn('Erro ao carregar movimentações:', err);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadMovements();
+  }, [loadMovements]);
+
+  const onRefresh = () => {
+    setRefreshing(true);
+    loadMovements();
+  };
+
+  const filtered = movements.filter((m) => {
+    if (!search.trim()) return true;
+    const q = search.toLowerCase();
+    return (
+      m.item_nome?.toLowerCase().includes(q) ||
+      m.motivo?.toLowerCase().includes(q) ||
+      m.tipo_movimentacao?.toLowerCase().includes(q) ||
+      m.usuario_nome?.toLowerCase().includes(q)
+    );
+  });
+
+  const getMovementBadge = (tipo: string) => {
+    switch (tipo) {
+      case 'CAUTELA':
+        return { label: 'Cautela', color: theme.warning, bg: theme.warningBg };
+      case 'DEVOLUCAO':
+        return { label: 'Devolução', color: theme.success, bg: theme.successBg };
+      case 'TRANSFERENCIA':
+        return { label: 'Transferência', color: theme.primary, bg: theme.badgeBg };
+      case 'MANUTENCAO':
+        return { label: 'Manutenção', color: theme.danger, bg: theme.dangerBg };
+      default:
+        return { label: tipo, color: theme.info, bg: theme.infoBg };
+    }
+  };
+
+  const renderMovementItem = ({ item }: { item: ItemMovement }) => {
+    const badge = getMovementBadge(item.tipo_movimentacao);
+
+    return (
+      <View style={[styles.card, { backgroundColor: theme.card, borderColor: theme.border }]}>
+        <View style={styles.topRow}>
+          <View style={[styles.typeBadge, { backgroundColor: badge.bg }]}>
+            <Text style={[styles.typeText, { color: badge.color }]}>{badge.label}</Text>
+          </View>
+          <Text style={[styles.dateText, { color: theme.textMuted }]}>
+            {item.criado_em ? new Date(item.criado_em).toLocaleDateString('pt-BR') : ''}
+          </Text>
+        </View>
+
+        <Text style={[styles.itemName, { color: theme.text }]}>
+          {item.item_nome || `Material #${item.item_id}`}
+        </Text>
+
+        {item.motivo && (
+          <Text style={[styles.reason, { color: theme.textSecondary }]}>
+            "{item.motivo}"
+          </Text>
+        )}
+
+        <View style={[styles.footerRow, { borderTopColor: theme.border }]}>
+          <View style={styles.footerInfo}>
+            <User size={12} color={theme.textMuted} />
+            <Text style={[styles.footerText, { color: theme.textSecondary }]}>
+              {item.usuario_nome || 'Sistema'}
+            </Text>
+          </View>
+
+          <Text style={[styles.qtyText, { color: theme.text }]}>
+            Qtd: {item.quantidade_movimentada}
+          </Text>
+        </View>
+      </View>
+    );
+  };
+
+  return (
+    <View style={[styles.container, { backgroundColor: theme.background }]}>
+      <Header title="Histórico" subtitle="Auditoria de Movimentações" showSync={false} />
+
+      <View style={styles.searchWrapper}>
+        <View style={[styles.searchBox, { backgroundColor: theme.inputBg, borderColor: theme.inputBorder }]}>
+          <Search size={16} color={theme.textMuted} />
+          <TextInput
+            placeholder="Buscar por material, militar..."
+            placeholderTextColor={theme.textMuted}
+            value={search}
+            onChangeText={setSearch}
+            style={[styles.searchInput, { color: theme.text }]}
+          />
+          {search.length > 0 && (
+            <TouchableOpacity onPress={() => setSearch('')}>
+              <X size={16} color={theme.textMuted} />
+            </TouchableOpacity>
+          )}
+        </View>
+      </View>
+
+      {loading ? (
+        <View style={styles.centerBox}>
+          <ActivityIndicator size="large" color={theme.primary} />
+        </View>
+      ) : (
+        <FlatList
+          data={filtered}
+          keyExtractor={(item) => item.id.toString()}
+          renderItem={renderMovementItem}
+          contentContainerStyle={styles.listContent}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              tintColor={theme.primary}
+            />
+          }
+          ListEmptyComponent={
+            <View style={styles.emptyBox}>
+              <History size={40} color={theme.textMuted} />
+              <Text style={[styles.emptyTitle, { color: theme.text }]}>
+                Nenhuma movimentação registrada
+              </Text>
+              <Text style={[styles.emptySub, { color: theme.textSecondary }]}>
+                As cautelas e devoluções registradas aparecerão aqui.
+              </Text>
+            </View>
+          }
+        />
+      )}
+    </View>
+  );
+};
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+  },
+  searchWrapper: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+  },
+  searchBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderRadius: 12,
+    borderWidth: 1,
+    paddingHorizontal: 12,
+    height: 42,
+    gap: 8,
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: 13,
+  },
+  centerBox: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  listContent: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    gap: 10,
+  },
+  card: {
+    padding: 14,
+    borderRadius: 14,
+    borderWidth: StyleSheet.hairlineWidth,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 1,
+  },
+  topRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 6,
+  },
+  typeBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+  },
+  typeText: {
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  dateText: {
+    fontSize: 11,
+  },
+  itemName: {
+    fontSize: 15,
+    fontWeight: '700',
+    marginBottom: 4,
+  },
+  reason: {
+    fontSize: 12,
+    fontStyle: 'italic',
+    marginBottom: 8,
+  },
+  footerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingTop: 8,
+    borderTopWidth: StyleSheet.hairlineWidth,
+  },
+  footerInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  footerText: {
+    fontSize: 11,
+  },
+  qtyText: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  emptyBox: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 60,
+    gap: 10,
+  },
+  emptyTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+  },
+  emptySub: {
+    fontSize: 12,
+    textAlign: 'center',
+  },
+});

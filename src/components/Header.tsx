@@ -1,0 +1,116 @@
+import React from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { useTheme } from '../context/ThemeContext';
+import { useAuth } from '../context/AuthContext';
+import { useStock } from '../context/StockContext';
+import { RefreshCw, Shield, Moon, Sun } from 'lucide-react-native';
+
+interface HeaderProps {
+  title?: string;
+  subtitle?: string;
+  showSync?: boolean;
+}
+
+export const Header: React.FC<HeaderProps> = ({ title, subtitle, showSync = true }) => {
+  const { theme, isDark, toggleTheme } = useTheme();
+  const { user } = useAuth();
+  const { isSyncing, syncData } = useStock();
+
+  const militarInfo = user?.militar
+    ? `${user.militar.posto_graduacao} ${user.militar.nome_guerra}`
+    : user?.username || 'Militar';
+
+  return (
+    <View style={[styles.container, { backgroundColor: theme.headerBg, borderBottomColor: theme.border }]}>
+      <View style={styles.left}>
+        <View style={[styles.avatar, { backgroundColor: theme.badgeBg }]}>
+          <Shield size={20} color={theme.primary} />
+        </View>
+        <View>
+          <Text style={[styles.title, { color: theme.text }]} numberOfLines={1}>
+            {title || 'Binfae Mobile'}
+          </Text>
+          <Text style={[styles.subtitle, { color: theme.textSecondary }]} numberOfLines={1}>
+            {subtitle || militarInfo}
+          </Text>
+        </View>
+      </View>
+
+      <View style={styles.right}>
+        {showSync && (
+          <TouchableOpacity
+            style={[styles.actionButton, { backgroundColor: theme.surfaceVariant }]}
+            onPress={() => syncData(true)}
+            disabled={isSyncing}
+            accessibilityLabel="Sincronizar dados"
+          >
+            {isSyncing ? (
+              <ActivityIndicator size="small" color={theme.primary} />
+            ) : (
+              <RefreshCw size={18} color={theme.textSecondary} />
+            )}
+          </TouchableOpacity>
+        )}
+
+        <TouchableOpacity
+          style={[styles.actionButton, { backgroundColor: theme.surfaceVariant }]}
+          onPress={toggleTheme}
+          accessibilityLabel="Alternar tema"
+        >
+          {isDark ? (
+            <Sun size={18} color="#FBBF24" />
+          ) : (
+            <Moon size={18} color="#6366F1" />
+          )}
+        </TouchableOpacity>
+      </View>
+    </View>
+  );
+};
+
+const styles = StyleSheet.create({
+  container: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+  },
+  left: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+    marginRight: 12,
+  },
+  avatar: {
+    width: 38,
+    height: 38,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 10,
+  },
+  title: {
+    fontSize: 17,
+    fontWeight: '700',
+    letterSpacing: -0.3,
+  },
+  subtitle: {
+    fontSize: 12,
+    fontWeight: '500',
+    marginTop: 1,
+  },
+  right: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  actionButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+});
