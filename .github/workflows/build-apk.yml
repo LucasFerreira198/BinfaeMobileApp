@@ -67,17 +67,20 @@ jobs:
         if: github.ref == 'refs/heads/main' || github.event_name == 'release'
         with:
           tag_name: latest
-          name: "Binfae Mobile v1.3.1 - APK Oficial Assinado"
+          name: "Binfae Mobile v1.3.2 - APK Oficial Assinado"
           body: |
-            ### 🚀 Binfae Mobile v1.3.1 - Correção Definitiva da Responsividade do Teclado Android
+            ### 🚀 Binfae Mobile v1.3.2 - Segurança no Cold Start (Reabertura do App) e Teclado
 
+            - **Bloqueio de Segurança no Cold Start & Retorno**:
+              - Ao fechar o aplicativo por completo e reabri-lo, caso o usuário ainda esteja logado, a autenticação por **Biometria** (Digital / Face ID) ou **PIN de 4 dígitos** é imediatamente solicitada antes de liberar as telas.
+              - Prompt biométrico disparado automaticamente ao abrir o app ou voltar do segundo plano.
+              - Alternância flexível: se a biometria falhar ou o usuário preferir, pode alternar para PIN numérico em tela.
+              - Prevenção contra loops falsos de bloqueio causados pelo diálogo nativo de biometria do Android.
             - **Adaptação Total ao Teclado Virtual (Android & iOS)**:
               - Hook reativo `useKeyboardHeight` com listeners nativos de abertura e fechamento do teclado.
               - Elevação dinâmica e redução inteligente da altura máxima de todos os Bottom Sheets e Modals (`AddItemModal`, `MovementModal`, `CreateUserModal`, `CreateMilitaryModal`, `EditUserModal`, `LocationsModal`).
               - `LoginScreen` responsivo: cabeçalho hero adaptativo e reposicionamento vertical que mantém SARAM, Senha e botão de login sempre visíveis acima do teclado.
-              - Suporte completo ao scroll interno sem cobrir nenhum campo ou botão nas telas de formulário.
             - **Gerenciamento de Usuários e Efetivo (Admin)**: Criação de contas vinculadas ao SARAM ou avulsas, alternância de privilégios de Admin e cadastro de militares.
-            - **Segurança de Retorno (Lock Screen)**: Bloqueio automático de segurança com Biometria ou PIN de 4 dígitos.
           files: build-output/BinfaeMobile-release.apk
           prerelease: false
         env:

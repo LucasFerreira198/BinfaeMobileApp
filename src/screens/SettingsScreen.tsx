@@ -243,7 +243,7 @@ export const SettingsScreen: React.FC = () => {
         <Text style={[styles.sectionTitle, { color: theme.textSecondary }]}>SEGURANÇA & BLOQUEIO DO APP</Text>
         <View style={[styles.sectionCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
           <Text style={[styles.securityNotice, { color: theme.textSecondary }]}>
-            Exigir autenticação ao retornar ao aplicativo (background ➔ foreground):
+            Exigir autenticação ao abrir o aplicativo ou retornar do segundo plano:
           </Text>
 
           <View style={styles.securityModesList}>

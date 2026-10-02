@@ -11,22 +11,27 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../context/ThemeContext';
 import { useAuth } from '../context/AuthContext';
-import { useSecurity } from '../context/SecurityContext';
-import { Shield, Fingerprint, Delete, LogOut } from 'lucide-react-native';
+import { useSecurity, SecurityMode } from '../context/SecurityContext';
+import { Shield, Fingerprint, Delete, LogOut, KeyRound } from 'lucide-react-native';
 
 export const SecurityLockModal: React.FC = () => {
   const { theme } = useTheme();
-  const { user, logout } = useAuth();
+  const { user, logout, isAuthenticated } = useAuth();
   const insets = useSafeAreaInsets();
   const {
     isLocked,
     securityMode,
+    hasPinSet,
+    isBiometricsSupported,
     unlockWithPin,
     unlockWithBiometrics,
   } = useSecurity();
 
   const [enteredPin, setEnteredPin] = useState<string>('');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [overrideMode, setOverrideMode] = useState<SecurityMode | null>(null);
+
+  const activeMode = overrideMode || securityMode;
 
   // Bloqueia qualquer tentativa do botão voltar físico do Android fechar a tela de bloqueio
   useEffect(() => {
@@ -40,22 +45,26 @@ export const SecurityLockModal: React.FC = () => {
     return () => handler.remove();
   }, [isLocked]);
 
-  // Se for biometria, dispara prompt quando abrir
+  // Se o modo ativo for biometria, dispara prompt quando abrir com pequeno buffer
   useEffect(() => {
-    if (isLocked && securityMode === 'BIOMETRICS') {
-      unlockWithBiometrics();
+    if (isLocked && activeMode === 'BIOMETRICS' && isAuthenticated) {
+      const timer = setTimeout(() => {
+        unlockWithBiometrics();
+      }, 350);
+      return () => clearTimeout(timer);
     }
-  }, [isLocked, securityMode]);
+  }, [isLocked, activeMode, isAuthenticated]);
 
-  // Limpa o PIN digitado ao fechar
+  // Limpa estados ao desbloquear
   useEffect(() => {
     if (!isLocked) {
       setEnteredPin('');
       setErrorMessage(null);
+      setOverrideMode(null);
     }
   }, [isLocked]);
 
-  if (!isLocked || securityMode === 'NONE') return null;
+  if (!isLocked || securityMode === 'NONE' || !isAuthenticated) return null;
 
   const handleKeyPress = async (num: string) => {
     if (enteredPin.length >= 4) return;
@@ -125,7 +134,7 @@ export const SecurityLockModal: React.FC = () => {
         </View>
 
         {/* Modo 1: Biometria */}
-        {securityMode === 'BIOMETRICS' && (
+        {activeMode === 'BIOMETRICS' && (
           <View style={styles.biometricsContent}>
             <View style={[styles.fingerprintCircle, { backgroundColor: theme.surfaceVariant }]}>
               <Fingerprint size={64} color={theme.primary} />
@@ -146,11 +155,24 @@ export const SecurityLockModal: React.FC = () => {
               <Fingerprint size={18} color="#FFFFFF" />
               <Text style={styles.retryBioBtnText}>Autenticar com Biometria</Text>
             </TouchableOpacity>
+
+            {hasPinSet && (
+              <TouchableOpacity
+                style={styles.switchModeBtn}
+                onPress={() => setOverrideMode('PIN')}
+                activeOpacity={0.7}
+              >
+                <KeyRound size={16} color={theme.primary} />
+                <Text style={[styles.switchModeText, { color: theme.primary }]}>
+                  Entrar com PIN de 4 dígitos
+                </Text>
+              </TouchableOpacity>
+            )}
           </View>
         )}
 
         {/* Modo 2: PIN Numérico */}
-        {securityMode === 'PIN' && (
+        {activeMode === 'PIN' && (
           <View style={styles.pinContent}>
             <Text style={[styles.pinPromptTitle, { color: theme.text }]}>
               Digite seu PIN de 4 dígitos
@@ -220,6 +242,22 @@ export const SecurityLockModal: React.FC = () => {
                 </View>
               ))}
             </View>
+
+            {isBiometricsSupported && (
+              <TouchableOpacity
+                style={styles.switchModeBtn}
+                onPress={() => {
+                  setOverrideMode('BIOMETRICS');
+                  unlockWithBiometrics();
+                }}
+                activeOpacity={0.7}
+              >
+                <Fingerprint size={16} color={theme.primary} />
+                <Text style={[styles.switchModeText, { color: theme.primary }]}>
+                  Autenticar usando Biometria
+                </Text>
+              </TouchableOpacity>
+            )}
           </View>
         )}
 
@@ -300,6 +338,18 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 14,
     fontWeight: '700',
+  },
+  switchModeBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    marginTop: 8,
+  },
+  switchModeText: {
+    fontSize: 13,
+    fontWeight: '600',
   },
   pinContent: {
     alignItems: 'center',
