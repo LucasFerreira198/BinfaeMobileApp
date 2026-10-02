@@ -7,6 +7,7 @@ import { SecurityProvider } from './src/context/SecurityContext';
 import { StockProvider } from './src/context/StockContext';
 import { AppNavigator } from './src/navigation/AppNavigator';
 import { SecurityLockModal } from './src/components/SecurityLockModal';
+import { ErrorBoundary } from './src/components/ErrorBoundary';
 
 const Main: React.FC = () => {
   const { isDark } = useTheme();
@@ -23,15 +24,17 @@ const Main: React.FC = () => {
 export default function App() {
   return (
     <SafeAreaProvider>
-      <ThemeProvider>
-        <AuthProvider>
-          <SecurityProvider>
-            <StockProvider>
-              <Main />
-            </StockProvider>
-          </SecurityProvider>
-        </AuthProvider>
-      </ThemeProvider>
+      <ErrorBoundary fallbackMessage="Ocorreu uma falha no aplicativo. Toque abaixo para tentar recarregar.">
+        <ThemeProvider>
+          <AuthProvider>
+            <SecurityProvider>
+              <StockProvider>
+                <Main />
+              </StockProvider>
+            </SecurityProvider>
+          </AuthProvider>
+        </ThemeProvider>
+      </ErrorBoundary>
     </SafeAreaProvider>
   );
 }

@@ -67,28 +67,18 @@ jobs:
         if: github.ref == 'refs/heads/main' || github.event_name == 'release'
         with:
           tag_name: latest
-          name: "Binfae Mobile v1.3.3 - APK Oficial Assinado"
+          name: "Binfae Mobile v1.3.4 - APK Oficial Assinado"
           body: |
-            ### 🚀 Binfae Mobile v1.3.3 - Gestão de Grupos, QR Code com Impressão & PDF, e Otimizações
+            ### 🛠️ Binfae Mobile v1.3.4 - Correção Crítica de Crash em Detalhes do Material
 
-            - **Carência de 5 Segundos para Biometria/PIN**:
-              - Evita que a biometria seja solicitada indevidamente enquanto o aplicativo está sendo minimizado/fechado.
-              - Ao retornar ao primeiro plano, exige autenticação se o app permaneceu em segundo plano por pelo menos 5 segundos.
-              - Bloqueio instantâneo mantido para cold start (ao reabrir app fechado).
-            - **Menu Lateral à Esquerda**:
-              - O Drawer Menu agora abre suavemente pelo lado esquerdo da tela, alinhado com o botão de menu.
-            - **Gestão Completa de Grupos & Subgrupos**:
-              - Nova tela de visualização, criação e edição de grupos e subgrupos de materiais acessível diretamente pelo menu lateral.
-            - **Simplificação do Sistema de Movimentação**:
-              - Foco exclusivo em "Transferir Local".
-              - Campo de justificativa agora é opcional.
-              - Novo Seletor Hierárquico e Pesquisável de Locais Físicos, preparado para dezenas/centenas de depósitos, armários e prateleiras.
-            - **Gestão Administrativa de Militares**:
-              - Edição completa dos dados do efetivo militar (Posto/Graduação, Nome de Guerra, Nome Completo, E-mail, Celular) diretamente no Painel Admin.
-            - **Visualização de QR Code, Impressão e PDF**:
-              - Nova aba de QR Code no detalhe do material com renderização nativa de alta resolução.
-              - Botão de Impressão Direta (`expo-print`) para impressoras térmicas/rede.
-              - Botão de Download / Compartilhamento de Etiqueta Patrimonial em PDF oficial (`expo-sharing`).
+            - **Correção Definitiva de Crash ao Abrir Detalhes do Material**:
+              - Eliminada renderização condicional perigosa (`&&`) com valores de texto vazios que causavam erro fatal de Invariant Violation no Android.
+              - Todas as condicionais de atributos opcionais (`bmp`, `codigo_interno`, `numero_serie`, `observacoes`, `componentes`) agora utilizam checagens booleanas defensivas ternárias.
+            - **Geração Segura de QR Code para Impressão e PDF**:
+              - Substituição de dependências pesadas de Node.js (`fs`/`stream`) por renderização vetorial SVG pura e resiliente.
+              - Tratamento defensivo de erros (`onError`) na renderização do QR Code em tela.
+            - **Proteção Global com Error Boundary**:
+              - Implementado `ErrorBoundary` nativo na raiz do aplicativo e nos modais principais para recuperação instantânea e prevenção contra encerramentos repentinos do app.
           files: build-output/BinfaeMobile-release.apk
           prerelease: false
         env:
