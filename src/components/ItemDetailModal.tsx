@@ -13,7 +13,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
-import QRCode from 'react-native-qrcode-svg';
+import { PureQrCode } from './PureQrCode';
 import { Item, ItemMovement } from '../types';
 import { useTheme } from '../context/ThemeContext';
 import { api } from '../api/client';
@@ -46,8 +46,14 @@ interface ItemDetailModalProps {
  */
 const generateQrSvgString = (payload: string): string => {
   try {
-    const QRCodeCore = require('qrcode/lib/core/qrcode');
-    const qrData = QRCodeCore.create(payload || 'BINFAE', { errorCorrectionLevel: 'M' });
+    let QRCodeCore: any;
+    try {
+      QRCodeCore = require('qrcode/lib/core/qrcode');
+    } catch {
+      QRCodeCore = require('qrcode');
+    }
+    const safePayload = (payload ? String(payload).trim() : '') || 'BINFAE';
+    const qrData = QRCodeCore.create(safePayload, { errorCorrectionLevel: 'M' });
     const size = qrData.modules.size;
     const data = qrData.modules.data;
     let rects = '';
@@ -65,7 +71,7 @@ const generateQrSvgString = (payload: string): string => {
   }
 };
 
-export const ItemDetailModal: React.FC<ItemDetailModalProps> = ({
+const ItemDetailModalContent: React.FC<ItemDetailModalProps> = ({
   item,
   visible,
   onClose,
@@ -420,336 +426,337 @@ export const ItemDetailModal: React.FC<ItemDetailModalProps> = ({
             </TouchableOpacity>
           </View>
 
-          {/* Conteúdo da Aba Protegido por ErrorBoundary */}
-          <ErrorBoundary fallbackMessage="Não foi possível exibir os detalhes deste material.">
-            <ScrollView
-              style={styles.body}
-              contentContainerStyle={styles.scrollContent}
-              showsVerticalScrollIndicator={false}
-            >
-              {activeTab === 'info' ? (
-                <>
-                  {/* Cartão de Título e Status */}
-                  <View style={[styles.infoCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
-                    <View style={styles.badgeRow}>
-                      {Boolean(item.bmp) ? (
-                        <View style={[styles.pill, { backgroundColor: theme.badgeBg }]}>
-                          <Text style={[styles.pillText, { color: theme.primary }]}>
-                            BMP {item.bmp}
-                          </Text>
-                        </View>
-                      ) : null}
-                      {Boolean(item.codigo_interno) ? (
-                        <View style={[styles.pill, { backgroundColor: theme.surfaceVariant }]}>
-                          <Text style={[styles.pillText, { color: theme.textSecondary }]}>
-                            CÓD: {item.codigo_interno}
-                          </Text>
-                        </View>
-                      ) : null}
-                      <View style={[styles.pill, { backgroundColor: theme.infoBg }]}>
-                        <Text style={[styles.pillText, { color: theme.info }]}>
-                          {itemStatus}
-                        </Text>
-                      </View>
-                    </View>
-
-                    <Text style={[styles.itemName, { color: theme.text }]}>
-                      {item.nome || 'Sem identificação'}
-                    </Text>
-                  </View>
-
-                  {/* Grid de Especificações */}
-                  <View style={[styles.specGrid, { backgroundColor: theme.card, borderColor: theme.border }]}>
-                    <View style={styles.gridItem}>
-                      <Text style={[styles.gridLabel, { color: theme.textMuted }]}>Saldo Atual</Text>
-                      <Text style={[styles.gridValue, { color: theme.text }]}>
-                        {itemQty} {itemUnit}
-                      </Text>
-                    </View>
-
-                    <View style={styles.gridItem}>
-                      <Text style={[styles.gridLabel, { color: theme.textMuted }]}>Conservação</Text>
-                      <Text style={[styles.gridValue, { color: theme.text }]}>
-                        {itemCondition}
-                      </Text>
-                    </View>
-
-                    <View style={styles.gridItem}>
-                      <Text style={[styles.gridLabel, { color: theme.textMuted }]}>Controle</Text>
-                      <Text style={[styles.gridValue, { color: theme.text }]}>
-                        {itemControl}
-                      </Text>
-                    </View>
-
-                    <View style={styles.gridItem}>
-                      <Text style={[styles.gridLabel, { color: theme.textMuted }]}>Estoque Mínimo</Text>
-                      <Text style={[styles.gridValue, { color: theme.text }]}>
-                        {itemMinQty} {itemUnit}
-                      </Text>
-                    </View>
-                  </View>
-
-                  {/* Localização e Subgrupo */}
-                  <View style={[styles.sectionCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
-                    <View style={styles.sectionRow}>
-                      <MapPin size={18} color={theme.primary} />
-                      <View style={styles.sectionInfo}>
-                        <Text style={[styles.sectionLabel, { color: theme.textMuted }]}>Local Físico</Text>
-                        <Text style={[styles.sectionValue, { color: theme.text }]}>{locationPath}</Text>
-                      </View>
-                    </View>
-
-                    <View style={[styles.divider, { backgroundColor: theme.border }]} />
-
-                    <View style={styles.sectionRow}>
-                      <Folder size={18} color={theme.accent} />
-                      <View style={styles.sectionInfo}>
-                        <Text style={[styles.sectionLabel, { color: theme.textMuted }]}>Categoria / Subgrupo</Text>
-                        <Text style={[styles.sectionValue, { color: theme.text }]}>{subCategory}</Text>
-                      </View>
-                    </View>
-
-                    {Boolean(item.numero_serie) ? (
-                      <>
-                        <View style={[styles.divider, { backgroundColor: theme.border }]} />
-                        <View style={styles.sectionRow}>
-                          <FileText size={18} color={theme.textMuted} />
-                          <View style={styles.sectionInfo}>
-                            <Text style={[styles.sectionLabel, { color: theme.textMuted }]}>Número de Série</Text>
-                            <Text style={[styles.sectionValue, { color: theme.text }]}>{item.numero_serie}</Text>
-                          </View>
-                        </View>
-                      </>
-                    ) : null}
-                  </View>
-
-                  {/* Observações */}
-                  {Boolean(item.observacoes) ? (
-                    <View style={[styles.sectionCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
-                      <View style={styles.sectionRow}>
-                        <Info size={18} color={theme.info} />
-                        <View style={styles.sectionInfo}>
-                          <Text style={[styles.sectionLabel, { color: theme.textMuted }]}>Observações</Text>
-                          <Text style={[styles.sectionValue, { color: theme.text }]}>{item.observacoes}</Text>
-                        </View>
-                      </View>
-                    </View>
-                  ) : null}
-
-                  {/* Componentes Instalados */}
-                  {Array.isArray(item.componentes) && item.componentes.length > 0 ? (
-                    <View style={[styles.sectionCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
-                      <View style={styles.sectionRow}>
-                        <Layers size={18} color={theme.warning} />
-                        <View style={styles.sectionInfo}>
-                          <Text style={[styles.sectionLabel, { color: theme.textMuted }]}>
-                            Componentes Instalados ({item.componentes.length})
-                          </Text>
-                          {item.componentes.map((c, index) => (
-                            <Text key={c.id ? c.id.toString() : index.toString()} style={[styles.subComponentText, { color: theme.text }]}>
-                              • {c.nome || 'Componente'} {Boolean(c.bmp) ? `(BMP: ${c.bmp})` : ''}
-                            </Text>
-                          ))}
-                        </View>
-                      </View>
-                    </View>
-                  ) : null}
-                </>
-              ) : activeTab === 'history' ? (
-                /* Aba de Histórico Específico */
-                <View style={styles.historyContainer}>
-                  {loadingHistory ? (
-                    <View style={styles.centerLoading}>
-                      <ActivityIndicator size="small" color={theme.primary} />
-                      <Text style={[styles.loadingText, { color: theme.textSecondary }]}>
-                        Carregando histórico deste material...
-                      </Text>
-                    </View>
-                  ) : historyMovements.length === 0 ? (
-                    <View style={styles.emptyHistory}>
-                      <History size={36} color={theme.textMuted} />
-                      <Text style={[styles.emptyHistoryTitle, { color: theme.text }]}>
-                        Sem movimentações registradas
-                      </Text>
-                      <Text style={[styles.emptyHistorySub, { color: theme.textMuted }]}>
-                        As cautelas, devoluções e transferências deste item aparecerão aqui.
-                      </Text>
-                    </View>
-                  ) : (
-                    historyMovements.map((m) => {
-                      const badge = getMovementBadge(m.tipo_movimentacao);
-                      return (
-                        <View
-                          key={m.id}
-                          style={[
-                            styles.historyCard,
-                            { backgroundColor: theme.card, borderColor: theme.border },
-                          ]}
-                        >
-                          <View style={styles.historyTopRow}>
-                            <View style={[styles.typeBadge, { backgroundColor: badge.bg }]}>
-                              <Text style={[styles.typeText, { color: badge.color }]}>
-                                {badge.label}
-                              </Text>
-                            </View>
-                            <Text style={[styles.historyDate, { color: theme.textMuted }]}>
-                              {formatDate(m.data_hora || m.criado_em)}
-                            </Text>
-                          </View>
-
-                          {Boolean(m.motivo) ? (
-                            <Text style={[styles.historyReason, { color: theme.text }]}>
-                              "{m.motivo}"
-                            </Text>
-                          ) : null}
-
-                          <View style={styles.historyBottomRow}>
-                            <View style={styles.historyUserWrap}>
-                              <User size={12} color={theme.textMuted} />
-                              <Text style={[styles.historyUser, { color: theme.textSecondary }]}>
-                                {m.usuario_nome || 'Operador'}
-                              </Text>
-                            </View>
-                            <Text style={[styles.historyQty, { color: theme.text }]}>
-                              Qtd: {m.quantidade_movimentada}
-                            </Text>
-                          </View>
-                        </View>
-                      );
-                    })
-                  )}
-                </View>
-              ) : (
-                /* Aba de QR Code & Etiqueta */
-                <View style={styles.qrContainer}>
-                  {/* Visualizador do QR Code */}
-                  <View
-                    style={[
-                      styles.qrCard,
-                      { backgroundColor: theme.card, borderColor: theme.border },
-                    ]}
-                  >
-                    <View style={styles.qrCodeWrapper}>
-                      <QRCode
-                        value={qrPayload || `BINFAE:${item.id}`}
-                        size={200}
-                        color="#000000"
-                        backgroundColor="#FFFFFF"
-                        onError={(err: any) => {
-                          console.warn('Erro ao renderizar QRCode:', err);
-                        }}
-                      />
-                    </View>
-                    <Text style={[styles.qrPayloadText, { color: theme.textSecondary }]}>
-                      {qrPayload || `BINFAE:${item.id}`}
-                    </Text>
-                  </View>
-
-                  {/* Resumo Patrimonial */}
-                  <View
-                    style={[
-                      styles.qrInfoCard,
-                      { backgroundColor: theme.card, borderColor: theme.border },
-                    ]}
-                  >
-                    <Text style={[styles.qrInfoHeader, { color: theme.primary }]}>
-                      ETIQUETA PATRIMONIAL MILITAR
-                    </Text>
-                    <View style={styles.qrDetailRow}>
-                      <Text style={[styles.qrDetailLabel, { color: theme.textMuted }]}>
-                        Material:
-                      </Text>
-                      <Text style={[styles.qrDetailValue, { color: theme.text }]}>
-                        {item.nome}
-                      </Text>
-                    </View>
+          {/* Conteúdo da Aba */}
+          <ScrollView
+            style={styles.body}
+            contentContainerStyle={styles.scrollContent}
+            showsVerticalScrollIndicator={false}
+          >
+            {activeTab === 'info' ? (
+              <>
+                {/* Cartão de Título e Status */}
+                <View style={[styles.infoCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
+                  <View style={styles.badgeRow}>
                     {Boolean(item.bmp) ? (
-                      <View style={styles.qrDetailRow}>
-                        <Text style={[styles.qrDetailLabel, { color: theme.textMuted }]}>
-                          BMP:
-                        </Text>
-                        <Text style={[styles.qrDetailValue, { color: theme.text }]}>
-                          {item.bmp}
+                      <View style={[styles.pill, { backgroundColor: theme.badgeBg }]}>
+                        <Text style={[styles.pillText, { color: theme.primary }]}>
+                          BMP {item.bmp}
                         </Text>
                       </View>
                     ) : null}
                     {Boolean(item.codigo_interno) ? (
-                      <View style={styles.qrDetailRow}>
-                        <Text style={[styles.qrDetailLabel, { color: theme.textMuted }]}>
-                          Código:
-                        </Text>
-                        <Text style={[styles.qrDetailValue, { color: theme.text }]}>
-                          {item.codigo_interno}
+                      <View style={[styles.pill, { backgroundColor: theme.surfaceVariant }]}>
+                        <Text style={[styles.pillText, { color: theme.textSecondary }]}>
+                          CÓD: {item.codigo_interno}
                         </Text>
                       </View>
                     ) : null}
-                    {Boolean(item.numero_serie) ? (
-                      <View style={styles.qrDetailRow}>
-                        <Text style={[styles.qrDetailLabel, { color: theme.textMuted }]}>
-                          Série:
-                        </Text>
-                        <Text style={[styles.qrDetailValue, { color: theme.text }]}>
-                          {item.numero_serie}
-                        </Text>
-                      </View>
-                    ) : null}
-                    <View style={styles.qrDetailRow}>
-                      <Text style={[styles.qrDetailLabel, { color: theme.textMuted }]}>
-                        Local:
-                      </Text>
-                      <Text style={[styles.qrDetailValue, { color: theme.text }]}>
-                        {locationPath}
+                    <View style={[styles.pill, { backgroundColor: theme.infoBg }]}>
+                      <Text style={[styles.pillText, { color: theme.info }]}>
+                        {itemStatus}
                       </Text>
                     </View>
                   </View>
 
-                  {/* Botões de Ação: Imprimir e Baixar PDF */}
-                  <View style={styles.qrActionButtons}>
-                    <TouchableOpacity
-                      style={[styles.qrBtn, { backgroundColor: theme.primary }]}
-                      onPress={handlePrint}
-                      disabled={isPrinting}
-                      activeOpacity={0.8}
-                    >
-                      {isPrinting ? (
-                        <ActivityIndicator size="small" color="#FFFFFF" />
-                      ) : (
-                        <>
-                          <Printer size={18} color="#FFFFFF" />
-                          <Text style={styles.qrBtnText}>Imprimir Etiqueta</Text>
-                        </>
-                      )}
-                    </TouchableOpacity>
+                  <Text style={[styles.itemName, { color: theme.text }]}>
+                    {item.nome || 'Sem identificação'}
+                  </Text>
+                </View>
 
-                    <TouchableOpacity
-                      style={[
-                        styles.qrBtn,
-                        {
-                          backgroundColor: theme.surfaceVariant,
-                          borderColor: theme.border,
-                          borderWidth: 1,
-                        },
-                      ]}
-                      onPress={handleSharePdf}
-                      disabled={isGeneratingPdf}
-                      activeOpacity={0.8}
-                    >
-                      {isGeneratingPdf ? (
-                        <ActivityIndicator size="small" color={theme.text} />
-                      ) : (
-                        <>
-                          <Share2 size={18} color={theme.text} />
-                          <Text style={[styles.qrBtnText, { color: theme.text }]}>
-                            Baixar / Compartilhar PDF
-                          </Text>
-                        </>
-                      )}
-                    </TouchableOpacity>
+                {/* Grid de Especificações */}
+                <View style={[styles.specGrid, { backgroundColor: theme.card, borderColor: theme.border }]}>
+                  <View style={styles.gridItem}>
+                    <Text style={[styles.gridLabel, { color: theme.textMuted }]}>Saldo Atual</Text>
+                    <Text style={[styles.gridValue, { color: theme.text }]}>
+                      {itemQty} {itemUnit}
+                    </Text>
+                  </View>
+
+                  <View style={styles.gridItem}>
+                    <Text style={[styles.gridLabel, { color: theme.textMuted }]}>Conservação</Text>
+                    <Text style={[styles.gridValue, { color: theme.text }]}>
+                      {itemCondition}
+                    </Text>
+                  </View>
+
+                  <View style={styles.gridItem}>
+                    <Text style={[styles.gridLabel, { color: theme.textMuted }]}>Controle</Text>
+                    <Text style={[styles.gridValue, { color: theme.text }]}>
+                      {itemControl}
+                    </Text>
+                  </View>
+
+                  <View style={styles.gridItem}>
+                    <Text style={[styles.gridLabel, { color: theme.textMuted }]}>Estoque Mínimo</Text>
+                    <Text style={[styles.gridValue, { color: theme.text }]}>
+                      {itemMinQty} {itemUnit}
+                    </Text>
                   </View>
                 </View>
-              )}
-            </ScrollView>
-          </ErrorBoundary>
+
+                {/* Localização e Subgrupo */}
+                <View style={[styles.sectionCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
+                  <View style={styles.sectionRow}>
+                    <MapPin size={18} color={theme.primary} />
+                    <View style={styles.sectionInfo}>
+                      <Text style={[styles.sectionLabel, { color: theme.textMuted }]}>Local Físico</Text>
+                      <Text style={[styles.sectionValue, { color: theme.text }]}>{locationPath}</Text>
+                    </View>
+                  </View>
+
+                  <View style={[styles.divider, { backgroundColor: theme.border }]} />
+
+                  <View style={styles.sectionRow}>
+                    <Folder size={18} color={theme.accent} />
+                    <View style={styles.sectionInfo}>
+                      <Text style={[styles.sectionLabel, { color: theme.textMuted }]}>Categoria / Subgrupo</Text>
+                      <Text style={[styles.sectionValue, { color: theme.text }]}>{subCategory}</Text>
+                    </View>
+                  </View>
+
+                  {Boolean(item.numero_serie) ? (
+                    <>
+                      <View style={[styles.divider, { backgroundColor: theme.border }]} />
+                      <View style={styles.sectionRow}>
+                        <FileText size={18} color={theme.textMuted} />
+                        <View style={styles.sectionInfo}>
+                          <Text style={[styles.sectionLabel, { color: theme.textMuted }]}>Número de Série</Text>
+                          <Text style={[styles.sectionValue, { color: theme.text }]}>{item.numero_serie}</Text>
+                        </View>
+                      </View>
+                    </>
+                  ) : null}
+                </View>
+
+                {/* Observações */}
+                {Boolean(item.observacoes) ? (
+                  <View style={[styles.sectionCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
+                    <View style={styles.sectionRow}>
+                      <Info size={18} color={theme.info} />
+                      <View style={styles.sectionInfo}>
+                        <Text style={[styles.sectionLabel, { color: theme.textMuted }]}>Observações</Text>
+                        <Text style={[styles.sectionValue, { color: theme.text }]}>{item.observacoes}</Text>
+                      </View>
+                    </View>
+                  </View>
+                ) : null}
+
+                {/* Componentes Instalados */}
+                {Array.isArray(item.componentes) && item.componentes.length > 0 ? (
+                  <View style={[styles.sectionCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
+                    <View style={styles.sectionRow}>
+                      <Layers size={18} color={theme.warning} />
+                      <View style={styles.sectionInfo}>
+                        <Text style={[styles.sectionLabel, { color: theme.textMuted }]}>
+                          Componentes Instalados ({item.componentes.length})
+                        </Text>
+                        {item.componentes.map((c: any, index: number) => {
+                          if (!c) return null;
+                          const name = typeof c === 'string' ? c : (c.nome || 'Componente');
+                          const bmp = typeof c === 'object' && c.bmp ? ` (BMP: ${c.bmp})` : '';
+                          const key = (typeof c === 'object' && c.id) ? c.id.toString() : index.toString();
+                          return (
+                            <Text key={key} style={[styles.subComponentText, { color: theme.text }]}>
+                              • {name}{bmp}
+                            </Text>
+                          );
+                        })}
+                      </View>
+                    </View>
+                  </View>
+                ) : null}
+              </>
+            ) : activeTab === 'history' ? (
+              /* Aba de Histórico Específico */
+              <View style={styles.historyContainer}>
+                {loadingHistory ? (
+                  <View style={styles.centerLoading}>
+                    <ActivityIndicator size="small" color={theme.primary} />
+                    <Text style={[styles.loadingText, { color: theme.textSecondary }]}>
+                      Carregando histórico deste material...
+                    </Text>
+                  </View>
+                ) : historyMovements.length === 0 ? (
+                  <View style={styles.emptyHistory}>
+                    <History size={36} color={theme.textMuted} />
+                    <Text style={[styles.emptyHistoryTitle, { color: theme.text }]}>
+                      Sem movimentações registradas
+                    </Text>
+                    <Text style={[styles.emptyHistorySub, { color: theme.textMuted }]}>
+                      As cautelas, devoluções e transferências deste item aparecerão aqui.
+                    </Text>
+                  </View>
+                ) : (
+                  historyMovements.map((m, index) => {
+                    const badge = getMovementBadge(m.tipo_movimentacao);
+                    return (
+                      <View
+                        key={m.id ? m.id.toString() : index.toString()}
+                        style={[
+                          styles.historyCard,
+                          { backgroundColor: theme.card, borderColor: theme.border },
+                        ]}
+                      >
+                        <View style={styles.historyTopRow}>
+                          <View style={[styles.typeBadge, { backgroundColor: badge.bg }]}>
+                            <Text style={[styles.typeText, { color: badge.color }]}>
+                              {badge.label}
+                            </Text>
+                          </View>
+                          <Text style={[styles.historyDate, { color: theme.textMuted }]}>
+                            {formatDate(m.data_hora || m.criado_em)}
+                          </Text>
+                        </View>
+
+                        {Boolean(m.motivo) ? (
+                          <Text style={[styles.historyReason, { color: theme.text }]}>
+                            "{m.motivo}"
+                          </Text>
+                        ) : null}
+
+                        <View style={styles.historyBottomRow}>
+                          <View style={styles.historyUserWrap}>
+                            <User size={12} color={theme.textMuted} />
+                            <Text style={[styles.historyUser, { color: theme.textSecondary }]}>
+                              {m.usuario_nome || 'Operador'}
+                            </Text>
+                          </View>
+                          <Text style={[styles.historyQty, { color: theme.text }]}>
+                            Qtd: {m.quantidade_movimentada}
+                          </Text>
+                        </View>
+                      </View>
+                    );
+                  })
+                )}
+              </View>
+            ) : (
+              /* Aba de QR Code & Etiqueta */
+              <View style={styles.qrContainer}>
+                {/* Visualizador do QR Code Nativo Puro */}
+                <View
+                  style={[
+                    styles.qrCard,
+                    { backgroundColor: theme.card, borderColor: theme.border },
+                  ]}
+                >
+                  <View style={styles.qrCodeWrapper}>
+                    <PureQrCode
+                      value={qrPayload || `BINFAE:${item.id}`}
+                      size={200}
+                      color="#000000"
+                      backgroundColor="#FFFFFF"
+                    />
+                  </View>
+                  <Text style={[styles.qrPayloadText, { color: theme.textSecondary }]}>
+                    {qrPayload || `BINFAE:${item.id}`}
+                  </Text>
+                </View>
+
+                {/* Resumo Patrimonial */}
+                <View
+                  style={[
+                    styles.qrInfoCard,
+                    { backgroundColor: theme.card, borderColor: theme.border },
+                  ]}
+                >
+                  <Text style={[styles.qrInfoHeader, { color: theme.primary }]}>
+                    ETIQUETA PATRIMONIAL MILITAR
+                  </Text>
+                  <View style={styles.qrDetailRow}>
+                    <Text style={[styles.qrDetailLabel, { color: theme.textMuted }]}>
+                      Material:
+                    </Text>
+                    <Text style={[styles.qrDetailValue, { color: theme.text }]}>
+                      {item.nome}
+                    </Text>
+                  </View>
+                  {Boolean(item.bmp) ? (
+                    <View style={styles.qrDetailRow}>
+                      <Text style={[styles.qrDetailLabel, { color: theme.textMuted }]}>
+                        BMP:
+                      </Text>
+                      <Text style={[styles.qrDetailValue, { color: theme.text }]}>
+                        {item.bmp}
+                      </Text>
+                    </View>
+                  ) : null}
+                  {Boolean(item.codigo_interno) ? (
+                    <View style={styles.qrDetailRow}>
+                      <Text style={[styles.qrDetailLabel, { color: theme.textMuted }]}>
+                        Código:
+                      </Text>
+                      <Text style={[styles.qrDetailValue, { color: theme.text }]}>
+                        {item.codigo_interno}
+                      </Text>
+                    </View>
+                  ) : null}
+                  {Boolean(item.numero_serie) ? (
+                    <View style={styles.qrDetailRow}>
+                      <Text style={[styles.qrDetailLabel, { color: theme.textMuted }]}>
+                        Série:
+                      </Text>
+                      <Text style={[styles.qrDetailValue, { color: theme.text }]}>
+                        {item.numero_serie}
+                      </Text>
+                    </View>
+                  ) : null}
+                  <View style={styles.qrDetailRow}>
+                    <Text style={[styles.qrDetailLabel, { color: theme.textMuted }]}>
+                      Local:
+                    </Text>
+                    <Text style={[styles.qrDetailValue, { color: theme.text }]}>
+                      {locationPath}
+                    </Text>
+                  </View>
+                </View>
+
+                {/* Botões de Ação: Imprimir e Baixar PDF */}
+                <View style={styles.qrActionButtons}>
+                  <TouchableOpacity
+                    style={[styles.qrBtn, { backgroundColor: theme.primary }]}
+                    onPress={handlePrint}
+                    disabled={isPrinting}
+                    activeOpacity={0.8}
+                  >
+                    {isPrinting ? (
+                      <ActivityIndicator size="small" color="#FFFFFF" />
+                    ) : (
+                      <>
+                        <Printer size={18} color="#FFFFFF" />
+                        <Text style={styles.qrBtnText}>Imprimir Etiqueta</Text>
+                      </>
+                    )}
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={[
+                      styles.qrBtn,
+                      {
+                        backgroundColor: theme.surfaceVariant,
+                        borderColor: theme.border,
+                        borderWidth: 1,
+                      },
+                    ]}
+                    onPress={handleSharePdf}
+                    disabled={isGeneratingPdf}
+                    activeOpacity={0.8}
+                  >
+                    {isGeneratingPdf ? (
+                      <ActivityIndicator size="small" color={theme.text} />
+                    ) : (
+                      <>
+                        <Share2 size={18} color={theme.text} />
+                        <Text style={[styles.qrBtnText, { color: theme.text }]}>
+                          Baixar / Compartilhar PDF
+                        </Text>
+                      </>
+                    )}
+                  </TouchableOpacity>
+                </View>
+              </View>
+            )}
+          </ScrollView>
 
           {/* Rodapé com botão de Transferência e Safe Area Padding adequado */}
           <View
@@ -777,6 +784,19 @@ export const ItemDetailModal: React.FC<ItemDetailModalProps> = ({
         </View>
       </View>
     </Modal>
+  );
+};
+
+export const ItemDetailModal: React.FC<ItemDetailModalProps> = (props) => {
+  if (!props.visible || !props.item) return null;
+
+  return (
+    <ErrorBoundary
+      fallbackMessage="Não foi possível exibir os detalhes deste material."
+      onReset={props.onClose}
+    >
+      <ItemDetailModalContent {...props} />
+    </ErrorBoundary>
   );
 };
 

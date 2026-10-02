@@ -67,18 +67,17 @@ jobs:
         if: github.ref == 'refs/heads/main' || github.event_name == 'release'
         with:
           tag_name: latest
-          name: "Binfae Mobile v1.3.4 - APK Oficial Assinado"
+          name: "Binfae Mobile v1.3.5 - APK Oficial Assinado"
           body: |
-            ### 🛠️ Binfae Mobile v1.3.4 - Correção Crítica de Crash em Detalhes do Material
+            ### 🛠️ Binfae Mobile v1.3.5 - Correção Definitiva de Visualização de Detalhes do Material
 
-            - **Correção Definitiva de Crash ao Abrir Detalhes do Material**:
-              - Eliminada renderização condicional perigosa (`&&`) com valores de texto vazios que causavam erro fatal de Invariant Violation no Android.
-              - Todas as condicionais de atributos opcionais (`bmp`, `codigo_interno`, `numero_serie`, `observacoes`, `componentes`) agora utilizam checagens booleanas defensivas ternárias.
-            - **Geração Segura de QR Code para Impressão e PDF**:
-              - Substituição de dependências pesadas de Node.js (`fs`/`stream`) por renderização vetorial SVG pura e resiliente.
-              - Tratamento defensivo de erros (`onError`) na renderização do QR Code em tela.
-            - **Proteção Global com Error Boundary**:
-              - Implementado `ErrorBoundary` nativo na raiz do aplicativo e nos modais principais para recuperação instantânea e prevenção contra encerramentos repentinos do app.
+            - **Renderização Nativa e Pura do QR Code**:
+              - Remoção total do pacote vulnerável `react-native-qrcode-svg` que causava exceção fatal no motor Hermes Android.
+              - Introduzido componente `PureQrCode` vetorial SVG 100% autônomo baseado em matriz matemática sem dependências de browser ou Node.js.
+            - **Isolamento Completo dos Modais e Proteção contra Crash**:
+              - Modais `ItemDetailModal` e `MovementModal` agora só são montados sob demanda na árvore React quando ativados.
+              - Cada modal conta com seu próprio `ErrorBoundary` dedicado com exibição de stack trace e botão de recuperação suave.
+              - Funções de formatação de local (`formatLocationFriendlyName`) e listagem de subcomponentes blindadas contra valores nulos/indefinidos.
           files: build-output/BinfaeMobile-release.apk
           prerelease: false
         env:

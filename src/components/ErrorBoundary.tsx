@@ -1,5 +1,5 @@
 import React, { Component, ErrorInfo, ReactNode } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
 
 interface Props {
   children: ReactNode;
@@ -35,15 +35,42 @@ export class ErrorBoundary extends Component<Props, State> {
 
   render() {
     if (this.state.hasError) {
+      const errorText = this.state.error
+        ? `${this.state.error.name}: ${this.state.error.message}`
+        : (this.props.fallbackMessage || 'Falha ao processar componente.');
+
       return (
         <View style={styles.container}>
           <Text style={styles.title}>Ops! Ocorreu um erro ao exibir estes dados</Text>
-          <Text style={styles.message}>
-            {this.props.fallbackMessage || this.state.error?.message || 'Falha ao renderizar componente.'}
-          </Text>
-          <TouchableOpacity style={styles.button} onPress={this.resetError} activeOpacity={0.8}>
-            <Text style={styles.buttonText}>Tentar Novamente</Text>
-          </TouchableOpacity>
+          <Text style={styles.message}>{errorText}</Text>
+
+          {this.state.error?.stack ? (
+            <ScrollView
+              style={styles.stackBox}
+              contentContainerStyle={{ padding: 8 }}
+              showsVerticalScrollIndicator={true}
+            >
+              <Text style={styles.stackText}>
+                {this.state.error.stack}
+              </Text>
+            </ScrollView>
+          ) : null}
+
+          <View style={styles.buttonRow}>
+            <TouchableOpacity style={styles.button} onPress={this.resetError} activeOpacity={0.8}>
+              <Text style={styles.buttonText}>Tentar Novamente</Text>
+            </TouchableOpacity>
+
+            {this.props.onReset ? (
+              <TouchableOpacity
+                style={[styles.button, styles.secondaryButton]}
+                onPress={this.props.onReset}
+                activeOpacity={0.8}
+              >
+                <Text style={[styles.buttonText, { color: '#E2E8F0' }]}>Fechar / Voltar</Text>
+              </TouchableOpacity>
+            ) : null}
+          </View>
         </View>
       );
     }
@@ -57,6 +84,7 @@ const styles = StyleSheet.create({
     padding: 24,
     alignItems: 'center',
     justifyContent: 'center',
+    width: '100%',
   },
   title: {
     fontSize: 16,
@@ -67,15 +95,37 @@ const styles = StyleSheet.create({
   },
   message: {
     fontSize: 13,
-    color: '#9CA3AF',
+    color: '#F87171',
+    fontWeight: '600',
     textAlign: 'center',
+    marginBottom: 12,
+  },
+  stackBox: {
+    maxHeight: 140,
+    width: '100%',
+    backgroundColor: '#0F172A',
+    borderColor: '#334155',
+    borderWidth: 1,
+    borderRadius: 8,
     marginBottom: 16,
+  },
+  stackText: {
+    color: '#CBD5E1',
+    fontSize: 10,
+    fontFamily: 'monospace',
+  },
+  buttonRow: {
+    flexDirection: 'row',
+    gap: 10,
   },
   button: {
     paddingHorizontal: 16,
     paddingVertical: 10,
     backgroundColor: '#6366F1',
     borderRadius: 8,
+  },
+  secondaryButton: {
+    backgroundColor: '#334155',
   },
   buttonText: {
     color: '#FFFFFF',

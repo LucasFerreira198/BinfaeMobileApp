@@ -114,19 +114,26 @@ export const getDescendantLocationIds = (rootId: number, locs: Location[]): Set<
  * Formata o caminho do local em linguagem natural amigável
  * Ex: "Prateleira 1, Armário 1 do Depósito"
  */
-export const formatLocationFriendlyName = (loc: Location, allLocations: Location[]): string => {
-  const chain: string[] = [loc.nome];
+export const formatLocationFriendlyName = (
+  loc?: Location | null,
+  allLocations?: Location[] | null
+): string => {
+  if (!loc || typeof loc !== 'object') return '';
+  const initialName = loc.nome || 'Local';
+  const chain: string[] = [initialName];
   let currentParentId = loc.parent_id;
   let safetyCounter = 0;
 
-  while (currentParentId && safetyCounter < 10) {
-    safetyCounter++;
-    const parent = allLocations.find((l) => l.id === currentParentId);
-    if (parent) {
-      chain.push(parent.nome);
-      currentParentId = parent.parent_id;
-    } else {
-      break;
+  if (Array.isArray(allLocations)) {
+    while (currentParentId && safetyCounter < 15) {
+      safetyCounter++;
+      const parent = allLocations.find((l) => l && l.id === currentParentId);
+      if (parent && parent.nome) {
+        chain.push(parent.nome);
+        currentParentId = parent.parent_id;
+      } else {
+        break;
+      }
     }
   }
 

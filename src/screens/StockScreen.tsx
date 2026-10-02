@@ -197,19 +197,23 @@ export const StockScreen: React.FC = () => {
       </TouchableOpacity>
 
       {/* Modal de Detalhes Completo */}
-      <ItemDetailModal
-        item={selectedItem}
-        visible={detailVisible}
-        onClose={() => setDetailVisible(false)}
-        onOpenMovement={(item) => handleOpenMovement(item)}
-      />
+      {detailVisible && selectedItem ? (
+        <ItemDetailModal
+          item={selectedItem}
+          visible={detailVisible}
+          onClose={() => setDetailVisible(false)}
+          onOpenMovement={(item) => handleOpenMovement(item)}
+        />
+      ) : null}
 
       {/* Modal de Movimentação e Cautela */}
-      <MovementModal
-        item={selectedItem}
-        visible={movementVisible}
-        onClose={() => setMovementVisible(false)}
-      />
+      {movementVisible && selectedItem ? (
+        <MovementModal
+          item={selectedItem}
+          visible={movementVisible}
+          onClose={() => setMovementVisible(false)}
+        />
+      ) : null}
 
       {/* Modal de Adicionar Novo Material */}
       <AddItemModal

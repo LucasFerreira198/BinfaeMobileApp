@@ -16,7 +16,7 @@ import * as IntentLauncher from 'expo-intent-launcher';
 import { useTheme } from '../context/ThemeContext';
 import { DownloadCloud, CheckCircle2, AlertCircle, X, ShieldAlert } from 'lucide-react-native';
 
-export const CURRENT_VERSION = '1.3.4';
+export const CURRENT_VERSION = '1.3.5';
 const GITHUB_REPO = 'LucasFerreira198/BinfaeMobileApp';
 
 /**

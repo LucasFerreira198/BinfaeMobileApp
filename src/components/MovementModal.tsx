@@ -30,6 +30,7 @@ import {
   ArrowRightLeft,
   FolderTree,
 } from 'lucide-react-native';
+import { ErrorBoundary } from './ErrorBoundary';
 
 interface MovementModalProps {
   item: Item | null;
@@ -38,7 +39,7 @@ interface MovementModalProps {
   onSuccess?: () => void;
 }
 
-export const MovementModal: React.FC<MovementModalProps> = ({
+const MovementModalContent: React.FC<MovementModalProps> = ({
   item,
   visible,
   onClose,
@@ -96,7 +97,7 @@ export const MovementModal: React.FC<MovementModalProps> = ({
     return () => handler.remove();
   }, [visible, pickerVisible, historyStack, pickerSearch, onClose]);
 
-  if (!item) return null;
+  if (!visible || !item) return null;
 
   const currentLocObj = locations.find((l) => l.id === item.local_id);
   const currentLocName = currentLocObj
@@ -571,6 +572,19 @@ export const MovementModal: React.FC<MovementModalProps> = ({
         </Modal>
       </View>
     </Modal>
+  );
+};
+
+export const MovementModal: React.FC<MovementModalProps> = (props) => {
+  if (!props.visible || !props.item) return null;
+
+  return (
+    <ErrorBoundary
+      fallbackMessage="Não foi possível abrir o formulário de movimentação."
+      onReset={props.onClose}
+    >
+      <MovementModalContent {...props} />
+    </ErrorBoundary>
   );
 };
 
