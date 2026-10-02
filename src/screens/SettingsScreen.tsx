@@ -11,8 +11,10 @@ import {
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import { useStock } from '../context/StockContext';
+import { useSecurity } from '../context/SecurityContext';
 import { Header } from '../components/Header';
 import { UpdateModal, CURRENT_VERSION } from '../components/UpdateModal';
+import { SetPinModal } from '../components/SetPinModal';
 import {
   Shield,
   Moon,
@@ -27,14 +29,26 @@ import {
   Phone,
   Mail,
   CheckCircle2,
+  Lock,
+  Fingerprint,
+  ShieldOff,
+  Check,
 } from 'lucide-react-native';
 
 export const SettingsScreen: React.FC = () => {
   const { user, logout } = useAuth();
   const { theme, mode, setMode, isDark, toggleTheme } = useTheme();
   const { lastSync, syncData, isSyncing } = useStock();
+  const {
+    securityMode,
+    isBiometricsSupported,
+    hasPinSet,
+    setSecurityMode,
+    unlockWithBiometrics,
+  } = useSecurity();
 
   const [updateModalVisible, setUpdateModalVisible] = useState<boolean>(false);
+  const [setPinModalVisible, setSetPinModalVisible] = useState<boolean>(false);
 
   const militar = user?.militar;
   const displayName = militar
@@ -225,7 +239,119 @@ export const SettingsScreen: React.FC = () => {
           </View>
         </View>
 
-        {/* 3. Seção: Sincronização Silenciosa Local */}
+        {/* 3. Seção: Segurança & Bloqueio do App */}
+        <Text style={[styles.sectionTitle, { color: theme.textSecondary }]}>SEGURANÇA & BLOQUEIO DO APP</Text>
+        <View style={[styles.sectionCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
+          <Text style={[styles.securityNotice, { color: theme.textSecondary }]}>
+            Exigir autenticação ao retornar ao aplicativo (background ➔ foreground):
+          </Text>
+
+          <View style={styles.securityModesList}>
+            {/* Opção 1: Nenhuma */}
+            <TouchableOpacity
+              style={[
+                styles.securityOptionCard,
+                {
+                  backgroundColor: securityMode === 'NONE' ? theme.badgeBg : theme.surfaceVariant,
+                  borderColor: securityMode === 'NONE' ? theme.primary : theme.border,
+                },
+              ]}
+              onPress={() => setSecurityMode('NONE')}
+              activeOpacity={0.7}
+            >
+              <View style={[styles.secIconCircle, { backgroundColor: theme.surfaceVariant }]}>
+                <ShieldOff size={18} color={securityMode === 'NONE' ? theme.primary : theme.textMuted} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.secOptionTitle, { color: theme.text }]}>Nenhuma</Text>
+                <Text style={[styles.secOptionSub, { color: theme.textMuted }]}>
+                  Segurança desativada (acesso livre)
+                </Text>
+              </View>
+              {securityMode === 'NONE' && <Check size={18} color={theme.primary} />}
+            </TouchableOpacity>
+
+            {/* Opção 2: Biometria */}
+            <TouchableOpacity
+              style={[
+                styles.securityOptionCard,
+                {
+                  backgroundColor: securityMode === 'BIOMETRICS' ? theme.badgeBg : theme.surfaceVariant,
+                  borderColor: securityMode === 'BIOMETRICS' ? theme.primary : theme.border,
+                },
+              ]}
+              onPress={async () => {
+                if (!isBiometricsSupported) {
+                  Alert.alert(
+                    'Biometria Indisponível',
+                    'Seu aparelho não possui sensor biométrico ativo ou não há biometrias cadastradas nas configurações do Android.'
+                  );
+                  return;
+                }
+                const success = await unlockWithBiometrics();
+                if (success) {
+                  await setSecurityMode('BIOMETRICS');
+                }
+              }}
+              activeOpacity={0.7}
+            >
+              <View style={[styles.secIconCircle, { backgroundColor: theme.surfaceVariant }]}>
+                <Fingerprint size={18} color={securityMode === 'BIOMETRICS' ? theme.primary : theme.textMuted} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.secOptionTitle, { color: theme.text }]}>Biometria Nativa</Text>
+                <Text style={[styles.secOptionSub, { color: theme.textMuted }]}>
+                  Impressão digital ou Face ID do aparelho
+                </Text>
+              </View>
+              {securityMode === 'BIOMETRICS' && <Check size={18} color={theme.primary} />}
+            </TouchableOpacity>
+
+            {/* Opção 3: PIN Numérico */}
+            <TouchableOpacity
+              style={[
+                styles.securityOptionCard,
+                {
+                  backgroundColor: securityMode === 'PIN' ? theme.badgeBg : theme.surfaceVariant,
+                  borderColor: securityMode === 'PIN' ? theme.primary : theme.border,
+                },
+              ]}
+              onPress={() => {
+                if (!hasPinSet) {
+                  setSetPinModalVisible(true);
+                } else {
+                  setSecurityMode('PIN');
+                }
+              }}
+              activeOpacity={0.7}
+            >
+              <View style={[styles.secIconCircle, { backgroundColor: theme.surfaceVariant }]}>
+                <Lock size={18} color={securityMode === 'PIN' ? theme.primary : theme.textMuted} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.secOptionTitle, { color: theme.text }]}>PIN Numérico</Text>
+                <Text style={[styles.secOptionSub, { color: theme.textMuted }]}>
+                  {hasPinSet ? 'Código de 4 dígitos configurado' : 'Cadastrar código numérico de 4 dígitos'}
+                </Text>
+              </View>
+              {securityMode === 'PIN' && <Check size={18} color={theme.primary} />}
+            </TouchableOpacity>
+          </View>
+
+          {hasPinSet && (
+            <TouchableOpacity
+              style={[styles.changePinBtn, { backgroundColor: theme.surfaceVariant }]}
+              onPress={() => setSetPinModalVisible(true)}
+              activeOpacity={0.7}
+            >
+              <Text style={[styles.changePinText, { color: theme.primary }]}>
+                Alterar PIN de 4 Dígitos
+              </Text>
+            </TouchableOpacity>
+          )}
+        </View>
+
+        {/* 4. Seção: Sincronização Silenciosa Local */}
         <Text style={[styles.sectionTitle, { color: theme.textSecondary }]}>SINCRONIZAÇÃO</Text>
         <View style={[styles.sectionCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
           <View style={styles.row}>
@@ -293,6 +419,15 @@ export const SettingsScreen: React.FC = () => {
         visible={updateModalVisible}
         onClose={() => setUpdateModalVisible(false)}
         manualTrigger={true}
+      />
+
+      {/* Modal de Configuração de PIN */}
+      <SetPinModal
+        visible={setPinModalVisible}
+        onClose={() => setSetPinModalVisible(false)}
+        onSuccess={() => {
+          Alert.alert('PIN Configurado', 'A segurança com PIN numérico foi ativada com sucesso!');
+        }}
       />
     </View>
   );
@@ -452,5 +587,46 @@ const styles = StyleSheet.create({
   versionFoot: {
     fontSize: 11,
     textAlign: 'center',
+  },
+  securityNotice: {
+    fontSize: 12,
+    marginBottom: 12,
+    lineHeight: 16,
+  },
+  securityModesList: {
+    gap: 10,
+  },
+  securityOptionCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    gap: 12,
+  },
+  secIconCircle: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  secOptionTitle: {
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  secOptionSub: {
+    fontSize: 11,
+    marginTop: 2,
+  },
+  changePinBtn: {
+    marginTop: 12,
+    paddingVertical: 10,
+    borderRadius: 10,
+    alignItems: 'center',
+  },
+  changePinText: {
+    fontSize: 12,
+    fontWeight: '700',
   },
 });

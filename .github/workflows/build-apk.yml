@@ -67,15 +67,15 @@ jobs:
         if: github.ref == 'refs/heads/main' || github.event_name == 'release'
         with:
           tag_name: latest
-          name: "Binfae Mobile v1.2.0 - APK Oficial Assinado"
+          name: "Binfae Mobile v1.3.0 - APK Oficial Assinado"
           body: |
-            ### 🚀 Binfae Mobile v1.2.0 - Novidades & Melhorias de Navegação
+            ### 🚀 Binfae Mobile v1.3.0 - Usuários, Efetivo, Segurança e Teclado
 
-            - **Menu Lateral (Drawer)**: Acesso direto no topo esquerdo com perfil do militar, Locais Físicos, Histórico Geral e Painel Admin.
-            - **Bottom Navigation Refatorada**: Barras inferiores focadas em Materiais, Escanear, Cautelas (Em breve) e Ajustes.
-            - **Locais Físicos Hierárquicos**: Navegação em árvore por níveis e ramificações (Depósito ➔ Armários ➔ Prateleiras) com contagem em tempo real e breadcrumbs.
-            - **Busca Inteligente por Local**: Mensagem contextualizada de material não encontrado no local com botão de ação rápida: *"Sair deste local e pesquisar em todos"*.
-            - **Nova Aba Cautelas (Em breve)**: Apresentação do módulo de termos digitais, auditorias e devoluções militares.
+            - **Gerenciamento de Usuários (Admin)**: Criação de contas vinculadas ao SARAM ou admin avulso com controle de permissões (Administrador vs Operador).
+            - **Gerenciamento de Permissões**: Edição de status de ativação, promoção de contas para admin e redefinição de senhas.
+            - **Cadastro de Militares no Efetivo**: Formulário completo para inclusão de novos militares (SARAM, posto, nome de guerra e contatos).
+            - **Segurança de Retorno (Lock Screen)**: Bloqueio automático ao sair do app (background ➔ foreground) com Biometria (Face ID/Digital) ou PIN de 4 dígitos configurável.
+            - **Responsividade do Teclado**: Ajuste nativo de redimensionamento (`softwareKeyboardLayoutMode: resize`) garantindo que os campos de texto nunca fiquem encobertos.
           files: build-output/BinfaeMobile-release.apk
           prerelease: false
         env:

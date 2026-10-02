@@ -14,17 +14,20 @@ import { useTheme } from '../context/ThemeContext';
 import { api } from '../api/client';
 import { User, Military } from '../types';
 import { Header } from '../components/Header';
+import { CreateUserModal } from '../components/CreateUserModal';
+import { EditUserModal } from '../components/EditUserModal';
+import { CreateMilitaryModal } from '../components/CreateMilitaryModal';
 import {
   ShieldAlert,
   Users,
   Search,
   X,
-  UserCheck,
-  UserX,
   Phone,
   Mail,
   Briefcase,
-  IdCard,
+  UserPlus,
+  UserCog,
+  Plus,
 } from 'lucide-react-native';
 
 export const AdminScreen: React.FC = () => {
@@ -37,6 +40,12 @@ export const AdminScreen: React.FC = () => {
   const [loading, setLoading] = useState<boolean>(true);
   const [refreshing, setRefreshing] = useState<boolean>(false);
   const [search, setSearch] = useState<string>('');
+
+  // Modais de Criação e Edição
+  const [createUserVisible, setCreateUserVisible] = useState<boolean>(false);
+  const [editUserVisible, setEditUserVisible] = useState<boolean>(false);
+  const [selectedUser, setSelectedUser] = useState<User | null>(null);
+  const [createMilitaryVisible, setCreateMilitaryVisible] = useState<boolean>(false);
 
   const loadData = useCallback(async () => {
     try {
@@ -153,6 +162,22 @@ export const AdminScreen: React.FC = () => {
             </Text>
           </View>
         )}
+
+        <View style={[styles.userCardActions, { borderTopColor: theme.border }]}>
+          <TouchableOpacity
+            style={[styles.manageBtn, { backgroundColor: theme.surfaceVariant }]}
+            onPress={() => {
+              setSelectedUser(item);
+              setEditUserVisible(true);
+            }}
+            activeOpacity={0.7}
+          >
+            <UserCog size={14} color={theme.primary} />
+            <Text style={[styles.manageBtnText, { color: theme.primary }]}>
+              Gerenciar Permissões
+            </Text>
+          </TouchableOpacity>
+        </View>
       </View>
     );
   };
@@ -196,11 +221,11 @@ export const AdminScreen: React.FC = () => {
             </View>
           )}
 
-          {item.telefone && (
+          {item.celular && (
             <View style={styles.footerRow}>
               <Phone size={13} color={theme.textMuted} />
               <Text style={[styles.footerText, { color: theme.textSecondary }]}>
-                {item.telefone}
+                {item.celular}
               </Text>
             </View>
           )}
@@ -287,6 +312,35 @@ export const AdminScreen: React.FC = () => {
         </View>
       </View>
 
+      {/* Barra de Ações: Botão Novo Usuário / Novo Militar */}
+      <View style={styles.actionsBar}>
+        <Text style={[styles.countLabel, { color: theme.textMuted }]}>
+          {activeTab === 'users'
+            ? `${filteredUsers.length} usuários cadastrados`
+            : `${filteredMilitary.length} militares no efetivo`}
+        </Text>
+
+        {activeTab === 'users' ? (
+          <TouchableOpacity
+            style={[styles.addBtn, { backgroundColor: theme.primary }]}
+            onPress={() => setCreateUserVisible(true)}
+            activeOpacity={0.8}
+          >
+            <UserPlus size={15} color="#FFFFFF" />
+            <Text style={styles.addBtnText}>Novo Usuário</Text>
+          </TouchableOpacity>
+        ) : (
+          <TouchableOpacity
+            style={[styles.addBtn, { backgroundColor: theme.primary }]}
+            onPress={() => setCreateMilitaryVisible(true)}
+            activeOpacity={0.8}
+          >
+            <Plus size={16} color="#FFFFFF" />
+            <Text style={styles.addBtnText}>Cadastrar Militar</Text>
+          </TouchableOpacity>
+        )}
+      </View>
+
       {/* Conteúdo Principal */}
       {loading ? (
         <View style={styles.centerBox}>
@@ -324,6 +378,32 @@ export const AdminScreen: React.FC = () => {
           }
         />
       )}
+
+      {/* Modal de Criação de Usuário */}
+      <CreateUserModal
+        visible={createUserVisible}
+        onClose={() => setCreateUserVisible(false)}
+        onSuccess={loadData}
+        militaryList={militaryList}
+      />
+
+      {/* Modal de Edição de Permissões */}
+      <EditUserModal
+        user={selectedUser}
+        visible={editUserVisible}
+        onClose={() => {
+          setEditUserVisible(false);
+          setSelectedUser(null);
+        }}
+        onSuccess={loadData}
+      />
+
+      {/* Modal de Cadastro de Militar */}
+      <CreateMilitaryModal
+        visible={createMilitaryVisible}
+        onClose={() => setCreateMilitaryVisible(false)}
+        onSuccess={loadData}
+      />
     </View>
   );
 };
@@ -363,6 +443,30 @@ const styles = StyleSheet.create({
   searchInput: {
     flex: 1,
     fontSize: 13,
+  },
+  actionsBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingBottom: 6,
+  },
+  countLabel: {
+    fontSize: 11,
+    fontWeight: '500',
+  },
+  addBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 10,
+  },
+  addBtnText: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: '700',
   },
   centerBox: {
     flex: 1,
@@ -434,6 +538,23 @@ const styles = StyleSheet.create({
   },
   footerText: {
     fontSize: 12,
+  },
+  userCardActions: {
+    borderTopWidth: StyleSheet.hairlineWidth,
+    paddingTop: 8,
+    marginTop: 2,
+  },
+  manageBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 7,
+    borderRadius: 8,
+  },
+  manageBtnText: {
+    fontSize: 12,
+    fontWeight: '700',
   },
   emptyBox: {
     alignItems: 'center',

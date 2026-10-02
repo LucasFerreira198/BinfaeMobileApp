@@ -7,6 +7,7 @@ export interface Military {
   secao?: string | null;
   email?: string | null;
   telefone?: string | null;
+  celular?: string | null;
   ativo?: boolean;
 }
 

@@ -170,8 +170,58 @@ export const api = {
     return await request<User[]>('/users/listUsers');
   },
 
+  createUser: async (data: {
+    username?: string;
+    saram?: number;
+    password: string;
+    admin?: boolean;
+    ativo?: boolean;
+  }): Promise<User> => {
+    return await request<User>('/users/createUser', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+  },
+
+  updateUser: async (
+    identifier: number | string,
+    data: {
+      password?: string;
+      admin?: boolean;
+      ativo?: boolean;
+    }
+  ): Promise<User> => {
+    return await request<User>(`/users/update/${identifier}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+  },
+
+  deleteUser: async (identifier: number | string): Promise<void> => {
+    return await request<void>(`/users/delete/${identifier}`, {
+      method: 'DELETE',
+    });
+  },
+
   listMilitary: async (): Promise<Military[]> => {
     return await request<Military[]>('/military/list');
+  },
+
+  createMilitary: async (data: {
+    saram: number;
+    nome_completo: string;
+    posto_graduacao: string;
+    nome_guerra: string;
+    email?: string;
+    celular?: string;
+  }): Promise<Military> => {
+    return await request<Military>('/military/create', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
   },
 
   getItemById: async (id: number): Promise<Item> => {
