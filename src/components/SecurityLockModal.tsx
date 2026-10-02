@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   BackHandler,
   Alert,
+  AppState,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../context/ThemeContext';
@@ -47,9 +48,11 @@ export const SecurityLockModal: React.FC = () => {
 
   // Se o modo ativo for biometria, dispara prompt quando abrir com pequeno buffer
   useEffect(() => {
-    if (isLocked && activeMode === 'BIOMETRICS' && isAuthenticated) {
+    if (isLocked && activeMode === 'BIOMETRICS' && isAuthenticated && AppState.currentState === 'active') {
       const timer = setTimeout(() => {
-        unlockWithBiometrics();
+        if (AppState.currentState === 'active') {
+          unlockWithBiometrics();
+        }
       }, 350);
       return () => clearTimeout(timer);
     }

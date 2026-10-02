@@ -67,20 +67,28 @@ jobs:
         if: github.ref == 'refs/heads/main' || github.event_name == 'release'
         with:
           tag_name: latest
-          name: "Binfae Mobile v1.3.2 - APK Oficial Assinado"
+          name: "Binfae Mobile v1.3.3 - APK Oficial Assinado"
           body: |
-            ### 🚀 Binfae Mobile v1.3.2 - Segurança no Cold Start (Reabertura do App) e Teclado
+            ### 🚀 Binfae Mobile v1.3.3 - Gestão de Grupos, QR Code com Impressão & PDF, e Otimizações
 
-            - **Bloqueio de Segurança no Cold Start & Retorno**:
-              - Ao fechar o aplicativo por completo e reabri-lo, caso o usuário ainda esteja logado, a autenticação por **Biometria** (Digital / Face ID) ou **PIN de 4 dígitos** é imediatamente solicitada antes de liberar as telas.
-              - Prompt biométrico disparado automaticamente ao abrir o app ou voltar do segundo plano.
-              - Alternância flexível: se a biometria falhar ou o usuário preferir, pode alternar para PIN numérico em tela.
-              - Prevenção contra loops falsos de bloqueio causados pelo diálogo nativo de biometria do Android.
-            - **Adaptação Total ao Teclado Virtual (Android & iOS)**:
-              - Hook reativo `useKeyboardHeight` com listeners nativos de abertura e fechamento do teclado.
-              - Elevação dinâmica e redução inteligente da altura máxima de todos os Bottom Sheets e Modals (`AddItemModal`, `MovementModal`, `CreateUserModal`, `CreateMilitaryModal`, `EditUserModal`, `LocationsModal`).
-              - `LoginScreen` responsivo: cabeçalho hero adaptativo e reposicionamento vertical que mantém SARAM, Senha e botão de login sempre visíveis acima do teclado.
-            - **Gerenciamento de Usuários e Efetivo (Admin)**: Criação de contas vinculadas ao SARAM ou avulsas, alternância de privilégios de Admin e cadastro de militares.
+            - **Carência de 5 Segundos para Biometria/PIN**:
+              - Evita que a biometria seja solicitada indevidamente enquanto o aplicativo está sendo minimizado/fechado.
+              - Ao retornar ao primeiro plano, exige autenticação se o app permaneceu em segundo plano por pelo menos 5 segundos.
+              - Bloqueio instantâneo mantido para cold start (ao reabrir app fechado).
+            - **Menu Lateral à Esquerda**:
+              - O Drawer Menu agora abre suavemente pelo lado esquerdo da tela, alinhado com o botão de menu.
+            - **Gestão Completa de Grupos & Subgrupos**:
+              - Nova tela de visualização, criação e edição de grupos e subgrupos de materiais acessível diretamente pelo menu lateral.
+            - **Simplificação do Sistema de Movimentação**:
+              - Foco exclusivo em "Transferir Local".
+              - Campo de justificativa agora é opcional.
+              - Novo Seletor Hierárquico e Pesquisável de Locais Físicos, preparado para dezenas/centenas de depósitos, armários e prateleiras.
+            - **Gestão Administrativa de Militares**:
+              - Edição completa dos dados do efetivo militar (Posto/Graduação, Nome de Guerra, Nome Completo, E-mail, Celular) diretamente no Painel Admin.
+            - **Visualização de QR Code, Impressão e PDF**:
+              - Nova aba de QR Code no detalhe do material com renderização nativa de alta resolução.
+              - Botão de Impressão Direta (`expo-print`) para impressoras térmicas/rede.
+              - Botão de Download / Compartilhamento de Etiqueta Patrimonial em PDF oficial (`expo-sharing`).
           files: build-output/BinfaeMobile-release.apk
           prerelease: false
         env:

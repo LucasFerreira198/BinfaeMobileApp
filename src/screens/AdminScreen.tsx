@@ -18,6 +18,7 @@ import { Header } from '../components/Header';
 import { CreateUserModal } from '../components/CreateUserModal';
 import { EditUserModal } from '../components/EditUserModal';
 import { CreateMilitaryModal } from '../components/CreateMilitaryModal';
+import { EditMilitaryModal } from '../components/EditMilitaryModal';
 import {
   ShieldAlert,
   Users,
@@ -48,6 +49,8 @@ export const AdminScreen: React.FC = () => {
   const [editUserVisible, setEditUserVisible] = useState<boolean>(false);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [createMilitaryVisible, setCreateMilitaryVisible] = useState<boolean>(false);
+  const [editMilitaryVisible, setEditMilitaryVisible] = useState<boolean>(false);
+  const [selectedMilitary, setSelectedMilitary] = useState<Military | null>(null);
 
   const loadData = useCallback(async () => {
     try {
@@ -232,6 +235,22 @@ export const AdminScreen: React.FC = () => {
             </View>
           )}
         </View>
+
+        <View style={[styles.userCardActions, { borderTopColor: theme.border }]}>
+          <TouchableOpacity
+            style={[styles.manageBtn, { backgroundColor: theme.surfaceVariant }]}
+            onPress={() => {
+              setSelectedMilitary(item);
+              setEditMilitaryVisible(true);
+            }}
+            activeOpacity={0.7}
+          >
+            <UserCog size={14} color={theme.primary} />
+            <Text style={[styles.manageBtnText, { color: theme.primary }]}>
+              Editar Militar
+            </Text>
+          </TouchableOpacity>
+        </View>
       </View>
     );
   };
@@ -410,6 +429,17 @@ export const AdminScreen: React.FC = () => {
       <CreateMilitaryModal
         visible={createMilitaryVisible}
         onClose={() => setCreateMilitaryVisible(false)}
+        onSuccess={loadData}
+      />
+
+      {/* Modal de Edição de Militar */}
+      <EditMilitaryModal
+        military={selectedMilitary}
+        visible={editMilitaryVisible}
+        onClose={() => {
+          setEditMilitaryVisible(false);
+          setSelectedMilitary(null);
+        }}
         onSuccess={loadData}
       />
     </View>

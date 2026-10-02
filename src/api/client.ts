@@ -224,8 +224,83 @@ export const api = {
     });
   },
 
+  updateMilitary: async (
+    saram: number,
+    data: {
+      nome_completo?: string;
+      posto_graduacao?: string;
+      nome_guerra?: string;
+      email?: string;
+      celular?: string;
+    }
+  ): Promise<Military> => {
+    return await request<Military>(`/military/update/${saram}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+  },
+
+  createGroup: async (data: { nome: string; descricao?: string }): Promise<Group> => {
+    return await request<Group>('/stock/groups', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+  },
+
+  updateGroup: async (
+    groupId: number,
+    data: { nome: string; descricao?: string }
+  ): Promise<Group> => {
+    return await request<Group>(`/stock/groups/${groupId}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+  },
+
+  deleteGroup: async (groupId: number): Promise<void> => {
+    return await request<void>(`/stock/groups/${groupId}`, {
+      method: 'DELETE',
+    });
+  },
+
+  createSubgroup: async (data: {
+    grupo_id: number;
+    nome: string;
+    descricao?: string;
+  }): Promise<Subgroup> => {
+    return await request<Subgroup>('/stock/subgroups', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+  },
+
+  updateSubgroup: async (
+    subgroupId: number,
+    data: { nome: string; grupo_id?: number; descricao?: string }
+  ): Promise<Subgroup> => {
+    return await request<Subgroup>(`/stock/subgroups/${subgroupId}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+  },
+
+  deleteSubgroup: async (subgroupId: number): Promise<void> => {
+    return await request<void>(`/stock/subgroups/${subgroupId}`, {
+      method: 'DELETE',
+    });
+  },
+
   getItemById: async (id: number): Promise<Item> => {
     return await request<Item>(`/stock/items/${id}`);
+  },
+
+  getItemQrCodeUrl: (itemId: number, includeLabel = false): string => {
+    return `${currentApiBase}/stock/items/${itemId}/qrcode?include_label=${includeLabel}`;
   },
 
   moveItem: async (itemId: number, data: {

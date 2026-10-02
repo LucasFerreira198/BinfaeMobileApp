@@ -45,6 +45,7 @@ export const SecurityProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const isAuthenticatingRef = useRef<boolean>(false);
   const lastUnlockTimeRef = useRef<number>(0);
   const wasAuthenticatedRef = useRef<boolean>(isAuthenticated);
+  const backgroundTimestampRef = useRef<number>(0);
 
   // Inicializa preferências de segurança e verifica hardware de biometria
   useEffect(() => {
@@ -100,23 +101,27 @@ export const SecurityProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     wasAuthenticatedRef.current = isAuthenticated;
   }, [isAuthenticated]);
 
-  // Monitora transições de AppState (background -> foreground)
+  // Monitora transições de AppState (background -> foreground com carência de 5s)
   useEffect(() => {
     const handleAppStateChange = async (nextAppState: AppStateStatus) => {
-      // Quando o app é minimizado/vai para segundo plano real
-      if (nextAppState === 'background') {
-        if (isAuthenticated && securityMode !== 'NONE' && !isAuthenticatingRef.current) {
-          setIsLocked(true);
-        }
+      // Quando o app sai do primeiro plano (minimizando ou fechando)
+      if (appState.current === 'active' && (nextAppState === 'background' || nextAppState === 'inactive')) {
+        backgroundTimestampRef.current = Date.now();
+        // Não bloqueia imediatamente no momento de fechar para não disparar prompt enquanto sai
       }
 
-      // Quando o app retorna para primeiro plano (foreground vindo de background)
-      if (appState.current === 'background' && nextAppState === 'active') {
-        if (isAuthenticated && securityMode !== 'NONE') {
-          const timeSinceUnlock = Date.now() - lastUnlockTimeRef.current;
-          // Evita re-bloqueio se acabou de autenticar nos últimos 1.5s ou se está no prompt
-          if (timeSinceUnlock > 1500 && !isAuthenticatingRef.current) {
-            setIsLocked(true);
+      // Quando o app retorna para primeiro plano ativo
+      if ((appState.current === 'background' || appState.current === 'inactive') && nextAppState === 'active') {
+        if (backgroundTimestampRef.current > 0) {
+          const elapsed = Date.now() - backgroundTimestampRef.current;
+          backgroundTimestampRef.current = 0;
+
+          // Se ficou em segundo plano por pelo menos 5 segundos (5000ms), exige autenticação
+          if (elapsed >= 5000 && isAuthenticated && securityMode !== 'NONE') {
+            const timeSinceUnlock = Date.now() - lastUnlockTimeRef.current;
+            if (timeSinceUnlock > 1500 && !isAuthenticatingRef.current) {
+              setIsLocked(true);
+            }
           }
         }
       }

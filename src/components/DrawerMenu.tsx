@@ -28,6 +28,7 @@ import {
   LogOut,
   ChevronRight,
   FolderTree,
+  Layers,
 } from 'lucide-react-native';
 
 export const DrawerMenu: React.FC = () => {
@@ -35,7 +36,14 @@ export const DrawerMenu: React.FC = () => {
   const { user, logout } = useAuth();
   const { syncData, isSyncing } = useStock();
   const insets = useSafeAreaInsets();
-  const { isDrawerOpen, closeDrawer, activeScreen, navigateTo, openLocationsModal } = useDrawer();
+  const {
+    isDrawerOpen,
+    closeDrawer,
+    activeScreen,
+    navigateTo,
+    openLocationsModal,
+    openGroupsModal,
+  } = useDrawer();
 
   // Tratamento do botão voltar físico do Android para fechar o Drawer
   useEffect(() => {
@@ -81,12 +89,7 @@ export const DrawerMenu: React.FC = () => {
       onRequestClose={closeDrawer}
     >
       <View style={styles.modalBackdrop}>
-        {/* Clique fora para fechar o menu */}
-        <TouchableWithoutFeedback onPress={closeDrawer}>
-          <View style={styles.outsideOverlay} />
-        </TouchableWithoutFeedback>
-
-        {/* Painel Lateral (Drawer) */}
+        {/* Painel Lateral (Drawer) à Esquerda */}
         <View
           style={[
             styles.drawerPanel,
@@ -170,7 +173,25 @@ export const DrawerMenu: React.FC = () => {
               <ChevronRight size={18} color={theme.textMuted} />
             </TouchableOpacity>
 
-            {/* 2. Histórico Geral de Movimentações */}
+            {/* 2. Grupos & Subgrupos */}
+            <TouchableOpacity
+              style={[styles.menuItem, { backgroundColor: theme.card, borderColor: theme.border }]}
+              onPress={openGroupsModal}
+              activeOpacity={0.7}
+            >
+              <View style={[styles.menuItemIcon, { backgroundColor: 'rgba(168, 85, 247, 0.15)' }]}>
+                <Layers size={20} color="#A855F7" />
+              </View>
+              <View style={styles.menuItemInfo}>
+                <Text style={[styles.menuItemTitle, { color: theme.text }]}>Grupos & Subgrupos</Text>
+                <Text style={[styles.menuItemSub, { color: theme.textSecondary }]}>
+                  Categorias, classificações e itens
+                </Text>
+              </View>
+              <ChevronRight size={18} color={theme.textMuted} />
+            </TouchableOpacity>
+
+            {/* 3. Histórico Geral de Movimentações */}
             <TouchableOpacity
               style={[
                 styles.menuItem,
@@ -273,6 +294,11 @@ export const DrawerMenu: React.FC = () => {
             </Text>
           </View>
         </View>
+
+        {/* Clique fora para fechar o menu à Direita */}
+        <TouchableWithoutFeedback onPress={closeDrawer}>
+          <View style={styles.outsideOverlay} />
+        </TouchableWithoutFeedback>
       </View>
     </Modal>
   );

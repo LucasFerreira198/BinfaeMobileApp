@@ -20,6 +20,7 @@ import { AdminScreen } from '../screens/AdminScreen';
 import { LoginScreen } from '../screens/LoginScreen';
 import { DrawerMenu } from '../components/DrawerMenu';
 import { LocationsModal } from '../components/LocationsModal';
+import { GroupsModal } from '../components/GroupsModal';
 import { UpdateModal, compareVersions, CURRENT_VERSION } from '../components/UpdateModal';
 import { Box, QrCode, ClipboardList, Settings } from 'lucide-react-native';
 
@@ -30,7 +31,12 @@ const AppNavigatorInner: React.FC<{
   const { theme } = useTheme();
   const { user } = useAuth();
   const insets = useSafeAreaInsets();
-  const { locationsModalOpen, closeLocationsModal } = useDrawer();
+  const {
+    locationsModalOpen,
+    closeLocationsModal,
+    groupsModalOpen,
+    closeGroupsModal,
+  } = useDrawer();
 
   // Abas da barra inferior solicitadas pelo usuário:
   // "deixando embaixo a de materiais de scanear, cautelas (em breve) e ajustes"
@@ -134,6 +140,12 @@ const AppNavigatorInner: React.FC<{
         onSelectLocation={() => {
           setActiveScreen('stock');
         }}
+      />
+
+      {/* Modal de Gestão de Grupos e Subgrupos acionado pelo Menu Lateral */}
+      <GroupsModal
+        visible={groupsModalOpen}
+        onClose={closeGroupsModal}
       />
     </View>
   );

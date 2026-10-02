@@ -11,6 +11,9 @@ interface DrawerContextType {
   locationsModalOpen: boolean;
   openLocationsModal: () => void;
   closeLocationsModal: () => void;
+  groupsModalOpen: boolean;
+  openGroupsModal: () => void;
+  closeGroupsModal: () => void;
 }
 
 const DrawerContext = createContext<DrawerContextType>({
@@ -22,6 +25,9 @@ const DrawerContext = createContext<DrawerContextType>({
   locationsModalOpen: false,
   openLocationsModal: () => {},
   closeLocationsModal: () => {},
+  groupsModalOpen: false,
+  openGroupsModal: () => {},
+  closeGroupsModal: () => {},
 });
 
 export const DrawerProvider: React.FC<{
@@ -31,6 +37,7 @@ export const DrawerProvider: React.FC<{
 }> = ({ children, activeScreen, onNavigate }) => {
   const [isDrawerOpen, setIsDrawerOpen] = useState<boolean>(false);
   const [locationsModalOpen, setLocationsModalOpen] = useState<boolean>(false);
+  const [groupsModalOpen, setGroupsModalOpen] = useState<boolean>(false);
 
   const openDrawer = () => setIsDrawerOpen(true);
   const closeDrawer = () => setIsDrawerOpen(false);
@@ -49,6 +56,15 @@ export const DrawerProvider: React.FC<{
     setLocationsModalOpen(false);
   };
 
+  const openGroupsModal = () => {
+    setIsDrawerOpen(false);
+    setGroupsModalOpen(true);
+  };
+
+  const closeGroupsModal = () => {
+    setGroupsModalOpen(false);
+  };
+
   return (
     <DrawerContext.Provider
       value={{
@@ -60,6 +76,9 @@ export const DrawerProvider: React.FC<{
         locationsModalOpen,
         openLocationsModal,
         closeLocationsModal,
+        groupsModalOpen,
+        openGroupsModal,
+        closeGroupsModal,
       }}
     >
       {children}

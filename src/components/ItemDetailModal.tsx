@@ -8,8 +8,13 @@ import {
   ScrollView,
   BackHandler,
   ActivityIndicator,
+  Alert,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import * as Print from 'expo-print';
+import * as Sharing from 'expo-sharing';
+import QRCode from 'react-native-qrcode-svg';
+import QRCodeLib from 'qrcode';
 import { Item, ItemMovement } from '../types';
 import { useTheme } from '../context/ThemeContext';
 import { api } from '../api/client';
@@ -24,6 +29,9 @@ import {
   History,
   Calendar,
   User,
+  QrCode,
+  Printer,
+  Share2,
 } from 'lucide-react-native';
 
 interface ItemDetailModalProps {
@@ -42,9 +50,11 @@ export const ItemDetailModal: React.FC<ItemDetailModalProps> = ({
   const { theme } = useTheme();
   const insets = useSafeAreaInsets();
 
-  const [activeTab, setActiveTab] = useState<'info' | 'history'>('info');
+  const [activeTab, setActiveTab] = useState<'info' | 'history' | 'qrcode'>('info');
   const [historyMovements, setHistoryMovements] = useState<ItemMovement[]>([]);
   const [loadingHistory, setLoadingHistory] = useState<boolean>(false);
+  const [isPrinting, setIsPrinting] = useState<boolean>(false);
+  const [isGeneratingPdf, setIsGeneratingPdf] = useState<boolean>(false);
 
   // Tratamento nativo do botão Voltar do Android
   useEffect(() => {
@@ -102,6 +112,187 @@ export const ItemDetailModal: React.FC<ItemDetailModalProps> = ({
     if (!dateStr) return '';
     const date = new Date(dateStr);
     return `${date.toLocaleDateString('pt-BR')} às ${date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`;
+  };
+
+  const qrPayload = item ? (item.uuid ? `BINFAE:ITEM:${item.uuid}` : `BINFAE:ITEM:${item.id}`) : '';
+
+  const generateLabelHtml = async (): Promise<string> => {
+    if (!item) return '';
+
+    let qrSvg = '';
+    try {
+      qrSvg = await QRCodeLib.toString(qrPayload, {
+        type: 'svg',
+        margin: 1,
+        errorCorrectionLevel: 'M',
+      });
+    } catch (err) {
+      console.warn('Erro ao gerar SVG do QR Code:', err);
+    }
+
+    return `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <style>
+          @page {
+            size: 100mm 60mm;
+            margin: 0;
+          }
+          body {
+            margin: 0;
+            padding: 5mm;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            color: #111827;
+            background: #ffffff;
+            box-sizing: border-box;
+          }
+          .label-border {
+            border: 2px solid #000000;
+            border-radius: 6px;
+            padding: 4mm;
+            height: calc(100% - 8mm);
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            box-sizing: border-box;
+          }
+          .header {
+            text-align: center;
+            border-bottom: 1.5px solid #000000;
+            padding-bottom: 2mm;
+            margin-bottom: 3mm;
+          }
+          .fab-title {
+            font-size: 11pt;
+            font-weight: 900;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+          }
+          .fab-sub {
+            font-size: 7.5pt;
+            font-weight: 700;
+            color: #374151;
+            margin-top: 1mm;
+          }
+          .body-content {
+            display: flex;
+            flex-direction: row;
+            align-items: center;
+            gap: 4mm;
+            flex: 1;
+          }
+          .qr-box {
+            width: 32mm;
+            height: 32mm;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+          }
+          .qr-box svg {
+            width: 100%;
+            height: 100%;
+          }
+          .info-box {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 1.5mm;
+            font-size: 8.5pt;
+          }
+          .mat-name {
+            font-size: 10pt;
+            font-weight: 900;
+            line-height: 1.2;
+            text-transform: uppercase;
+            margin-bottom: 1mm;
+          }
+          .prop-row {
+            display: flex;
+            gap: 2mm;
+          }
+          .prop-label {
+            font-weight: 700;
+            color: #4b5563;
+          }
+          .prop-val {
+            font-weight: 800;
+            color: #000000;
+          }
+          .footer {
+            border-top: 1px solid #9ca3af;
+            padding-top: 1.5mm;
+            margin-top: 2mm;
+            display: flex;
+            justify-content: space-between;
+            font-size: 6.5pt;
+            color: #4b5563;
+            font-weight: 700;
+          }
+        </style>
+      </head>
+      <body>
+        <div class="label-border">
+          <div class="header">
+            <div class="fab-title">FORÇA AÉREA BRASILEIRA • BINF-AE</div>
+            <div class="fab-sub">SISTEMA DE CONTROLE DE MATERIAL & PATRIMÔNIO</div>
+          </div>
+          <div class="body-content">
+            <div class="qr-box">
+              ${qrSvg}
+            </div>
+            <div class="info-box">
+              <div class="mat-name">${item.nome}</div>
+              ${item.bmp ? `<div class="prop-row"><span class="prop-label">BMP:</span><span class="prop-val">${item.bmp}</span></div>` : ''}
+              ${item.codigo_interno ? `<div class="prop-row"><span class="prop-label">CÓDIGO:</span><span class="prop-val">${item.codigo_interno}</span></div>` : ''}
+              ${item.numero_serie ? `<div class="prop-row"><span class="prop-label">SÉRIE:</span><span class="prop-val">${item.numero_serie}</span></div>` : ''}
+              <div class="prop-row"><span class="prop-label">LOCAL:</span><span class="prop-val">${locationPath}</span></div>
+              <div class="prop-row"><span class="prop-label">GRUPO:</span><span class="prop-val">${item.subgrupo?.grupo?.nome || item.subgrupo?.nome || 'GERAL'}</span></div>
+            </div>
+          </div>
+          <div class="footer">
+            <span>PATRIMÔNIO MILITAR CONTROLADO</span>
+            <span>ID: #${item.id} • ${new Date().toLocaleDateString('pt-BR')}</span>
+          </div>
+        </div>
+      </body>
+      </html>
+    `;
+  };
+
+  const handlePrint = async () => {
+    setIsPrinting(true);
+    try {
+      const html = await generateLabelHtml();
+      await Print.printAsync({ html });
+    } catch (err: any) {
+      if (err.message && !err.message.includes('canceled') && !err.message.includes('cancelled')) {
+        Alert.alert('Erro ao Imprimir', err.message || 'Não foi possível imprimir o QR Code.');
+      }
+    } finally {
+      setIsPrinting(false);
+    }
+  };
+
+  const handleSharePdf = async () => {
+    setIsGeneratingPdf(true);
+    try {
+      const html = await generateLabelHtml();
+      const { uri } = await Print.printToFileAsync({ html });
+      await Sharing.shareAsync(uri, {
+        UTI: '.pdf',
+        mimeType: 'application/pdf',
+        dialogTitle: `Etiqueta QR Code - ${item?.bmp || item?.codigo_interno || item?.id}`,
+      });
+    } catch (err: any) {
+      if (err.message && !err.message.includes('canceled') && !err.message.includes('cancelled')) {
+        Alert.alert('Erro ao Gerar PDF', err.message || 'Não foi possível gerar o arquivo PDF.');
+      }
+    } finally {
+      setIsGeneratingPdf(false);
+    }
   };
 
   return (
@@ -177,6 +368,27 @@ export const ItemDetailModal: React.FC<ItemDetailModalProps> = ({
                 ]}
               >
                 Histórico ({historyMovements.length})
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[
+                styles.tabBtn,
+                activeTab === 'qrcode' && { borderBottomColor: theme.primary, borderBottomWidth: 2 },
+              ]}
+              onPress={() => setActiveTab('qrcode')}
+            >
+              <QrCode size={16} color={activeTab === 'qrcode' ? theme.primary : theme.textMuted} />
+              <Text
+                style={[
+                  styles.tabBtnText,
+                  {
+                    color: activeTab === 'qrcode' ? theme.primary : theme.textMuted,
+                    fontWeight: activeTab === 'qrcode' ? '700' : '500',
+                  },
+                ]}
+              >
+                QR Code
               </Text>
             </TouchableOpacity>
           </View>
@@ -315,7 +527,7 @@ export const ItemDetailModal: React.FC<ItemDetailModalProps> = ({
                   </View>
                 )}
               </>
-            ) : (
+            ) : activeTab === 'history' ? (
               /* Aba de Histórico Específico */
               <View style={styles.historyContainer}>
                 {loadingHistory ? (
@@ -379,10 +591,135 @@ export const ItemDetailModal: React.FC<ItemDetailModalProps> = ({
                   })
                 )}
               </View>
+            ) : (
+              /* Aba de QR Code & Etiqueta */
+              <View style={styles.qrContainer}>
+                {/* Visualizador do QR Code */}
+                <View
+                  style={[
+                    styles.qrCard,
+                    { backgroundColor: theme.card, borderColor: theme.border },
+                  ]}
+                >
+                  <View style={styles.qrCodeWrapper}>
+                    <QRCode
+                      value={qrPayload}
+                      size={200}
+                      color="#000000"
+                      backgroundColor="#FFFFFF"
+                    />
+                  </View>
+                  <Text style={[styles.qrPayloadText, { color: theme.textSecondary }]}>
+                    {qrPayload}
+                  </Text>
+                </View>
+
+                {/* Resumo Patrimonial */}
+                <View
+                  style={[
+                    styles.qrInfoCard,
+                    { backgroundColor: theme.card, borderColor: theme.border },
+                  ]}
+                >
+                  <Text style={[styles.qrInfoHeader, { color: theme.primary }]}>
+                    ETIQUETA PATRIMONIAL MILITAR
+                  </Text>
+                  <View style={styles.qrDetailRow}>
+                    <Text style={[styles.qrDetailLabel, { color: theme.textMuted }]}>
+                      Material:
+                    </Text>
+                    <Text style={[styles.qrDetailValue, { color: theme.text }]}>
+                      {item.nome}
+                    </Text>
+                  </View>
+                  {item.bmp && (
+                    <View style={styles.qrDetailRow}>
+                      <Text style={[styles.qrDetailLabel, { color: theme.textMuted }]}>
+                        BMP:
+                      </Text>
+                      <Text style={[styles.qrDetailValue, { color: theme.text }]}>
+                        {item.bmp}
+                      </Text>
+                    </View>
+                  )}
+                  {item.codigo_interno && (
+                    <View style={styles.qrDetailRow}>
+                      <Text style={[styles.qrDetailLabel, { color: theme.textMuted }]}>
+                        Código:
+                      </Text>
+                      <Text style={[styles.qrDetailValue, { color: theme.text }]}>
+                        {item.codigo_interno}
+                      </Text>
+                    </View>
+                  )}
+                  {item.numero_serie && (
+                    <View style={styles.qrDetailRow}>
+                      <Text style={[styles.qrDetailLabel, { color: theme.textMuted }]}>
+                        Série:
+                      </Text>
+                      <Text style={[styles.qrDetailValue, { color: theme.text }]}>
+                        {item.numero_serie}
+                      </Text>
+                    </View>
+                  )}
+                  <View style={styles.qrDetailRow}>
+                    <Text style={[styles.qrDetailLabel, { color: theme.textMuted }]}>
+                      Local:
+                    </Text>
+                    <Text style={[styles.qrDetailValue, { color: theme.text }]}>
+                      {locationPath}
+                    </Text>
+                  </View>
+                </View>
+
+                {/* Botões de Ação: Imprimir e Baixar PDF */}
+                <View style={styles.qrActionButtons}>
+                  <TouchableOpacity
+                    style={[styles.qrBtn, { backgroundColor: theme.primary }]}
+                    onPress={handlePrint}
+                    disabled={isPrinting}
+                    activeOpacity={0.8}
+                  >
+                    {isPrinting ? (
+                      <ActivityIndicator size="small" color="#FFFFFF" />
+                    ) : (
+                      <>
+                        <Printer size={18} color="#FFFFFF" />
+                        <Text style={styles.qrBtnText}>Imprimir Etiqueta</Text>
+                      </>
+                    )}
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={[
+                      styles.qrBtn,
+                      {
+                        backgroundColor: theme.surfaceVariant,
+                        borderColor: theme.border,
+                        borderWidth: 1,
+                      },
+                    ]}
+                    onPress={handleSharePdf}
+                    disabled={isGeneratingPdf}
+                    activeOpacity={0.8}
+                  >
+                    {isGeneratingPdf ? (
+                      <ActivityIndicator size="small" color={theme.text} />
+                    ) : (
+                      <>
+                        <Share2 size={18} color={theme.text} />
+                        <Text style={[styles.qrBtnText, { color: theme.text }]}>
+                          Baixar / Compartilhar PDF
+                        </Text>
+                      </>
+                    )}
+                  </TouchableOpacity>
+                </View>
+              </View>
             )}
           </ScrollView>
 
-          {/* Rodapé com botão de Movimentação e Safe Area Padding adequado */}
+          {/* Rodapé com botão de Transferência e Safe Area Padding adequado */}
           <View
             style={[
               styles.footer,
@@ -402,7 +739,7 @@ export const ItemDetailModal: React.FC<ItemDetailModalProps> = ({
               activeOpacity={0.8}
             >
               <ArrowRightLeft size={18} color="#FFFFFF" />
-              <Text style={styles.moveButtonText}>Movimentar / Cautelar</Text>
+              <Text style={styles.moveButtonText}>Transferir Local</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -636,6 +973,77 @@ const styles = StyleSheet.create({
   moveButtonText: {
     color: '#FFFFFF',
     fontSize: 15,
+    fontWeight: '700',
+  },
+  qrContainer: {
+    gap: 14,
+    paddingBottom: 10,
+  },
+  qrCard: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 20,
+    borderRadius: 16,
+    borderWidth: 1,
+    gap: 12,
+  },
+  qrCodeWrapper: {
+    padding: 16,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    elevation: 3,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 6,
+  },
+  qrPayloadText: {
+    fontSize: 12,
+    fontWeight: '600',
+    letterSpacing: 0.5,
+  },
+  qrInfoCard: {
+    padding: 16,
+    borderRadius: 14,
+    borderWidth: 1,
+    gap: 8,
+  },
+  qrInfoHeader: {
+    fontSize: 11,
+    fontWeight: '800',
+    letterSpacing: 0.8,
+    marginBottom: 4,
+  },
+  qrDetailRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  qrDetailLabel: {
+    fontSize: 13,
+    fontWeight: '500',
+  },
+  qrDetailValue: {
+    fontSize: 13,
+    fontWeight: '700',
+    maxWidth: '70%',
+    textAlign: 'right',
+  },
+  qrActionButtons: {
+    gap: 10,
+    marginTop: 4,
+  },
+  qrBtn: {
+    height: 48,
+    borderRadius: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+  },
+  qrBtnText: {
+    color: '#FFFFFF',
+    fontSize: 14,
     fontWeight: '700',
   },
 });

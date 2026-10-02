@@ -31,6 +31,12 @@ interface StockContextType {
   syncData: (manual?: boolean) => Promise<void>;
   createItem: (data: ItemCreateInput) => Promise<Item>;
   moveItem: (itemId: number, data: { destino_local_id?: number | null; tipo_movimentacao: string; quantidade_movimentada: number; motivo?: string }) => Promise<void>;
+  createGroup: (data: { nome: string; descricao?: string }) => Promise<Group>;
+  updateGroup: (groupId: number, data: { nome: string; descricao?: string }) => Promise<Group>;
+  deleteGroup: (groupId: number) => Promise<void>;
+  createSubgroup: (data: { grupo_id: number; nome: string; descricao?: string }) => Promise<Subgroup>;
+  updateSubgroup: (subgroupId: number, data: { nome: string; grupo_id?: number; descricao?: string }) => Promise<Subgroup>;
+  deleteSubgroup: (subgroupId: number) => Promise<void>;
 }
 
 const defaultFilters: FilterState = {
@@ -64,6 +70,12 @@ const StockContext = createContext<StockContextType>({
   syncData: async () => {},
   createItem: async () => ({} as Item),
   moveItem: async () => {},
+  createGroup: async () => ({} as Group),
+  updateGroup: async () => ({} as Group),
+  deleteGroup: async () => {},
+  createSubgroup: async () => ({} as Subgroup),
+  updateSubgroup: async () => ({} as Subgroup),
+  deleteSubgroup: async () => {},
 });
 
 export const StockProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -217,6 +229,64 @@ export const StockProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     await persistLocalDatabase(updatedAll);
   };
 
+  const createGroup = async (data: { nome: string; descricao?: string }): Promise<Group> => {
+    const created = await api.createGroup(data);
+    const updated = [...groups, created].sort((a, b) => a.nome.localeCompare(b.nome));
+    setGroups(updated);
+    await persistLocalDatabase(allItems, updated, locations, subgroups);
+    return created;
+  };
+
+  const updateGroup = async (
+    groupId: number,
+    data: { nome: string; descricao?: string }
+  ): Promise<Group> => {
+    const updatedItem = await api.updateGroup(groupId, data);
+    const updated = groups.map((g) => (g.id === groupId ? updatedItem : g)).sort((a, b) => a.nome.localeCompare(b.nome));
+    setGroups(updated);
+    await persistLocalDatabase(allItems, updated, locations, subgroups);
+    return updatedItem;
+  };
+
+  const deleteGroup = async (groupId: number): Promise<void> => {
+    await api.deleteGroup(groupId);
+    const updated = groups.filter((g) => g.id !== groupId);
+    const updatedSubs = subgroups.filter((s) => s.grupo_id !== groupId);
+    setGroups(updated);
+    setSubgroups(updatedSubs);
+    await persistLocalDatabase(allItems, updated, locations, updatedSubs);
+  };
+
+  const createSubgroup = async (data: {
+    grupo_id: number;
+    nome: string;
+    descricao?: string;
+  }): Promise<Subgroup> => {
+    const created = await api.createSubgroup(data);
+    const updated = [...subgroups, created].sort((a, b) => a.nome.localeCompare(b.nome));
+    setSubgroups(updated);
+    await persistLocalDatabase(allItems, groups, locations, updated);
+    return created;
+  };
+
+  const updateSubgroup = async (
+    subgroupId: number,
+    data: { nome: string; grupo_id?: number; descricao?: string }
+  ): Promise<Subgroup> => {
+    const updatedItem = await api.updateSubgroup(subgroupId, data);
+    const updated = subgroups.map((s) => (s.id === subgroupId ? updatedItem : s)).sort((a, b) => a.nome.localeCompare(b.nome));
+    setSubgroups(updated);
+    await persistLocalDatabase(allItems, groups, locations, updated);
+    return updatedItem;
+  };
+
+  const deleteSubgroup = async (subgroupId: number): Promise<void> => {
+    await api.deleteSubgroup(subgroupId);
+    const updated = subgroups.filter((s) => s.id !== subgroupId);
+    setSubgroups(updated);
+    await persistLocalDatabase(allItems, groups, locations, updated);
+  };
+
   return (
     <StockContext.Provider
       value={{
@@ -241,6 +311,12 @@ export const StockProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         syncData,
         createItem,
         moveItem,
+        createGroup,
+        updateGroup,
+        deleteGroup,
+        createSubgroup,
+        updateSubgroup,
+        deleteSubgroup,
       }}
     >
       {children}

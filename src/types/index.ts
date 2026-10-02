@@ -48,6 +48,7 @@ export type ControlType = 'UNITARIO' | 'GRANEL';
 
 export interface Item {
   id: number;
+  uuid?: string | null;
   nome: string;
   bmp?: string | null;
   codigo_interno?: string | null;
