@@ -12,8 +12,11 @@ import {
   KeyboardAvoidingView,
   Platform,
   BackHandler,
+  useWindowDimensions,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../context/ThemeContext';
+import { useKeyboardHeight } from '../hooks/useKeyboardHeight';
 import { api } from '../api/client';
 import { X, UserPlus, IdCard, User, Briefcase, Mail, Phone } from 'lucide-react-native';
 
@@ -31,6 +34,9 @@ export const CreateMilitaryModal: React.FC<CreateMilitaryModalProps> = ({
   onSuccess,
 }) => {
   const { theme } = useTheme();
+  const insets = useSafeAreaInsets();
+  const { keyboardHeight, isKeyboardVisible } = useKeyboardHeight();
+  const { height: screenHeight } = useWindowDimensions();
 
   const [saram, setSaram] = useState<string>('');
   const [nomeCompleto, setNomeCompleto] = useState<string>('');
@@ -109,11 +115,26 @@ export const CreateMilitaryModal: React.FC<CreateMilitaryModalProps> = ({
 
   return (
     <Modal visible={visible} transparent={true} animationType="slide" onRequestClose={onClose}>
-      <KeyboardAvoidingView
-        style={styles.backdrop}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      <View
+        style={[
+          styles.backdrop,
+          {
+            paddingBottom: keyboardHeight,
+          },
+        ]}
       >
-        <View style={[styles.sheet, { backgroundColor: theme.surface, borderColor: theme.border }]}>
+        <View
+          style={[
+            styles.sheet,
+            {
+              backgroundColor: theme.surface,
+              borderColor: theme.border,
+              maxHeight: isKeyboardVisible
+                ? Math.max(280, screenHeight - keyboardHeight - (insets.top || 24) - 10)
+                : '92%',
+            },
+          ]}
+        >
           {/* Header */}
           <View style={styles.header}>
             <View style={styles.titleRow}>
@@ -137,7 +158,12 @@ export const CreateMilitaryModal: React.FC<CreateMilitaryModalProps> = ({
           </View>
 
           <ScrollView
-            contentContainerStyle={styles.scrollContent}
+            contentContainerStyle={[
+              styles.scrollContent,
+              {
+                paddingBottom: isKeyboardVisible ? 20 : Math.max(insets.bottom, 20) + 16,
+              },
+            ]}
             keyboardShouldPersistTaps="handled"
             showsVerticalScrollIndicator={false}
           >
@@ -290,7 +316,7 @@ export const CreateMilitaryModal: React.FC<CreateMilitaryModalProps> = ({
             </TouchableOpacity>
           </ScrollView>
         </View>
-      </KeyboardAvoidingView>
+      </View>
     </Modal>
   );
 };

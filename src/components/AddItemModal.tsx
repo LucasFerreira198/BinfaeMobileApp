@@ -10,14 +10,14 @@ import {
   ActivityIndicator,
   Alert,
   BackHandler,
-  KeyboardAvoidingView,
-  Platform,
+  useWindowDimensions,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
 import { ControlType, ItemCondition, ItemStatus, ItemCreateInput } from '../types';
 import { useTheme } from '../context/ThemeContext';
 import { useStock } from '../context/StockContext';
+import { useKeyboardHeight } from '../hooks/useKeyboardHeight';
 import { X, Plus, Check } from 'lucide-react-native';
 
 interface AddItemModalProps {
@@ -34,6 +34,8 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
   const { theme } = useTheme();
   const { subgroups, locations, createItem } = useStock();
   const insets = useSafeAreaInsets();
+  const { keyboardHeight, isKeyboardVisible } = useKeyboardHeight();
+  const { height: screenHeight } = useWindowDimensions();
 
   const [nome, setNome] = useState<string>('');
   const [subgroupId, setSubgroupId] = useState<number | null>(null);
@@ -154,10 +156,25 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
       transparent={true}
       onRequestClose={onClose}
     >
-      <View style={styles.backdrop}>
-        <KeyboardAvoidingView
-          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-          style={[styles.sheet, { backgroundColor: theme.surface, borderColor: theme.border }]}
+      <View
+        style={[
+          styles.backdrop,
+          {
+            paddingBottom: keyboardHeight,
+          },
+        ]}
+      >
+        <View
+          style={[
+            styles.sheet,
+            {
+              backgroundColor: theme.surface,
+              borderColor: theme.border,
+              maxHeight: isKeyboardVisible
+                ? Math.max(280, screenHeight - keyboardHeight - (insets.top || 24) - 10)
+                : '92%',
+            },
+          ]}
         >
           {/* Header */}
           <View style={styles.header}>
@@ -441,7 +458,7 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
               styles.footer,
               {
                 borderTopColor: theme.border,
-                paddingBottom: Math.max(insets.bottom, 16) + 12,
+                paddingBottom: isKeyboardVisible ? 12 : Math.max(insets.bottom, 16) + 12,
               },
             ]}
           >
@@ -461,7 +478,7 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
               )}
             </TouchableOpacity>
           </View>
-        </KeyboardAvoidingView>
+        </View>
       </View>
     </Modal>
   );

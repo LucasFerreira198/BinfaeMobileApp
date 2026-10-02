@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../context/ThemeContext';
+import { useKeyboardHeight } from '../hooks/useKeyboardHeight';
 import { api } from '../api/client';
 import { User, Military } from '../types';
 import { Header } from '../components/Header';
@@ -33,6 +34,7 @@ import {
 export const AdminScreen: React.FC = () => {
   const { theme } = useTheme();
   const insets = useSafeAreaInsets();
+  const { keyboardHeight } = useKeyboardHeight();
 
   const [activeTab, setActiveTab] = useState<'users' | 'military'>('users');
   const [users, setUsers] = useState<User[]>([]);
@@ -354,7 +356,10 @@ export const AdminScreen: React.FC = () => {
           data={filteredUsers}
           keyExtractor={(item) => item.id.toString()}
           renderItem={renderUserItem}
-          contentContainerStyle={[styles.listContent, { paddingBottom: Math.max(insets.bottom, 16) + 20 }]}
+          contentContainerStyle={[
+            styles.listContent,
+            { paddingBottom: Math.max(insets.bottom, 16) + 20 + keyboardHeight },
+          ]}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.primary} />}
           ListEmptyComponent={
             <View style={styles.emptyBox}>
@@ -368,7 +373,10 @@ export const AdminScreen: React.FC = () => {
           data={filteredMilitary}
           keyExtractor={(item) => item.saram.toString()}
           renderItem={renderMilitaryItem}
-          contentContainerStyle={[styles.listContent, { paddingBottom: Math.max(insets.bottom, 16) + 20 }]}
+          contentContainerStyle={[
+            styles.listContent,
+            { paddingBottom: Math.max(insets.bottom, 16) + 20 + keyboardHeight },
+          ]}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.primary} />}
           ListEmptyComponent={
             <View style={styles.emptyBox}>

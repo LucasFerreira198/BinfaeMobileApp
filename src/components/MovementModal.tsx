@@ -10,14 +10,14 @@ import {
   ActivityIndicator,
   Alert,
   BackHandler,
-  KeyboardAvoidingView,
-  Platform,
+  useWindowDimensions,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
 import { Item } from '../types';
 import { useTheme } from '../context/ThemeContext';
 import { useStock } from '../context/StockContext';
+import { useKeyboardHeight } from '../hooks/useKeyboardHeight';
 import { X, Check } from 'lucide-react-native';
 
 interface MovementModalProps {
@@ -38,6 +38,8 @@ export const MovementModal: React.FC<MovementModalProps> = ({
   const { theme } = useTheme();
   const { locations, moveItem } = useStock();
   const insets = useSafeAreaInsets();
+  const { keyboardHeight, isKeyboardVisible } = useKeyboardHeight();
+  const { height: screenHeight } = useWindowDimensions();
 
   const [tipo, setTipo] = useState<MovementType>('CAUTELA');
   const [quantidade, setQuantidade] = useState<string>('1');
@@ -125,10 +127,25 @@ export const MovementModal: React.FC<MovementModalProps> = ({
       transparent={true}
       onRequestClose={onClose}
     >
-      <View style={styles.backdrop}>
-        <KeyboardAvoidingView
-          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-          style={[styles.sheet, { backgroundColor: theme.surface, borderColor: theme.border }]}
+      <View
+        style={[
+          styles.backdrop,
+          {
+            paddingBottom: keyboardHeight,
+          },
+        ]}
+      >
+        <View
+          style={[
+            styles.sheet,
+            {
+              backgroundColor: theme.surface,
+              borderColor: theme.border,
+              maxHeight: isKeyboardVisible
+                ? Math.max(280, screenHeight - keyboardHeight - (insets.top || 24) - 10)
+                : '90%',
+            },
+          ]}
         >
           {/* Header */}
           <View style={styles.header}>
@@ -257,7 +274,7 @@ export const MovementModal: React.FC<MovementModalProps> = ({
               styles.footer,
               {
                 borderTopColor: theme.border,
-                paddingBottom: Math.max(insets.bottom, 16) + 12,
+                paddingBottom: isKeyboardVisible ? 12 : Math.max(insets.bottom, 16) + 12,
               },
             ]}
           >
@@ -277,7 +294,7 @@ export const MovementModal: React.FC<MovementModalProps> = ({
               )}
             </TouchableOpacity>
           </View>
-        </KeyboardAvoidingView>
+        </View>
       </View>
     </Modal>
   );

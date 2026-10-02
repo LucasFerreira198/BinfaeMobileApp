@@ -13,6 +13,7 @@ import {
 } from 'react-native';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
+import { useKeyboardHeight } from '../hooks/useKeyboardHeight';
 import { api } from '../api/client';
 import { CURRENT_VERSION } from '../components/UpdateModal';
 import { Shield, User, Lock, Eye, EyeOff } from 'lucide-react-native';
@@ -20,6 +21,7 @@ import { Shield, User, Lock, Eye, EyeOff } from 'lucide-react-native';
 export const LoginScreen: React.FC = () => {
   const { login, isLoading } = useAuth();
   const { theme } = useTheme();
+  const { keyboardHeight, isKeyboardVisible } = useKeyboardHeight();
 
   const [username, setUsername] = useState<string>('');
   const [password, setPassword] = useState<string>('');
@@ -57,49 +59,76 @@ export const LoginScreen: React.FC = () => {
   };
 
   return (
-    <KeyboardAvoidingView
-      style={[styles.container, { backgroundColor: theme.background }]}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+    <View
+      style={[
+        styles.container,
+        {
+          backgroundColor: theme.background,
+          paddingBottom: keyboardHeight,
+        },
+      ]}
     >
       <ScrollView
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={[
+          styles.scrollContent,
+          isKeyboardVisible && styles.scrollContentWithKeyboard,
+        ]}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
         {/* Top Brand Hero */}
-        <View style={styles.heroSection}>
-          <View style={[styles.logoCircle, { backgroundColor: theme.primary }]}>
-            <Shield size={44} color="#FFFFFF" />
+        <View style={[styles.heroSection, isKeyboardVisible && styles.heroSectionCompact]}>
+          <View
+            style={[
+              styles.logoCircle,
+              { backgroundColor: theme.primary },
+              isKeyboardVisible && styles.logoCircleCompact,
+            ]}
+          >
+            <Shield size={isKeyboardVisible ? 28 : 44} color="#FFFFFF" />
           </View>
 
-          <Text style={[styles.brandTitle, { color: theme.text }]}>Binfae Mobile</Text>
-          <Text style={[styles.brandSubtitle, { color: theme.textSecondary }]}>
-            Gestão Inteligente de Materiais e TI
+          <Text
+            style={[
+              styles.brandTitle,
+              { color: theme.text },
+              isKeyboardVisible && styles.brandTitleCompact,
+            ]}
+          >
+            Binfae Mobile
           </Text>
 
-          {/* Status do Servidor */}
-          <View style={[styles.serverBadge, { backgroundColor: theme.surfaceVariant }]}>
-            <View
-              style={[
-                styles.statusDot,
-                {
-                  backgroundColor:
-                    serverOnline === true
-                      ? theme.success
-                      : serverOnline === false
-                      ? theme.danger
-                      : theme.warning,
-                },
-              ]}
-            />
-            <Text style={[styles.serverBadgeText, { color: theme.textSecondary }]}>
-              {serverOnline === true
-                ? 'Servidor Conectado'
-                : serverOnline === false
-                ? 'Servidor Offline'
-                : 'Verificando Servidor...'}
+          {!isKeyboardVisible && (
+            <Text style={[styles.brandSubtitle, { color: theme.textSecondary }]}>
+              Gestão Inteligente de Materiais e TI
             </Text>
-          </View>
+          )}
+
+          {/* Status do Servidor */}
+          {!isKeyboardVisible && (
+            <View style={[styles.serverBadge, { backgroundColor: theme.surfaceVariant }]}>
+              <View
+                style={[
+                  styles.statusDot,
+                  {
+                    backgroundColor:
+                      serverOnline === true
+                        ? theme.success
+                        : serverOnline === false
+                        ? theme.danger
+                        : theme.warning,
+                  },
+                ]}
+              />
+              <Text style={[styles.serverBadgeText, { color: theme.textSecondary }]}>
+                {serverOnline === true
+                  ? 'Servidor Conectado'
+                  : serverOnline === false
+                  ? 'Servidor Offline'
+                  : 'Verificando Servidor...'}
+              </Text>
+            </View>
+          )}
         </View>
 
         {/* Card de Login */}
@@ -174,7 +203,7 @@ export const LoginScreen: React.FC = () => {
           Binfae Mobile v{CURRENT_VERSION} • Sistema Nativo Offline-First
         </Text>
       </ScrollView>
-    </KeyboardAvoidingView>
+    </View>
   );
 };
 
@@ -188,9 +217,17 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 36,
   },
+  scrollContentWithKeyboard: {
+    justifyContent: 'flex-start',
+    paddingTop: 16,
+    paddingBottom: 24,
+  },
   heroSection: {
     alignItems: 'center',
     marginBottom: 24,
+  },
+  heroSectionCompact: {
+    marginBottom: 12,
   },
   logoCircle: {
     width: 76,
@@ -205,10 +242,19 @@ const styles = StyleSheet.create({
     shadowRadius: 10,
     elevation: 6,
   },
+  logoCircleCompact: {
+    width: 52,
+    height: 52,
+    borderRadius: 16,
+    marginBottom: 6,
+  },
   brandTitle: {
     fontSize: 26,
     fontWeight: '800',
     letterSpacing: -0.5,
+  },
+  brandTitleCompact: {
+    fontSize: 19,
   },
   brandSubtitle: {
     fontSize: 13,

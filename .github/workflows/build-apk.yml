@@ -67,15 +67,17 @@ jobs:
         if: github.ref == 'refs/heads/main' || github.event_name == 'release'
         with:
           tag_name: latest
-          name: "Binfae Mobile v1.3.0 - APK Oficial Assinado"
+          name: "Binfae Mobile v1.3.1 - APK Oficial Assinado"
           body: |
-            ### 🚀 Binfae Mobile v1.3.0 - Usuários, Efetivo, Segurança e Teclado
+            ### 🚀 Binfae Mobile v1.3.1 - Correção Definitiva da Responsividade do Teclado Android
 
-            - **Gerenciamento de Usuários (Admin)**: Criação de contas vinculadas ao SARAM ou admin avulso com controle de permissões (Administrador vs Operador).
-            - **Gerenciamento de Permissões**: Edição de status de ativação, promoção de contas para admin e redefinição de senhas.
-            - **Cadastro de Militares no Efetivo**: Formulário completo para inclusão de novos militares (SARAM, posto, nome de guerra e contatos).
-            - **Segurança de Retorno (Lock Screen)**: Bloqueio automático ao sair do app (background ➔ foreground) com Biometria (Face ID/Digital) ou PIN de 4 dígitos configurável.
-            - **Responsividade do Teclado**: Ajuste nativo de redimensionamento (`softwareKeyboardLayoutMode: resize`) garantindo que os campos de texto nunca fiquem encobertos.
+            - **Adaptação Total ao Teclado Virtual (Android & iOS)**:
+              - Hook reativo `useKeyboardHeight` com listeners nativos de abertura e fechamento do teclado.
+              - Elevação dinâmica e redução inteligente da altura máxima de todos os Bottom Sheets e Modals (`AddItemModal`, `MovementModal`, `CreateUserModal`, `CreateMilitaryModal`, `EditUserModal`, `LocationsModal`).
+              - `LoginScreen` responsivo: cabeçalho hero adaptativo e reposicionamento vertical que mantém SARAM, Senha e botão de login sempre visíveis acima do teclado.
+              - Suporte completo ao scroll interno sem cobrir nenhum campo ou botão nas telas de formulário.
+            - **Gerenciamento de Usuários e Efetivo (Admin)**: Criação de contas vinculadas ao SARAM ou avulsas, alternância de privilégios de Admin e cadastro de militares.
+            - **Segurança de Retorno (Lock Screen)**: Bloqueio automático de segurança com Biometria ou PIN de 4 dígitos.
           files: build-output/BinfaeMobile-release.apk
           prerelease: false
         env:

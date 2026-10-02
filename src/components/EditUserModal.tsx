@@ -13,8 +13,11 @@ import {
   KeyboardAvoidingView,
   Platform,
   BackHandler,
+  useWindowDimensions,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../context/ThemeContext';
+import { useKeyboardHeight } from '../hooks/useKeyboardHeight';
 import { api } from '../api/client';
 import { User } from '../types';
 import { X, UserCog, Shield, Lock, Trash2 } from 'lucide-react-native';
@@ -33,6 +36,9 @@ export const EditUserModal: React.FC<EditUserModalProps> = ({
   onSuccess,
 }) => {
   const { theme } = useTheme();
+  const insets = useSafeAreaInsets();
+  const { keyboardHeight, isKeyboardVisible } = useKeyboardHeight();
+  const { height: screenHeight } = useWindowDimensions();
 
   const [isAdmin, setIsAdmin] = useState<boolean>(false);
   const [isActive, setIsActive] = useState<boolean>(true);
@@ -121,11 +127,26 @@ export const EditUserModal: React.FC<EditUserModalProps> = ({
 
   return (
     <Modal visible={visible} transparent={true} animationType="slide" onRequestClose={onClose}>
-      <KeyboardAvoidingView
-        style={styles.backdrop}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      <View
+        style={[
+          styles.backdrop,
+          {
+            paddingBottom: keyboardHeight,
+          },
+        ]}
       >
-        <View style={[styles.sheet, { backgroundColor: theme.surface, borderColor: theme.border }]}>
+        <View
+          style={[
+            styles.sheet,
+            {
+              backgroundColor: theme.surface,
+              borderColor: theme.border,
+              maxHeight: isKeyboardVisible
+                ? Math.max(280, screenHeight - keyboardHeight - (insets.top || 24) - 10)
+                : '88%',
+            },
+          ]}
+        >
           {/* Header */}
           <View style={styles.header}>
             <View style={styles.titleRow}>
@@ -149,7 +170,12 @@ export const EditUserModal: React.FC<EditUserModalProps> = ({
           </View>
 
           <ScrollView
-            contentContainerStyle={styles.scrollContent}
+            contentContainerStyle={[
+              styles.scrollContent,
+              {
+                paddingBottom: isKeyboardVisible ? 20 : Math.max(insets.bottom, 20) + 16,
+              },
+            ]}
             keyboardShouldPersistTaps="handled"
             showsVerticalScrollIndicator={false}
           >
@@ -242,7 +268,7 @@ export const EditUserModal: React.FC<EditUserModalProps> = ({
             </TouchableOpacity>
           </ScrollView>
         </View>
-      </KeyboardAvoidingView>
+      </View>
     </Modal>
   );
 };

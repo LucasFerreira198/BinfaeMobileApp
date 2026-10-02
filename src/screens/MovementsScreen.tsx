@@ -14,11 +14,13 @@ import { useTheme } from '../context/ThemeContext';
 import { api } from '../api/client';
 import { Header } from '../components/Header';
 import { ItemMovement } from '../types';
+import { useKeyboardHeight } from '../hooks/useKeyboardHeight';
 import { History, ArrowRightLeft, User, Calendar, Search, X, MapPin } from 'lucide-react-native';
 
 export const MovementsScreen: React.FC = () => {
   const { theme } = useTheme();
   const insets = useSafeAreaInsets();
+  const { keyboardHeight } = useKeyboardHeight();
   const [movements, setMovements] = useState<ItemMovement[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [refreshing, setRefreshing] = useState<boolean>(false);
@@ -197,7 +199,10 @@ export const MovementsScreen: React.FC = () => {
           data={filtered}
           keyExtractor={(item) => item.id.toString()}
           renderItem={renderMovementItem}
-          contentContainerStyle={[styles.listContent, { paddingBottom: Math.max(insets.bottom, 16) + 20 }]}
+          contentContainerStyle={[
+            styles.listContent,
+            { paddingBottom: Math.max(insets.bottom, 16) + 20 + keyboardHeight },
+          ]}
           refreshControl={
             <RefreshControl
               refreshing={refreshing}

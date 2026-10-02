@@ -23,11 +23,13 @@ import { AdvancedFilterModal } from '../components/AdvancedFilterModal';
 import { LocationsModal } from '../components/LocationsModal';
 import { Item } from '../types';
 import { formatLocationFriendlyName } from '../storage/db';
+import { useKeyboardHeight } from '../hooks/useKeyboardHeight';
 import { PackageOpen, Plus, MapPin, Search, X } from 'lucide-react-native';
 
 export const StockScreen: React.FC = () => {
   const { theme } = useTheme();
   const insets = useSafeAreaInsets();
+  const { keyboardHeight } = useKeyboardHeight();
   const {
     items,
     isManualRefreshing,
@@ -123,7 +125,10 @@ export const StockScreen: React.FC = () => {
         data={items}
         renderItem={renderItem}
         keyExtractor={keyExtractor}
-        contentContainerStyle={[styles.listContent, { paddingBottom: 80 }]}
+        contentContainerStyle={[
+          styles.listContent,
+          { paddingBottom: 80 + keyboardHeight },
+        ]}
         initialNumToRender={10}
         maxToRenderPerBatch={15}
         windowSize={7}

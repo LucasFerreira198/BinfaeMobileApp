@@ -8,10 +8,12 @@ import {
   FlatList,
   TextInput,
   BackHandler,
+  useWindowDimensions,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../context/ThemeContext';
 import { useStock } from '../context/StockContext';
+import { useKeyboardHeight } from '../hooks/useKeyboardHeight';
 import { Location } from '../types';
 import { formatLocationFriendlyName, getDescendantLocationIds } from '../storage/db';
 import {
@@ -41,6 +43,8 @@ export const LocationsModal: React.FC<LocationsModalProps> = ({
   const { theme } = useTheme();
   const { locations, allItems, filters, setLocationFilter } = useStock();
   const insets = useSafeAreaInsets();
+  const { keyboardHeight, isKeyboardVisible } = useKeyboardHeight();
+  const { height: screenHeight } = useWindowDimensions();
 
   const [search, setSearch] = useState<string>('');
   const [currentParentId, setCurrentParentId] = useState<number | null>(null);
@@ -277,8 +281,26 @@ export const LocationsModal: React.FC<LocationsModalProps> = ({
 
   return (
     <Modal visible={visible} animationType="slide" transparent={true} onRequestClose={onClose}>
-      <View style={styles.backdrop}>
-        <View style={[styles.sheet, { backgroundColor: theme.surface, borderColor: theme.border }]}>
+      <View
+        style={[
+          styles.backdrop,
+          {
+            paddingBottom: keyboardHeight,
+          },
+        ]}
+      >
+        <View
+          style={[
+            styles.sheet,
+            {
+              backgroundColor: theme.surface,
+              borderColor: theme.border,
+              maxHeight: isKeyboardVisible
+                ? Math.max(280, screenHeight - keyboardHeight - (insets.top || 24) - 10)
+                : '88%',
+            },
+          ]}
+        >
           {/* Cabeçalho */}
           <View style={styles.header}>
             <View style={styles.titleRow}>
