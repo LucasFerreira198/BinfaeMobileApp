@@ -26,7 +26,7 @@ interface CreateMilitaryModalProps {
   onSuccess: () => void;
 }
 
-const COMMON_RANKS = ['SD', 'CB', '3S', '2S', '1S', 'SO', '2T', '1T', 'CAP', 'MAJ', 'TC', 'CEL'];
+const COMMON_RANKS = ['S2', 'S1', 'CB', '3S', '2S', '1S', 'SO', '2T', '1T', 'CAP', 'MAJ', 'TC', 'CEL'];
 
 export const CreateMilitaryModal: React.FC<CreateMilitaryModalProps> = ({
   visible,

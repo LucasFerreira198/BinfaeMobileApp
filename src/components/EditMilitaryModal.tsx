@@ -27,20 +27,20 @@ interface EditMilitaryModalProps {
 }
 
 const POSTOS_GRADUACOES = [
-  'Cel',
-  'Ten Cel',
-  'Maj',
-  'Cap',
-  '1º Ten',
-  '2º Ten',
-  'Asp',
-  'SO',
-  '1S',
-  '2S',
-  '3S',
-  'CB',
-  'S1',
   'S2',
+  'S1',
+  'CB',
+  '3S',
+  '2S',
+  '1S',
+  'SO',
+  'Asp',
+  '2º Ten',
+  '1º Ten',
+  'Cap',
+  'Maj',
+  'Ten Cel',
+  'Cel',
   'CV',
 ];
 
