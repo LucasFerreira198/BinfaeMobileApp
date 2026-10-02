@@ -288,7 +288,7 @@ export const DrawerMenu: React.FC = () => {
           </ScrollView>
 
           {/* Rodapé */}
-          <View style={[styles.drawerFooter, { borderTopColor: theme.border }]}>
+          <View style={[styles.drawerFooter, { borderTopColor: theme.border, paddingBottom: Math.max(insets.bottom, 12) + 6 }]}>
             <Text style={[styles.footerText, { color: theme.textMuted }]}>
               Binfae Mobile v{CURRENT_VERSION}
             </Text>

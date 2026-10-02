@@ -12,6 +12,7 @@ import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import { useStock } from '../context/StockContext';
 import { useSecurity } from '../context/SecurityContext';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Header } from '../components/Header';
 import { UpdateModal, CURRENT_VERSION } from '../components/UpdateModal';
 import { SetPinModal } from '../components/SetPinModal';
@@ -38,6 +39,7 @@ import {
 export const SettingsScreen: React.FC = () => {
   const { user, logout } = useAuth();
   const { theme, mode, setMode, isDark, toggleTheme } = useTheme();
+  const insets = useSafeAreaInsets();
   const { lastSync, syncData, isSyncing } = useStock();
   const {
     securityMode,
@@ -82,7 +84,13 @@ export const SettingsScreen: React.FC = () => {
     <View style={[styles.container, { backgroundColor: theme.background }]}>
       <Header title="Configurações" subtitle="Perfil & Preferências" showSync={false} />
 
-      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        contentContainerStyle={[
+          styles.scrollContent,
+          { paddingBottom: Math.max(insets.bottom, 16) + 70 },
+        ]}
+        showsVerticalScrollIndicator={false}
+      >
         {/* 1. Card Detalhado do Usuário / Militar */}
         <Text style={[styles.sectionTitle, { color: theme.textSecondary }]}>PERFIL & CONTA</Text>
         <View style={[styles.profileCard, { backgroundColor: theme.card, borderColor: theme.border }]}>

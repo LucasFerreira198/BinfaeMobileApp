@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   BackHandler,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../context/ThemeContext';
 import { useSecurity } from '../context/SecurityContext';
 import { X, Lock, Delete } from 'lucide-react-native';
@@ -24,6 +25,7 @@ export const SetPinModal: React.FC<SetPinModalProps> = ({
 }) => {
   const { theme } = useTheme();
   const { savePin } = useSecurity();
+  const insets = useSafeAreaInsets();
 
   const [step, setStep] = useState<1 | 2>(1); // 1 = Digitar PIN, 2 = Confirmar PIN
   const [firstPin, setFirstPin] = useState<string>('');
@@ -97,7 +99,16 @@ export const SetPinModal: React.FC<SetPinModalProps> = ({
   return (
     <Modal visible={visible} transparent={true} animationType="slide" onRequestClose={onClose}>
       <View style={styles.backdrop}>
-        <View style={[styles.card, { backgroundColor: theme.surface, borderColor: theme.border }]}>
+        <View
+          style={[
+            styles.card,
+            {
+              backgroundColor: theme.surface,
+              borderColor: theme.border,
+              paddingBottom: Math.max(insets.bottom, 20) + 16,
+            },
+          ]}
+        >
           {/* Header */}
           <View style={styles.header}>
             <View style={styles.titleRow}>

@@ -365,7 +365,10 @@ export const GroupsModal: React.FC<GroupsModalProps> = ({ visible, onClose }) =>
           <FlatList
             data={filteredGroups}
             keyExtractor={(g) => g.id.toString()}
-            contentContainerStyle={styles.listContent}
+            contentContainerStyle={[
+              styles.listContent,
+              { paddingBottom: Math.max(insets.bottom, 16) + 24 },
+            ]}
             showsVerticalScrollIndicator={false}
             keyboardShouldPersistTaps="handled"
             ListEmptyComponent={

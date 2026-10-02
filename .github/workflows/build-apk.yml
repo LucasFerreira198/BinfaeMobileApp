@@ -67,15 +67,19 @@ jobs:
         if: github.ref == 'refs/heads/main' || github.event_name == 'release'
         with:
           tag_name: latest
-          name: "Binfae Mobile v1.3.6 - APK Oficial Assinado"
+          name: "Binfae Mobile v1.3.7 - APK Oficial Assinado"
           body: |
-            ### 🛠️ Binfae Mobile v1.3.6 - Gestão de Locais Físicos e Correção do Seletor de Destino
+            ### 🛠️ Binfae Mobile v1.3.7 - Seletor Robusto de Destino e Respeito Total à Barra de Navegação do Android
 
-            - **Gestão de Locais Físicos (Adicionar e Editar)**:
-              - Novo botão `[+ Novo]` no cabeçalho do modal de locais físicos para cadastrar depósitos, armários e prateleiras.
-              - Botão de edição rápida (`Pencil`) em cada local físico para atualizar nome, tipo de estrutura, descrição e vínculo hierárquico.
-            - **Correção do Seletor de Destino na Transferência**:
-              - Substituído o seletor modal aninhado por um overlay integrado e fluído, eliminando a incompatibilidade do Dialog nativo do Android que impedia a exibição dos locais de destino ao transferir materiais.
+            - **Seletor de Local de Destino Robusto (Transferir Material)**:
+              - Novo fluxo dedicado de seleção de local com visualização completa de todos os depósitos, armários e prateleiras.
+              - Busca textual em tempo real e chips de filtro por tipo de estrutura (Depósito, Armário, Prateleira, etc.).
+              - Exibição do caminho hierárquico amigável de cada local com identificação clara do local de origem atual.
+              - Carregamento de fallback automático caso a lista de locais esteja vazia, garantindo que os locais sempre apareçam.
+            - **Respeito Completo à Barra de Ferramentas / Navegação do Android**:
+              - Todos os menus, modais e rodapés agora respeitam estritamente a safe area inferior (`insets.bottom`), exatamente como o modal de detalhes do material.
+              - Modais ajustados: Seletor de Transferência (`MovementModal`), Formulário de Locais Físicos (`LocationsModal`), Categorias e Subgrupos (`GroupsModal`), Cadastro/Edição de Usuários e Militares, Tela de Configurações (`SettingsScreen`), Drawer Menu e Cadastro de PIN (`SetPinModal`).
+              - Nenhum botão ou texto de ação fica mais coberto ou cortado pela barra de botões nativa (Voltar, Início, Recentes) ou barra de gestos do Android.
           files: build-output/BinfaeMobile-release.apk
           prerelease: false
         env:

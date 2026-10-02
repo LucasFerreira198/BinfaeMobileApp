@@ -20,6 +20,7 @@ import { useTheme } from '../context/ThemeContext';
 import { useStock } from '../context/StockContext';
 import { useKeyboardHeight } from '../hooks/useKeyboardHeight';
 import { formatLocationFriendlyName } from '../storage/db';
+import { api } from '../api/client';
 import {
   X,
   Check,
@@ -29,6 +30,7 @@ import {
   ArrowLeft,
   ArrowRightLeft,
   FolderTree,
+  Package,
 } from 'lucide-react-native';
 import { ErrorBoundary } from './ErrorBoundary';
 
@@ -46,31 +48,57 @@ const MovementModalContent: React.FC<MovementModalProps> = ({
   onSuccess,
 }) => {
   const { theme } = useTheme();
-  const { locations, moveItem } = useStock();
+  const { locations, moveItem, syncData } = useStock();
   const insets = useSafeAreaInsets();
   const { keyboardHeight, isKeyboardVisible } = useKeyboardHeight();
   const { height: screenHeight } = useWindowDimensions();
 
+  const [viewMode, setViewMode] = useState<'form' | 'picker'>('form');
   const [quantidade, setQuantidade] = useState<string>('1');
   const [destinoLocalId, setDestinoLocalId] = useState<number | null>(null);
   const [motivo, setMotivo] = useState<string>('');
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
 
-  // Estado para Seletor Hierárquico de Locais
-  const [pickerVisible, setPickerVisible] = useState<boolean>(false);
+  // Estado para Busca e Filtros do Seletor
   const [pickerSearch, setPickerSearch] = useState<string>('');
-  const [currentParentId, setCurrentParentId] = useState<number | null>(null);
-  const [historyStack, setHistoryStack] = useState<number[]>([]);
+  const [selectedTypeFilter, setSelectedTypeFilter] = useState<string | null>(null);
+  const [freshLocations, setFreshLocations] = useState<Location[]>([]);
+  const [loadingLocations, setLoadingLocations] = useState<boolean>(false);
+
+  // Lista consolidada de locais (contexto ou busca direta na API)
+  const allLocations = useMemo(() => {
+    if (freshLocations.length > 0) return freshLocations;
+    return locations;
+  }, [freshLocations, locations]);
+
+  // Se a lista de locais estiver vazia ao abrir, busca diretamente da API
+  useEffect(() => {
+    if (visible && (!locations || locations.length === 0)) {
+      setLoadingLocations(true);
+      api
+        .fetchLocations()
+        .then((locs) => {
+          if (Array.isArray(locs) && locs.length > 0) {
+            setFreshLocations(locs);
+          }
+        })
+        .catch((err) => {
+          console.warn('Erro ao carregar locais em MovementModal:', err);
+        })
+        .finally(() => {
+          setLoadingLocations(false);
+        });
+    }
+  }, [visible, locations]);
 
   useEffect(() => {
     if (item && visible) {
       setQuantidade(item.tipo_controle === 'UNITARIO' ? '1' : item.quantidade.toString());
       setMotivo('');
       setDestinoLocalId(null);
-      setPickerVisible(false);
+      setViewMode('form');
       setPickerSearch('');
-      setCurrentParentId(null);
-      setHistoryStack([]);
+      setSelectedTypeFilter(null);
     }
   }, [item, visible]);
 
@@ -78,16 +106,12 @@ const MovementModalContent: React.FC<MovementModalProps> = ({
   useEffect(() => {
     if (!visible) return;
     const backAction = () => {
-      if (pickerVisible) {
-        if (pickerSearch.length > 0) {
+      if (viewMode === 'picker') {
+        if (pickerSearch.trim().length > 0) {
           setPickerSearch('');
           return true;
         }
-        if (historyStack.length > 0) {
-          handlePickerGoBack();
-          return true;
-        }
-        setPickerVisible(false);
+        setViewMode('form');
         return true;
       }
       onClose();
@@ -95,57 +119,55 @@ const MovementModalContent: React.FC<MovementModalProps> = ({
     };
     const handler = BackHandler.addEventListener('hardwareBackPress', backAction);
     return () => handler.remove();
-  }, [visible, pickerVisible, historyStack, pickerSearch, onClose]);
+  }, [visible, viewMode, pickerSearch, onClose]);
 
   if (!visible || !item) return null;
 
-  const currentLocObj = locations.find((l) => l.id === item.local_id);
+  const currentLocObj = allLocations.find((l) => l.id === item.local_id);
   const currentLocName = currentLocObj
-    ? formatLocationFriendlyName(currentLocObj, locations)
+    ? formatLocationFriendlyName(currentLocObj, allLocations)
     : item.local?.caminho_completo || item.local?.nome || 'Não definido';
 
-  const selectedDestLocObj = locations.find((l) => l.id === destinoLocalId);
+  const selectedDestLocObj = allLocations.find((l) => l.id === destinoLocalId);
   const selectedDestLocName = selectedDestLocObj
-    ? formatLocationFriendlyName(selectedDestLocObj, locations)
+    ? formatLocationFriendlyName(selectedDestLocObj, allLocations)
     : 'Toque para selecionar o local de destino';
 
-  // Navegação do Seletor
-  const handlePickerGoBack = () => {
-    setHistoryStack((prev) => {
-      const next = [...prev];
-      next.pop();
-      const prevParent = next.length > 0 ? next[next.length - 1] : null;
-      setCurrentParentId(prevParent);
-      return next;
-    });
-  };
+  // Locais filtrados para o Seletor
+  const filteredLocations = useMemo(() => {
+    let list = allLocations;
 
-  const handlePickerNavigateChild = (locId: number) => {
-    setHistoryStack((prev) => [...prev, locId]);
-    setCurrentParentId(locId);
-  };
+    if (selectedTypeFilter) {
+      list = list.filter((l) => l.tipo === selectedTypeFilter);
+    }
 
-  // Locais a exibir no Seletor
-  const activePickerLocations = useMemo(() => {
     if (pickerSearch.trim().length > 0) {
       const q = pickerSearch.toLowerCase().trim();
-      return locations.filter((l) => {
-        const friendly = formatLocationFriendlyName(l, locations).toLowerCase();
+      list = list.filter((l) => {
+        const friendly = formatLocationFriendlyName(l, allLocations).toLowerCase();
         const full = (l.caminho_completo || '').toLowerCase();
-        const name = l.nome.toLowerCase();
-        return friendly.includes(q) || full.includes(q) || name.includes(q);
+        const name = (l.nome || '').toLowerCase();
+        const type = (l.tipo || '').toLowerCase();
+        return friendly.includes(q) || full.includes(q) || name.includes(q) || type.includes(q);
       });
     }
 
-    return locations.filter((l) => {
-      if (currentParentId === null) {
-        return !l.parent_id;
-      }
-      return l.parent_id === currentParentId;
+    // Ordena de forma hierárquica e alfabética
+    return [...list].sort((a, b) => {
+      const pathA = a.caminho_completo || a.nome;
+      const pathB = b.caminho_completo || b.nome;
+      return pathA.localeCompare(pathB, 'pt-BR');
     });
-  }, [locations, pickerSearch, currentParentId]);
+  }, [allLocations, selectedTypeFilter, pickerSearch]);
 
-  const currentParentObj = locations.find((l) => l.id === currentParentId);
+  // Tipos únicos presentes na lista de locais para os chips de filtro rápido
+  const availableTypes = useMemo(() => {
+    const types = new Set<string>();
+    allLocations.forEach((l) => {
+      if (l.tipo) types.add(l.tipo);
+    });
+    return Array.from(types);
+  }, [allLocations]);
 
   const handleSubmit = async () => {
     const qty = parseFloat(quantidade);
@@ -167,7 +189,7 @@ const MovementModalContent: React.FC<MovementModalProps> = ({
     if (destinoLocalId === item.local_id) {
       Alert.alert(
         'Local Idêntico',
-        'O material já se encontra neste local. Escolha um local de destino diferente.'
+        'O material já se encontra neste local de origem. Escolha um local de destino diferente.'
       );
       return;
     }
@@ -204,235 +226,49 @@ const MovementModalContent: React.FC<MovementModalProps> = ({
             {
               backgroundColor: theme.surface,
               borderColor: theme.border,
+              height: viewMode === 'picker' ? '92%' : undefined,
               maxHeight: isKeyboardVisible
                 ? Math.max(280, screenHeight - keyboardHeight - (insets.top || 24) - 10)
-                : '90%',
+                : '92%',
             },
           ]}
         >
-          {/* Header */}
-          <View style={[styles.header, { borderBottomColor: theme.border }]}>
-            <View style={styles.headerLeft}>
-              <View style={[styles.headerIconWrap, { backgroundColor: theme.badgeBg }]}>
-                <ArrowRightLeft size={20} color={theme.primary} />
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={[styles.title, { color: theme.text }]}>Transferir Local</Text>
-                <Text style={[styles.subtitle, { color: theme.textSecondary }]} numberOfLines={1}>
-                  {item.nome}
-                </Text>
-              </View>
-            </View>
-
-            <TouchableOpacity
-              onPress={onClose}
-              style={[styles.closeBtn, { backgroundColor: theme.surfaceVariant }]}
-              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-            >
-              <X size={18} color={theme.text} />
-            </TouchableOpacity>
-          </View>
-
-          <ScrollView
-            style={styles.body}
-            contentContainerStyle={styles.scrollContent}
-            keyboardShouldPersistTaps="handled"
-            showsVerticalScrollIndicator={false}
-          >
-            {/* Local Atual (Origem) */}
-            <Text style={[styles.label, { color: theme.textSecondary }]}>Local Atual de Origem</Text>
-            <View
-              style={[
-                styles.currentLocCard,
-                { backgroundColor: theme.surfaceVariant, borderColor: theme.border },
-              ]}
-            >
-              <MapPin size={18} color={theme.textMuted} />
-              <View style={{ flex: 1 }}>
-                <Text style={[styles.currentLocText, { color: theme.text }]}>
-                  {currentLocName}
-                </Text>
-                <Text style={[styles.currentLocSub, { color: theme.textSecondary }]}>
-                  Saldo disponível: {item.quantidade} {item.unidade_medida}
-                </Text>
-              </View>
-            </View>
-
-            {/* Novo Local de Destino (Botão / Seletor Hierárquico) */}
-            <Text style={[styles.label, { color: theme.textSecondary }]}>
-              Novo Local de Destino *
-            </Text>
-            <TouchableOpacity
-              style={[
-                styles.destinationCard,
-                {
-                  backgroundColor: destinoLocalId ? theme.badgeBg : theme.inputBg,
-                  borderColor: destinoLocalId ? theme.primary : theme.inputBorder,
-                },
-              ]}
-              onPress={() => setPickerVisible(true)}
-              activeOpacity={0.8}
-            >
-              <View style={styles.destCardLeft}>
-                <View
-                  style={[
-                    styles.destIconWrap,
-                    {
-                      backgroundColor: destinoLocalId
-                        ? 'rgba(56, 189, 248, 0.2)'
-                        : theme.surfaceVariant,
-                    },
-                  ]}
-                >
-                  <MapPin size={20} color={destinoLocalId ? theme.primary : theme.textMuted} />
-                </View>
-
-                <View style={{ flex: 1 }}>
-                  <Text
-                    style={[
-                      styles.destTitle,
-                      { color: destinoLocalId ? theme.text : theme.textMuted },
-                    ]}
-                    numberOfLines={2}
-                  >
-                    {selectedDestLocName}
-                  </Text>
-                  <Text style={[styles.destSub, { color: theme.textSecondary }]}>
-                    Toque para explorar depósitos, armários e prateleiras
-                  </Text>
-                </View>
-              </View>
-
-              <ChevronRight size={18} color={theme.textMuted} />
-            </TouchableOpacity>
-
-            {/* Quantidade a Transferir */}
-            <Text style={[styles.label, { color: theme.textSecondary }]}>
-              Quantidade ({item.unidade_medida})
-            </Text>
-            <View
-              style={[
-                styles.inputBox,
-                { backgroundColor: theme.inputBg, borderColor: theme.inputBorder },
-              ]}
-            >
-              <TextInput
-                style={[styles.input, { color: theme.text }]}
-                keyboardType="numeric"
-                value={quantidade}
-                onChangeText={setQuantidade}
-                placeholder="Ex: 1"
-                placeholderTextColor={theme.textMuted}
-              />
-            </View>
-
-            {/* Justificativa / Observação (OPCIONAL) */}
-            <View style={styles.labelRow}>
-              <Text style={[styles.label, { color: theme.textSecondary }]}>
-                Justificativa / Motivo
-              </Text>
-              <Text style={[styles.optionalTag, { color: theme.textMuted }]}>Opcional</Text>
-            </View>
-
-            <View
-              style={[
-                styles.inputBox,
-                styles.textAreaBox,
-                { backgroundColor: theme.inputBg, borderColor: theme.inputBorder },
-              ]}
-            >
-              <TextInput
-                style={[styles.input, styles.textArea, { color: theme.text }]}
-                multiline
-                numberOfLines={3}
-                value={motivo}
-                onChangeText={setMotivo}
-                placeholder="Ex: Realocado para organização ou inventário (opcional)"
-                placeholderTextColor={theme.textMuted}
-              />
-            </View>
-          </ScrollView>
-
-          {/* Rodapé com botão de Confirmação */}
-          <View
-            style={[
-              styles.footer,
-              {
-                borderTopColor: theme.border,
-                paddingBottom: isKeyboardVisible ? 12 : Math.max(insets.bottom, 16) + 12,
-              },
-            ]}
-          >
-            <TouchableOpacity
-              style={[styles.submitBtn, { backgroundColor: theme.primary }]}
-              onPress={handleSubmit}
-              disabled={isSubmitting}
-              activeOpacity={0.8}
-            >
-              {isSubmitting ? (
-                <ActivityIndicator color="#FFFFFF" />
-              ) : (
-                <>
-                  <Check size={18} color="#FFFFFF" />
-                  <Text style={styles.submitText}>Confirmar Transferência</Text>
-                </>
-              )}
-            </TouchableOpacity>
-          </View>
-
-          {/* Seletor Hierárquico Sobreposto na Sheet */}
-          {pickerVisible && (
-            <View
-              style={[
-                StyleSheet.absoluteFill,
-                styles.pickerOverlay,
-                { backgroundColor: theme.surface },
-              ]}
-            >
+          {viewMode === 'picker' ? (
+            /* ========================================================
+               TELA DO SELETOR DE LOCAL DE DESTINO
+               ======================================================== */
+            <View style={styles.pickerContainer}>
               {/* Header do Seletor */}
-              <View style={[styles.pickerHeader, { borderBottomColor: theme.border }]}>
-                <View style={styles.pickerHeaderLeft}>
-                  {historyStack.length > 0 && !pickerSearch ? (
-                    <TouchableOpacity
-                      onPress={handlePickerGoBack}
-                      style={[styles.pickerBackBtn, { backgroundColor: theme.surfaceVariant }]}
-                    >
-                      <ArrowLeft size={18} color={theme.text} />
-                    </TouchableOpacity>
-                  ) : (
-                    <View style={[styles.pickerIconWrap, { backgroundColor: theme.badgeBg }]}>
-                      <FolderTree size={18} color={theme.primary} />
-                    </View>
-                  )}
-
+              <View style={[styles.header, { borderBottomColor: theme.border }]}>
+                <View style={styles.headerLeft}>
+                  <TouchableOpacity
+                    onPress={() => setViewMode('form')}
+                    style={[styles.backBtn, { backgroundColor: theme.surfaceVariant }]}
+                    hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                  >
+                    <ArrowLeft size={18} color={theme.text} />
+                  </TouchableOpacity>
                   <View style={{ flex: 1 }}>
-                    <Text style={[styles.pickerTitle, { color: theme.text }]} numberOfLines={1}>
-                      {pickerSearch
-                        ? 'Resultados da Busca'
-                        : currentParentObj
-                        ? currentParentObj.nome
-                        : 'Selecionar Local de Destino'}
+                    <Text style={[styles.title, { color: theme.text }]}>
+                      Selecionar Destino
                     </Text>
-                    <Text style={[styles.pickerSub, { color: theme.textSecondary }]}>
-                      {pickerSearch
-                        ? `${activePickerLocations.length} locais encontrados`
-                        : currentParentObj
-                        ? 'Navegando dentro deste local'
-                        : 'Depósitos principais'}
+                    <Text style={[styles.subtitle, { color: theme.textSecondary }]} numberOfLines={1}>
+                      {filteredLocations.length} locais disponíveis
                     </Text>
                   </View>
                 </View>
 
                 <TouchableOpacity
-                  onPress={() => setPickerVisible(false)}
+                  onPress={() => setViewMode('form')}
                   style={[styles.closeBtn, { backgroundColor: theme.surfaceVariant }]}
+                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                 >
                   <X size={18} color={theme.text} />
                 </TouchableOpacity>
               </View>
 
-              {/* Barra de Pesquisa de Locais */}
-              <View style={styles.pickerSearchWrap}>
+              {/* Barra de Pesquisa */}
+              <View style={styles.searchWrapper}>
                 <View
                   style={[
                     styles.searchBox,
@@ -442,10 +278,11 @@ const MovementModalContent: React.FC<MovementModalProps> = ({
                   <Search size={16} color={theme.textMuted} />
                   <TextInput
                     style={[styles.searchInput, { color: theme.text }]}
-                    placeholder="Pesquisar depósito, armário, prateleira..."
+                    placeholder="Buscar depósito, armário, prateleira..."
                     placeholderTextColor={theme.textMuted}
                     value={pickerSearch}
                     onChangeText={setPickerSearch}
+                    autoFocus={false}
                   />
                   {pickerSearch.length > 0 && (
                     <TouchableOpacity onPress={() => setPickerSearch('')}>
@@ -455,113 +292,412 @@ const MovementModalContent: React.FC<MovementModalProps> = ({
                 </View>
               </View>
 
-              {/* Lista de Locais */}
-              <FlatList
-                data={activePickerLocations}
-                keyExtractor={(item) => item.id.toString()}
-                contentContainerStyle={styles.pickerListContent}
-                keyboardShouldPersistTaps="handled"
-                ListEmptyComponent={
-                  <View style={styles.pickerEmpty}>
-                    <MapPin size={32} color={theme.textMuted} />
-                    <Text style={[styles.pickerEmptyTitle, { color: theme.text }]}>
-                      Nenhum local encontrado
-                    </Text>
-                  </View>
-                }
-                renderItem={({ item: loc }) => {
-                  const hasChildren = locations.some((child) => child.parent_id === loc.id);
-                  const isCurrentLoc = loc.id === item.local_id;
-                  const isSelected = loc.id === destinoLocalId;
-                  const friendlyName = formatLocationFriendlyName(loc, locations);
-
-                  return (
-                    <View
+              {/* Chips de Filtro por Tipo */}
+              {availableTypes.length > 1 && (
+                <View style={styles.filterChipsRow}>
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipsScrollContent}>
+                    <TouchableOpacity
                       style={[
-                        styles.pickerItem,
+                        styles.chip,
                         {
-                          backgroundColor: isSelected
-                            ? theme.badgeBg
-                            : theme.card,
-                          borderColor: isSelected ? theme.primary : theme.border,
+                          backgroundColor: selectedTypeFilter === null ? theme.primary : theme.surfaceVariant,
+                          borderColor: selectedTypeFilter === null ? theme.primary : theme.border,
                         },
                       ]}
+                      onPress={() => setSelectedTypeFilter(null)}
+                      activeOpacity={0.7}
                     >
+                      <Text
+                        style={[
+                          styles.chipText,
+                          {
+                            color: selectedTypeFilter === null ? '#FFFFFF' : theme.textSecondary,
+                            fontWeight: selectedTypeFilter === null ? '700' : '500',
+                          },
+                        ]}
+                      >
+                        Todos ({allLocations.length})
+                      </Text>
+                    </TouchableOpacity>
+
+                    {availableTypes.map((type) => {
+                      const count = allLocations.filter((l) => l.tipo === type).length;
+                      const isSelected = selectedTypeFilter === type;
+                      return (
+                        <TouchableOpacity
+                          key={type}
+                          style={[
+                            styles.chip,
+                            {
+                              backgroundColor: isSelected ? theme.primary : theme.surfaceVariant,
+                              borderColor: isSelected ? theme.primary : theme.border,
+                            },
+                          ]}
+                          onPress={() => setSelectedTypeFilter(isSelected ? null : type)}
+                          activeOpacity={0.7}
+                        >
+                          <Text
+                            style={[
+                              styles.chipText,
+                              {
+                                color: isSelected ? '#FFFFFF' : theme.textSecondary,
+                                fontWeight: isSelected ? '700' : '500',
+                              },
+                            ]}
+                          >
+                            {type} ({count})
+                          </Text>
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </ScrollView>
+                </View>
+              )}
+
+              {/* Lista Completa e Rolável de Locais */}
+              {loadingLocations ? (
+                <View style={styles.pickerLoading}>
+                  <ActivityIndicator size="large" color={theme.primary} />
+                  <Text style={[styles.pickerLoadingText, { color: theme.textSecondary }]}>
+                    Carregando locais de estoque...
+                  </Text>
+                </View>
+              ) : (
+                <FlatList
+                  data={filteredLocations}
+                  keyExtractor={(loc) => loc.id.toString()}
+                  style={{ flex: 1 }}
+                  contentContainerStyle={[
+                    styles.pickerListContent,
+                    { paddingBottom: Math.max(insets.bottom, 16) + 32 },
+                  ]}
+                  keyboardShouldPersistTaps="handled"
+                  showsVerticalScrollIndicator={false}
+                  ListEmptyComponent={
+                    <View style={styles.pickerEmpty}>
+                      <MapPin size={38} color={theme.textMuted} />
+                      <Text style={[styles.pickerEmptyTitle, { color: theme.text }]}>
+                        Nenhum local encontrado
+                      </Text>
+                      <Text style={[styles.pickerEmptySub, { color: theme.textSecondary }]}>
+                        {pickerSearch
+                          ? `Nenhum depósito ou prateleira corresponde à busca "${pickerSearch}".`
+                          : 'Nenhum local de armazenamento cadastrado no sistema.'}
+                      </Text>
+                      {pickerSearch.length > 0 && (
+                        <TouchableOpacity
+                          onPress={() => {
+                            setPickerSearch('');
+                            setSelectedTypeFilter(null);
+                          }}
+                          style={[styles.clearSearchBtn, { backgroundColor: theme.surfaceVariant }]}
+                        >
+                          <Text style={[styles.clearSearchText, { color: theme.primary }]}>
+                            Limpar Filtro de Busca
+                          </Text>
+                        </TouchableOpacity>
+                      )}
+                    </View>
+                  }
+                  renderItem={({ item: loc }) => {
+                    const isCurrentLoc = loc.id === item.local_id;
+                    const isSelected = loc.id === destinoLocalId;
+                    const friendlyName = formatLocationFriendlyName(loc, allLocations);
+                    const fullPath = loc.caminho_completo || friendlyName;
+
+                    return (
                       <TouchableOpacity
-                        style={styles.pickerItemMain}
+                        style={[
+                          styles.pickerCard,
+                          {
+                            backgroundColor: isSelected
+                              ? theme.badgeBg
+                              : isCurrentLoc
+                              ? theme.surfaceVariant
+                              : theme.card,
+                            borderColor: isSelected
+                              ? theme.primary
+                              : isCurrentLoc
+                              ? theme.warning
+                              : theme.border,
+                            borderWidth: isSelected ? 2 : StyleSheet.hairlineWidth,
+                          },
+                        ]}
                         onPress={() => {
                           if (isCurrentLoc) {
-                            Alert.alert('Aviso', 'O material já se encontra neste local.');
+                            Alert.alert(
+                              'Local Atual',
+                              'O material já se encontra neste local. Escolha outro local como destino da transferência.'
+                            );
                             return;
                           }
                           setDestinoLocalId(loc.id);
-                          setPickerVisible(false);
+                          setViewMode('form');
+                          try {
+                            Haptics.selectionAsync();
+                          } catch {}
                         }}
                         activeOpacity={0.7}
                       >
-                        <View style={styles.pickerItemIconWrap}>
+                        <View
+                          style={[
+                            styles.pickerIconWrap,
+                            {
+                              backgroundColor: isSelected
+                                ? theme.primary
+                                : isCurrentLoc
+                                ? 'rgba(245, 158, 11, 0.2)'
+                                : theme.badgeBg,
+                            },
+                          ]}
+                        >
                           <MapPin
                             size={18}
                             color={
                               isSelected
-                                ? theme.primary
+                                ? '#FFFFFF'
                                 : isCurrentLoc
                                 ? theme.warning
-                                : theme.textSecondary
+                                : theme.primary
                             }
                           />
                         </View>
 
-                        <View style={{ flex: 1 }}>
+                        <View style={styles.pickerInfo}>
+                          <View style={styles.pickerTitleRow}>
+                            <Text
+                              style={[
+                                styles.pickerLocName,
+                                {
+                                  color: isSelected
+                                    ? theme.primary
+                                    : theme.text,
+                                },
+                              ]}
+                            >
+                              {loc.nome}
+                            </Text>
+                            {loc.tipo ? (
+                              <View
+                                style={[
+                                  styles.typeBadge,
+                                  { backgroundColor: theme.surfaceVariant },
+                                ]}
+                              >
+                                <Text style={[styles.typeBadgeText, { color: theme.textSecondary }]}>
+                                  {loc.tipo}
+                                </Text>
+                              </View>
+                            ) : null}
+                          </View>
+
                           <Text
-                            style={[
-                              styles.pickerItemTitle,
-                              { color: isSelected ? theme.primary : theme.text },
-                            ]}
+                            style={[styles.pickerLocPath, { color: theme.textSecondary }]}
+                            numberOfLines={2}
                           >
-                            {loc.nome}
-                          </Text>
-                          <Text
-                            style={[styles.pickerItemPath, { color: theme.textSecondary }]}
-                            numberOfLines={1}
-                          >
-                            {friendlyName}
+                            {fullPath}
                           </Text>
 
                           {isCurrentLoc && (
-                            <Text style={[styles.currentTag, { color: theme.warning }]}>
-                              • Local Atual do Item
-                            </Text>
+                            <View style={styles.currentLocPill}>
+                              <Text style={[styles.currentLocPillText, { color: theme.warning }]}>
+                                • Local de Origem Atual (Material está aqui)
+                              </Text>
+                            </View>
                           )}
                         </View>
 
                         {isSelected && (
-                          <View
-                            style={[styles.checkBadge, { backgroundColor: theme.primary }]}
-                          >
+                          <View style={[styles.checkCircle, { backgroundColor: theme.primary }]}>
                             <Check size={14} color="#FFFFFF" />
                           </View>
                         )}
                       </TouchableOpacity>
-
-                      {/* Botão para entrar na ramificação (se houver sublocais e não estiver pesquisando) */}
-                      {hasChildren && !pickerSearch && (
-                        <TouchableOpacity
-                          style={[
-                            styles.enterBranchBtn,
-                            { borderLeftColor: theme.border, backgroundColor: theme.surfaceVariant },
-                          ]}
-                          onPress={() => handlePickerNavigateChild(loc.id)}
-                          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                        >
-                          <ChevronRight size={18} color={theme.primary} />
-                        </TouchableOpacity>
-                      )}
-                    </View>
-                  );
-                }}
-              />
+                    );
+                  }}
+                />
+              )}
             </View>
+          ) : (
+            /* ========================================================
+               FORMULÁRIO PRINCIPAL DE TRANSFERÊNCIA
+               ======================================================== */
+            <>
+              {/* Header do Formulário */}
+              <View style={[styles.header, { borderBottomColor: theme.border }]}>
+                <View style={styles.headerLeft}>
+                  <View style={[styles.headerIconWrap, { backgroundColor: theme.badgeBg }]}>
+                    <ArrowRightLeft size={20} color={theme.primary} />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={[styles.title, { color: theme.text }]}>Transferir Local</Text>
+                    <Text style={[styles.subtitle, { color: theme.textSecondary }]} numberOfLines={1}>
+                      {item.nome}
+                    </Text>
+                  </View>
+                </View>
+
+                <TouchableOpacity
+                  onPress={onClose}
+                  style={[styles.closeBtn, { backgroundColor: theme.surfaceVariant }]}
+                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                >
+                  <X size={18} color={theme.text} />
+                </TouchableOpacity>
+              </View>
+
+              <ScrollView
+                style={styles.body}
+                contentContainerStyle={styles.scrollContent}
+                keyboardShouldPersistTaps="handled"
+                showsVerticalScrollIndicator={false}
+              >
+                {/* Local Atual (Origem) */}
+                <Text style={[styles.label, { color: theme.textSecondary }]}>Local Atual de Origem</Text>
+                <View
+                  style={[
+                    styles.currentLocCard,
+                    { backgroundColor: theme.surfaceVariant, borderColor: theme.border },
+                  ]}
+                >
+                  <View style={[styles.locIconWrap, { backgroundColor: 'rgba(245, 158, 11, 0.15)' }]}>
+                    <MapPin size={18} color={theme.warning} />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={[styles.currentLocText, { color: theme.text }]}>
+                      {currentLocName}
+                    </Text>
+                    <Text style={[styles.currentLocSub, { color: theme.textSecondary }]}>
+                      Saldo disponível: {item.quantidade} {item.unidade_medida}
+                    </Text>
+                  </View>
+                </View>
+
+                {/* Novo Local de Destino */}
+                <Text style={[styles.label, { color: theme.textSecondary }]}>
+                  Novo Local de Destino *
+                </Text>
+                <TouchableOpacity
+                  style={[
+                    styles.destinationCard,
+                    {
+                      backgroundColor: destinoLocalId ? theme.badgeBg : theme.inputBg,
+                      borderColor: destinoLocalId ? theme.primary : theme.inputBorder,
+                    },
+                  ]}
+                  onPress={() => setViewMode('picker')}
+                  activeOpacity={0.8}
+                >
+                  <View style={styles.destCardLeft}>
+                    <View
+                      style={[
+                        styles.destIconWrap,
+                        {
+                          backgroundColor: destinoLocalId
+                            ? 'rgba(56, 189, 248, 0.2)'
+                            : theme.surfaceVariant,
+                        },
+                      ]}
+                    >
+                      <MapPin size={20} color={destinoLocalId ? theme.primary : theme.textMuted} />
+                    </View>
+
+                    <View style={{ flex: 1 }}>
+                      <Text
+                        style={[
+                          styles.destTitle,
+                          { color: destinoLocalId ? theme.text : theme.textMuted },
+                        ]}
+                        numberOfLines={2}
+                      >
+                        {selectedDestLocName}
+                      </Text>
+                      <Text style={[styles.destSub, { color: theme.textSecondary }]}>
+                        {destinoLocalId
+                          ? 'Toque para alterar o local de destino'
+                          : 'Toque para escolher entre todos os depósitos e prateleiras'}
+                      </Text>
+                    </View>
+                  </View>
+
+                  <ChevronRight size={18} color={theme.textMuted} />
+                </TouchableOpacity>
+
+                {/* Quantidade a Transferir */}
+                <Text style={[styles.label, { color: theme.textSecondary }]}>
+                  Quantidade ({item.unidade_medida})
+                </Text>
+                <View
+                  style={[
+                    styles.inputBox,
+                    { backgroundColor: theme.inputBg, borderColor: theme.inputBorder },
+                  ]}
+                >
+                  <TextInput
+                    style={[styles.input, { color: theme.text }]}
+                    keyboardType="numeric"
+                    value={quantidade}
+                    onChangeText={setQuantidade}
+                    placeholder="Ex: 1"
+                    placeholderTextColor={theme.textMuted}
+                  />
+                </View>
+
+                {/* Justificativa / Motivo (OPCIONAL) */}
+                <View style={styles.labelRow}>
+                  <Text style={[styles.label, { color: theme.textSecondary }]}>
+                    Justificativa / Motivo
+                  </Text>
+                  <Text style={[styles.optionalTag, { color: theme.textMuted }]}>Opcional</Text>
+                </View>
+
+                <View
+                  style={[
+                    styles.inputBox,
+                    styles.textAreaBox,
+                    { backgroundColor: theme.inputBg, borderColor: theme.inputBorder },
+                  ]}
+                >
+                  <TextInput
+                    style={[styles.input, styles.textArea, { color: theme.text }]}
+                    multiline
+                    numberOfLines={3}
+                    value={motivo}
+                    onChangeText={setMotivo}
+                    placeholder="Ex: Realocado para melhor organização ou inventário (opcional)"
+                    placeholderTextColor={theme.textMuted}
+                  />
+                </View>
+              </ScrollView>
+
+              {/* Rodapé com botão de Confirmação que respeita Safe Area e Barra do Android */}
+              <View
+                style={[
+                  styles.footer,
+                  {
+                    backgroundColor: theme.surface,
+                    borderTopColor: theme.border,
+                    paddingBottom: isKeyboardVisible ? 12 : Math.max(insets.bottom, 16) + 16,
+                  },
+                ]}
+              >
+                <TouchableOpacity
+                  style={[styles.submitBtn, { backgroundColor: theme.primary }]}
+                  onPress={handleSubmit}
+                  disabled={isSubmitting}
+                  activeOpacity={0.8}
+                >
+                  {isSubmitting ? (
+                    <ActivityIndicator color="#FFFFFF" />
+                  ) : (
+                    <>
+                      <Check size={18} color="#FFFFFF" />
+                      <Text style={styles.submitText}>Confirmar Transferência</Text>
+                    </>
+                  )}
+                </TouchableOpacity>
+              </View>
+            </>
           )}
         </View>
       </View>
@@ -592,7 +728,6 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     borderTopWidth: 1,
-    maxHeight: '90%',
     overflow: 'hidden',
   },
   header: {
@@ -614,6 +749,13 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  backBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -660,6 +802,13 @@ const styles = StyleSheet.create({
     padding: 14,
     borderRadius: 14,
     borderWidth: 1,
+  },
+  locIconWrap: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   currentLocText: {
     fontSize: 14,
@@ -734,52 +883,14 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '700',
   },
-  // Estilos do Seletor Sobreposto
-  pickerOverlay: {
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    zIndex: 999,
-  },
-  pickerHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-  },
-  pickerHeaderLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
+  // Estilos do Seletor de Locais
+  pickerContainer: {
     flex: 1,
-    marginRight: 10,
   },
-  pickerBackBtn: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  pickerIconWrap: {
-    width: 36,
-    height: 36,
-    borderRadius: 10,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  pickerTitle: {
-    fontSize: 16,
-    fontWeight: '800',
-  },
-  pickerSub: {
-    fontSize: 11,
-    marginTop: 1,
-  },
-  pickerSearchWrap: {
+  searchWrapper: {
     paddingHorizontal: 16,
-    paddingVertical: 10,
+    paddingTop: 12,
+    paddingBottom: 8,
   },
   searchBox: {
     flexDirection: 'row',
@@ -795,63 +906,117 @@ const styles = StyleSheet.create({
     fontSize: 14,
     paddingVertical: 0,
   },
+  filterChipsRow: {
+    paddingBottom: 8,
+  },
+  chipsScrollContent: {
+    paddingHorizontal: 16,
+    gap: 8,
+  },
+  chip: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 10,
+    borderWidth: 1,
+  },
+  chipText: {
+    fontSize: 12,
+  },
+  pickerLoading: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 12,
+    paddingVertical: 40,
+  },
+  pickerLoadingText: {
+    fontSize: 13,
+  },
   pickerListContent: {
     padding: 16,
     gap: 10,
   },
-  pickerItem: {
-    flexDirection: 'row',
-    borderRadius: 14,
-    borderWidth: 1,
-    overflow: 'hidden',
-  },
-  pickerItemMain: {
-    flex: 1,
+  pickerCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 12,
+    padding: 14,
+    borderRadius: 14,
     gap: 12,
   },
-  pickerItemIconWrap: {
-    width: 32,
-    height: 32,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  pickerItemTitle: {
-    fontSize: 14,
-    fontWeight: '700',
-  },
-  pickerItemPath: {
-    fontSize: 11,
-    marginTop: 2,
-  },
-  currentTag: {
-    fontSize: 11,
-    fontWeight: '700',
-    marginTop: 2,
-  },
-  checkBadge: {
-    width: 24,
-    height: 24,
+  pickerIconWrap: {
+    width: 38,
+    height: 38,
     borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  enterBranchBtn: {
-    width: 44,
+  pickerInfo: {
+    flex: 1,
+  },
+  pickerTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 8,
+  },
+  pickerLocName: {
+    fontSize: 14,
+    fontWeight: '700',
+    flex: 1,
+  },
+  typeBadge: {
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
+  },
+  typeBadgeText: {
+    fontSize: 10,
+    fontWeight: '700',
+  },
+  pickerLocPath: {
+    fontSize: 12,
+    marginTop: 2,
+    lineHeight: 16,
+  },
+  currentLocPill: {
+    marginTop: 4,
+  },
+  currentLocPillText: {
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  checkCircle: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
     alignItems: 'center',
     justifyContent: 'center',
-    borderLeftWidth: StyleSheet.hairlineWidth,
   },
   pickerEmpty: {
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: 50,
+    paddingHorizontal: 24,
     gap: 8,
   },
   pickerEmptyTitle: {
-    fontSize: 14,
-    fontWeight: '600',
+    fontSize: 15,
+    fontWeight: '700',
+    marginTop: 8,
+  },
+  pickerEmptySub: {
+    fontSize: 12,
+    textAlign: 'center',
+    lineHeight: 18,
+  },
+  clearSearchBtn: {
+    marginTop: 10,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 10,
+  },
+  clearSearchText: {
+    fontSize: 12,
+    fontWeight: '700',
   },
 });

@@ -562,7 +562,7 @@ const LocationsModalContent: React.FC<LocationsModalProps> = ({
               data={searchResults}
               keyExtractor={(item) => `search-${item.id}`}
               renderItem={renderSearchResultCard}
-              contentContainerStyle={[styles.listContent, { paddingBottom: Math.max(insets.bottom, 16) + 16 }]}
+              contentContainerStyle={[styles.listContent, { paddingBottom: Math.max(insets.bottom, 16) + 24 }]}
               showsVerticalScrollIndicator={false}
               ListEmptyComponent={
                 <View style={styles.emptyBox}>
@@ -579,7 +579,7 @@ const LocationsModalContent: React.FC<LocationsModalProps> = ({
               data={currentLevelLocations}
               keyExtractor={(item) => `tree-${item.id}`}
               renderItem={renderLocationCard}
-              contentContainerStyle={[styles.listContent, { paddingBottom: Math.max(insets.bottom, 16) + 16 }]}
+              contentContainerStyle={[styles.listContent, { paddingBottom: Math.max(insets.bottom, 16) + 24 }]}
               showsVerticalScrollIndicator={false}
               ListHeaderComponent={
                 currentParentId === null ? (
@@ -802,7 +802,16 @@ const LocationsModalContent: React.FC<LocationsModalProps> = ({
               </ScrollView>
 
               {/* Rodapé do Formulário */}
-              <View style={[styles.formFooter, { borderTopColor: theme.border, backgroundColor: theme.surface }]}>
+              <View
+                style={[
+                  styles.formFooter,
+                  {
+                    borderTopColor: theme.border,
+                    backgroundColor: theme.surface,
+                    paddingBottom: isKeyboardVisible ? 12 : Math.max(insets.bottom, 16) + 16,
+                  },
+                ]}
+              >
                 <TouchableOpacity
                   style={[styles.cancelBtn, { borderColor: theme.border }]}
                   onPress={() => setIsFormOpen(false)}
@@ -1212,7 +1221,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 12,
     paddingHorizontal: 20,
-    paddingVertical: 16,
+    paddingTop: 16,
     borderTopWidth: StyleSheet.hairlineWidth,
   },
   cancelBtn: {
