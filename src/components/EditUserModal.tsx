@@ -20,7 +20,7 @@ import { useTheme } from '../context/ThemeContext';
 import { useKeyboardHeight } from '../hooks/useKeyboardHeight';
 import { api } from '../api/client';
 import { User } from '../types';
-import { X, UserCog, Shield, Lock, Trash2 } from 'lucide-react-native';
+import { X, UserCog, Shield, Lock, Trash2, AtSign } from 'lucide-react-native';
 
 interface EditUserModalProps {
   user: User | null;
@@ -40,6 +40,7 @@ export const EditUserModal: React.FC<EditUserModalProps> = ({
   const { keyboardHeight, isKeyboardVisible } = useKeyboardHeight();
   const { height: screenHeight } = useWindowDimensions();
 
+  const [username, setUsername] = useState<string>('');
   const [isAdmin, setIsAdmin] = useState<boolean>(false);
   const [isActive, setIsActive] = useState<boolean>(true);
   const [newPassword, setNewPassword] = useState<string>('');
@@ -48,6 +49,7 @@ export const EditUserModal: React.FC<EditUserModalProps> = ({
 
   useEffect(() => {
     if (user && visible) {
+      setUsername(user.username || '');
       setIsAdmin(user.admin);
       setIsActive(user.ativo);
       setNewPassword('');
@@ -78,17 +80,21 @@ export const EditUserModal: React.FC<EditUserModalProps> = ({
 
     setSubmitting(true);
     try {
-      const payload: { admin?: boolean; ativo?: boolean; password?: string } = {
+      const payload: { username?: string; admin?: boolean; ativo?: boolean; password?: string } = {
         admin: isAdmin,
         ativo: isActive,
       };
+
+      if (username.trim() !== (user.username || '')) {
+        payload.username = username.trim() || undefined;
+      }
 
       if (newPassword.trim().length >= 6) {
         payload.password = newPassword.trim();
       }
 
       await api.updateUser(identifier, payload);
-      Alert.alert('Sucesso', 'Permissões do usuário atualizadas com sucesso!');
+      Alert.alert('Sucesso', 'Permissões e dados do usuário atualizados com sucesso!');
       onSuccess();
       onClose();
     } catch (err: any) {
@@ -220,6 +226,25 @@ export const EditUserModal: React.FC<EditUserModalProps> = ({
                 trackColor={{ false: theme.border, true: theme.success }}
                 thumbColor="#FFFFFF"
               />
+            </View>
+
+            {/* Nome de Usuário (Username) */}
+            <View style={styles.inputGroup}>
+              <Text style={[styles.label, { color: theme.textSecondary }]}>
+                Nome de Usuário (Username)
+              </Text>
+              <View style={[styles.inputBox, { backgroundColor: theme.inputBg, borderColor: theme.inputBorder }]}>
+                <AtSign size={18} color={theme.textMuted} />
+                <TextInput
+                  style={[styles.input, { color: theme.text }]}
+                  placeholder="Ex: admin.ti, lucas.silva..."
+                  placeholderTextColor={theme.textMuted}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  value={username}
+                  onChangeText={setUsername}
+                />
+              </View>
             </View>
 
             {/* Redefinição de Senha */}

@@ -8,6 +8,7 @@ import {
   TextInput,
   ActivityIndicator,
   RefreshControl,
+  Alert,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../context/ThemeContext';
@@ -30,6 +31,7 @@ import {
   UserPlus,
   UserCog,
   Plus,
+  Trash2,
 } from 'lucide-react-native';
 
 export const AdminScreen: React.FC = () => {
@@ -106,6 +108,30 @@ export const AdminScreen: React.FC = () => {
     );
   });
 
+  const handleDeleteUserDirect = (user: User) => {
+    const identifier = user.militar?.saram || user.username || user.id;
+    Alert.alert(
+      'Excluir Conta',
+      `Deseja realmente excluir permanentemente a conta de acesso de @${user.username}?`,
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Excluir',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await api.deleteUser(identifier);
+              Alert.alert('Sucesso', 'Conta de usuário excluída com sucesso.');
+              loadData();
+            } catch (err: any) {
+              Alert.alert('Erro ao Excluir', err.message || 'Falha ao excluir usuário.');
+            }
+          },
+        },
+      ]
+    );
+  };
+
   const renderUserItem = ({ item }: { item: User }) => {
     const mil = item.militar;
     return (
@@ -170,7 +196,7 @@ export const AdminScreen: React.FC = () => {
 
         <View style={[styles.userCardActions, { borderTopColor: theme.border }]}>
           <TouchableOpacity
-            style={[styles.manageBtn, { backgroundColor: theme.surfaceVariant }]}
+            style={[styles.manageBtn, { backgroundColor: theme.surfaceVariant, flex: 1, marginRight: 8 }]}
             onPress={() => {
               setSelectedUser(item);
               setEditUserVisible(true);
@@ -179,8 +205,16 @@ export const AdminScreen: React.FC = () => {
           >
             <UserCog size={14} color={theme.primary} />
             <Text style={[styles.manageBtnText, { color: theme.primary }]}>
-              Gerenciar Permissões
+              Editar Permissões & Login
             </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.manageBtn, { backgroundColor: theme.dangerBg, paddingHorizontal: 12 }]}
+            onPress={() => handleDeleteUserDirect(item)}
+            activeOpacity={0.7}
+          >
+            <Trash2 size={14} color={theme.danger} />
           </TouchableOpacity>
         </View>
       </View>

@@ -216,6 +216,7 @@ export const api = {
   updateUser: async (
     identifier: number | string,
     data: {
+      username?: string;
       password?: string;
       admin?: boolean;
       ativo?: boolean;
