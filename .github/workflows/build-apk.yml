@@ -67,16 +67,15 @@ jobs:
         if: github.ref == 'refs/heads/main' || github.event_name == 'release'
         with:
           tag_name: latest
-          name: "Binfae Mobile v1.1.0 - APK Oficial Assinado"
+          name: "Binfae Mobile v1.2.0 - APK Oficial Assinado"
           body: |
-            ### 🚀 Binfae Mobile v1.1.0 - Novidades & Correções
+            ### 🚀 Binfae Mobile v1.2.0 - Novidades & Melhorias de Navegação
 
-            - **Gestão de Materiais**: Criação de materiais, filtros por Grupos e Subgrupos e visualizador de Locais Físicos com contagem em tempo real.
-            - **Histórico Geral e Específico**: Histórico geral integrado à rota de movimentações e histórico específico na tela de detalhes do material.
-            - **Safe Area & Teclado**: Correção de sobreposição na barra de navegação do Android e scroll automático com teclado.
-            - **Sincronização Silenciosa**: Banco SQLite sincronizado em background sem piscamento de tela (sem flickering).
-            - **Painel Administrativo**: Aba exclusiva para administradores com lista de usuários e efetivo militar completo.
-            - **Perfil Militar & Hard Update**: Exibição detalhada de SARAM/postos e verificação de versão compatível com atualização in-app.
+            - **Menu Lateral (Drawer)**: Acesso direto no topo esquerdo com perfil do militar, Locais Físicos, Histórico Geral e Painel Admin.
+            - **Bottom Navigation Refatorada**: Barras inferiores focadas em Materiais, Escanear, Cautelas (Em breve) e Ajustes.
+            - **Locais Físicos Hierárquicos**: Navegação em árvore por níveis e ramificações (Depósito ➔ Armários ➔ Prateleiras) com contagem em tempo real e breadcrumbs.
+            - **Busca Inteligente por Local**: Mensagem contextualizada de material não encontrado no local com botão de ação rápida: *"Sair deste local e pesquisar em todos"*.
+            - **Nova Aba Cautelas (Em breve)**: Apresentação do módulo de termos digitais, auditorias e devoluções militares.
           files: build-output/BinfaeMobile-release.apk
           prerelease: false
         env:

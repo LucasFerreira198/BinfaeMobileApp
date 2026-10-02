@@ -94,6 +94,57 @@ export const getLocalLocations = (): Location[] => memoryLocations;
 export const getLastSyncTime = (): number | null => lastSyncTimestamp;
 
 /**
+ * Retorna o conjunto de IDs do local e de todas as suas ramificações (sublocais recursivos)
+ */
+export const getDescendantLocationIds = (rootId: number, locs: Location[]): Set<number> => {
+  const ids = new Set<number>([rootId]);
+  const addChildren = (parentId: number) => {
+    for (const loc of locs) {
+      if (loc.parent_id === parentId && !ids.has(loc.id)) {
+        ids.add(loc.id);
+        addChildren(loc.id);
+      }
+    }
+  };
+  addChildren(rootId);
+  return ids;
+};
+
+/**
+ * Formata o caminho do local em linguagem natural amigável
+ * Ex: "Prateleira 1, Armário 1 do Depósito"
+ */
+export const formatLocationFriendlyName = (loc: Location, allLocations: Location[]): string => {
+  const chain: string[] = [loc.nome];
+  let currentParentId = loc.parent_id;
+  let safetyCounter = 0;
+
+  while (currentParentId && safetyCounter < 10) {
+    safetyCounter++;
+    const parent = allLocations.find((l) => l.id === currentParentId);
+    if (parent) {
+      chain.push(parent.nome);
+      currentParentId = parent.parent_id;
+    } else {
+      break;
+    }
+  }
+
+  if (chain.length === 1) {
+    return chain[0];
+  }
+
+  const leaf = chain[0];
+  const middle = chain.slice(1, -1);
+  const root = chain[chain.length - 1];
+
+  if (middle.length === 0) {
+    return `${leaf} do ${root}`;
+  }
+  return `${leaf}, ${middle.join(', ')} do ${root}`;
+};
+
+/**
  * Filtro instantâneo em 0ms com busca ampla em RAM
  */
 export const filterLocalItems = (filters: FilterState): Item[] => {
@@ -103,6 +154,9 @@ export const filterLocalItems = (filters: FilterState): Item[] => {
   const subgroupId = filters.subgroupId;
   const locationId = filters.locationId;
   const lowStockOnly = filters.lowStockOnly;
+
+  // Se houver filtro de local, obtém o local e todos os seus filhos (ramificações)
+  const allowedLocationIds = locationId !== null ? getDescendantLocationIds(locationId, memoryLocations) : null;
 
   return memoryItems.filter((item) => {
     // 1. Filtro por status
@@ -123,9 +177,11 @@ export const filterLocalItems = (filters: FilterState): Item[] => {
       return false;
     }
 
-    // 4. Filtro por local
-    if (locationId !== null && item.local_id !== locationId) {
-      return false;
+    // 4. Filtro por local (local selecionado ou qualquer ramificação dentro dele)
+    if (allowedLocationIds !== null) {
+      if (!item.local_id || !allowedLocationIds.has(item.local_id)) {
+        return false;
+      }
     }
 
     // 5. Filtro por estoque baixo

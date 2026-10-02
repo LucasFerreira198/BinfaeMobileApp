@@ -22,12 +22,21 @@ import { AddItemModal } from '../components/AddItemModal';
 import { AdvancedFilterModal } from '../components/AdvancedFilterModal';
 import { LocationsModal } from '../components/LocationsModal';
 import { Item } from '../types';
-import { PackageOpen, Plus } from 'lucide-react-native';
+import { formatLocationFriendlyName } from '../storage/db';
+import { PackageOpen, Plus, MapPin, Search, X } from 'lucide-react-native';
 
 export const StockScreen: React.FC = () => {
   const { theme } = useTheme();
   const insets = useSafeAreaInsets();
-  const { items, isManualRefreshing, syncData, filters, clearFilters } = useStock();
+  const {
+    items,
+    isManualRefreshing,
+    syncData,
+    filters,
+    clearFilters,
+    locations,
+    setLocationFilter,
+  } = useStock();
 
   const [selectedItem, setSelectedItem] = useState<Item | null>(null);
   const [detailVisible, setDetailVisible] = useState<boolean>(false);
@@ -35,6 +44,13 @@ export const StockScreen: React.FC = () => {
   const [addItemVisible, setAddItemVisible] = useState<boolean>(false);
   const [filterModalVisible, setFilterModalVisible] = useState<boolean>(false);
   const [locationsModalVisible, setLocationsModalVisible] = useState<boolean>(false);
+
+  // Local ativo para contextualizar mensagem de vazio e barra de filtro
+  const activeLocation =
+    filters.locationId !== null ? locations.find((l) => l.id === filters.locationId) : null;
+  const activeLocationName = activeLocation
+    ? formatLocationFriendlyName(activeLocation, locations)
+    : null;
 
   // Tratamento do botão voltar nativo para limpar filtros antes de sair
   useEffect(() => {
@@ -86,6 +102,23 @@ export const StockScreen: React.FC = () => {
         onOpenAddItem={() => setAddItemVisible(true)}
       />
 
+      {/* Indicador de Filtro por Local Físico Ativo */}
+      {filters.locationId !== null && activeLocation && (
+        <View style={[styles.activeLocBar, { backgroundColor: theme.badgeBg, borderColor: theme.primary }]}>
+          <MapPin size={15} color={theme.primary} />
+          <Text style={[styles.activeLocText, { color: theme.text }]} numberOfLines={1}>
+            Filtrando em: <Text style={{ fontWeight: '700', color: theme.primary }}>{activeLocationName}</Text>
+          </Text>
+          <TouchableOpacity
+            onPress={() => setLocationFilter(null)}
+            style={[styles.activeLocCloseBtn, { backgroundColor: theme.surfaceVariant }]}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          >
+            <X size={13} color={theme.text} />
+          </TouchableOpacity>
+        </View>
+      )}
+
       <FlatList
         data={items}
         renderItem={renderItem}
@@ -104,17 +137,41 @@ export const StockScreen: React.FC = () => {
           />
         }
         ListEmptyComponent={
-          <View style={styles.emptyContainer}>
-            <View style={[styles.emptyIconWrap, { backgroundColor: theme.surfaceVariant }]}>
-              <PackageOpen size={40} color={theme.textMuted} />
+          filters.locationId !== null ? (
+            <View style={styles.emptyContainer}>
+              <View style={[styles.emptyIconWrap, { backgroundColor: theme.badgeBg }]}>
+                <MapPin size={38} color={theme.primary} />
+              </View>
+              <Text style={[styles.emptyTitle, { color: theme.text }]}>
+                {`Nenhum material encontrado no(a) ${activeLocationName || 'local selecionado'}`}
+              </Text>
+              <Text style={[styles.emptySub, { color: theme.textSecondary }]}>
+                {filters.search.trim().length > 0
+                  ? `Não há itens com o termo "${filters.search}" nesta localização.`
+                  : 'Nenhum material cadastrado neste local ou em suas ramificações.'}
+              </Text>
+              <TouchableOpacity
+                style={[styles.searchAllBtn, { backgroundColor: theme.primary }]}
+                onPress={() => setLocationFilter(null)}
+                activeOpacity={0.8}
+              >
+                <Search size={16} color="#FFFFFF" />
+                <Text style={styles.searchAllBtnText}>Sair deste local e pesquisar em todos</Text>
+              </TouchableOpacity>
             </View>
-            <Text style={[styles.emptyTitle, { color: theme.text }]}>
-              Nenhum material encontrado
-            </Text>
-            <Text style={[styles.emptySub, { color: theme.textSecondary }]}>
-              Tente alterar os termos da busca ou limpar os filtros selecionados.
-            </Text>
-          </View>
+          ) : (
+            <View style={styles.emptyContainer}>
+              <View style={[styles.emptyIconWrap, { backgroundColor: theme.surfaceVariant }]}>
+                <PackageOpen size={40} color={theme.textMuted} />
+              </View>
+              <Text style={[styles.emptyTitle, { color: theme.text }]}>
+                Nenhum material encontrado
+              </Text>
+              <Text style={[styles.emptySub, { color: theme.textSecondary }]}>
+                Tente alterar os termos da busca ou limpar os filtros selecionados.
+              </Text>
+            </View>
+          )
         }
       />
 
@@ -216,5 +273,48 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.35,
     shadowRadius: 8,
     elevation: 6,
+  },
+  activeLocBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginHorizontal: 16,
+    marginTop: 2,
+    marginBottom: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 10,
+    borderWidth: 1,
+    gap: 8,
+  },
+  activeLocText: {
+    flex: 1,
+    fontSize: 12,
+  },
+  activeLocCloseBtn: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  searchAllBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderRadius: 12,
+    marginTop: 18,
+    shadowColor: '#4F46E5',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  searchAllBtnText: {
+    color: '#FFFFFF',
+    fontSize: 13,
+    fontWeight: '700',
   },
 });

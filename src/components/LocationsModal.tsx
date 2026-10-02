@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Modal,
   View,
@@ -13,7 +13,19 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../context/ThemeContext';
 import { useStock } from '../context/StockContext';
 import { Location } from '../types';
-import { X, MapPin, Search, ChevronRight, Package, Check } from 'lucide-react-native';
+import { formatLocationFriendlyName, getDescendantLocationIds } from '../storage/db';
+import {
+  X,
+  MapPin,
+  Search,
+  ChevronRight,
+  Package,
+  Check,
+  ArrowLeft,
+  FolderTree,
+  CornerDownRight,
+  Filter,
+} from 'lucide-react-native';
 
 interface LocationsModalProps {
   visible: boolean;
@@ -29,30 +41,56 @@ export const LocationsModal: React.FC<LocationsModalProps> = ({
   const { theme } = useTheme();
   const { locations, allItems, filters, setLocationFilter } = useStock();
   const insets = useSafeAreaInsets();
-  const [search, setSearch] = useState<string>('');
 
-  React.useEffect(() => {
+  const [search, setSearch] = useState<string>('');
+  const [currentParentId, setCurrentParentId] = useState<number | null>(null);
+  const [historyStack, setHistoryStack] = useState<number[]>([]);
+
+  // Reseta a navegação ao abrir o modal
+  useEffect(() => {
+    if (visible) {
+      setSearch('');
+      setCurrentParentId(null);
+      setHistoryStack([]);
+    }
+  }, [visible]);
+
+  // Gerenciamento do botão voltar físico do Android
+  useEffect(() => {
     if (!visible) return;
+
     const backAction = () => {
+      if (search.trim().length > 0) {
+        setSearch('');
+        return true;
+      }
+
+      if (historyStack.length > 0) {
+        handleGoBackOneLevel();
+        return true;
+      }
+
       onClose();
       return true;
     };
+
     const handler = BackHandler.addEventListener('hardwareBackPress', backAction);
     return () => handler.remove();
-  }, [visible, onClose]);
+  }, [visible, onClose, historyStack, search]);
 
-  const filteredLocations = locations.filter((loc) => {
-    if (!search.trim()) return true;
-    const q = search.toLowerCase();
-    return (
-      loc.nome.toLowerCase().includes(q) ||
-      (loc.caminho_completo && loc.caminho_completo.toLowerCase().includes(q)) ||
-      (loc.tipo && loc.tipo.toLowerCase().includes(q))
-    );
-  });
+  const handleGoBackOneLevel = () => {
+    setHistoryStack((prev) => {
+      const nextStack = [...prev];
+      nextStack.pop();
+      const previousParent = nextStack.length > 0 ? nextStack[nextStack.length - 1] : null;
+      setCurrentParentId(previousParent);
+      return nextStack;
+    });
+  };
 
-  const getItemCount = (locationId: number) => {
-    return allItems.filter((i) => i.local_id === locationId).length;
+  const handleNavigateToChild = (locId: number) => {
+    setHistoryStack((prev) => [...prev, locId]);
+    setCurrentParentId(locId);
   };
 
   const handleSelect = (locId: number | null) => {
@@ -61,8 +99,141 @@ export const LocationsModal: React.FC<LocationsModalProps> = ({
     onClose();
   };
 
-  const renderLocationItem = ({ item }: { item: Location }) => {
+  // Contagem de itens no local e em todas as suas ramificações
+  const getItemCount = (locationId: number) => {
+    const descendantIds = getDescendantLocationIds(locationId, locations);
+    return allItems.filter((i) => i.local_id && descendantIds.has(i.local_id)).length;
+  };
+
+  // Identifica o local atual ativo no drill-down
+  const currentLocation = currentParentId !== null ? locations.find((l) => l.id === currentParentId) : null;
+
+  // Filhos do local atual (ou raízes se currentParentId for null)
+  const currentLevelLocations = locations.filter((loc) => {
+    if (currentParentId === null) {
+      // Locais raiz (sem pai ou cujo pai não existe na lista)
+      return loc.parent_id === null || !loc.parent_id || !locations.some((p) => p.id === loc.parent_id);
+    }
+    return loc.parent_id === currentParentId;
+  });
+
+  // Busca global quando o usuário digita na barra de pesquisa
+  const searchResults = locations.filter((loc) => {
+    if (!search.trim()) return false;
+    const q = search.toLowerCase();
+    const friendlyPath = formatLocationFriendlyName(loc, locations).toLowerCase();
+    return (
+      loc.nome.toLowerCase().includes(q) ||
+      friendlyPath.includes(q) ||
+      (loc.caminho_completo && loc.caminho_completo.toLowerCase().includes(q))
+    );
+  });
+
+  // Renderização de cada local
+  const renderLocationCard = ({ item }: { item: Location }) => {
     const isSelected = filters.locationId === item.id;
+    const sublocations = locations.filter((l) => l.parent_id === item.id);
+    const hasChildren = sublocations.length > 0;
+    const totalItems = getItemCount(item.id);
+
+    return (
+      <View
+        style={[
+          styles.locCard,
+          {
+            backgroundColor: theme.card,
+            borderColor: isSelected ? theme.primary : theme.border,
+            borderWidth: isSelected ? 2 : StyleSheet.hairlineWidth,
+          },
+        ]}
+      >
+        <TouchableOpacity
+          style={styles.cardMainClickable}
+          onPress={() => {
+            if (hasChildren) {
+              handleNavigateToChild(item.id);
+            } else {
+              handleSelect(isSelected ? null : item.id);
+            }
+          }}
+          activeOpacity={0.7}
+        >
+          <View
+            style={[
+              styles.iconWrap,
+              {
+                backgroundColor: isSelected
+                  ? theme.primary
+                  : hasChildren
+                  ? theme.surfaceVariant
+                  : theme.badgeBg,
+              },
+            ]}
+          >
+            {hasChildren ? (
+              <FolderTree size={18} color={isSelected ? '#FFFFFF' : theme.primary} />
+            ) : (
+              <MapPin size={18} color={isSelected ? '#FFFFFF' : theme.primary} />
+            )}
+          </View>
+
+          <View style={styles.infoWrap}>
+            <Text style={[styles.locName, { color: theme.text }]}>{item.nome}</Text>
+            <Text style={[styles.locSub, { color: theme.textSecondary }]} numberOfLines={1}>
+              {hasChildren
+                ? `${sublocations.length} ramificações internas`
+                : formatLocationFriendlyName(item, locations)}
+            </Text>
+          </View>
+
+          <View style={styles.rightSide}>
+            <View style={[styles.countBadge, { backgroundColor: theme.surfaceVariant }]}>
+              <Package size={12} color={theme.textMuted} />
+              <Text style={[styles.countText, { color: theme.text }]}>{totalItems}</Text>
+            </View>
+
+            {hasChildren ? (
+              <ChevronRight size={18} color={theme.textMuted} />
+            ) : isSelected ? (
+              <View style={[styles.checkCircle, { backgroundColor: theme.primary }]}>
+                <Check size={12} color="#FFFFFF" />
+              </View>
+            ) : null}
+          </View>
+        </TouchableOpacity>
+
+        {/* Botão de Filtrar diretamente aqui se o item tiver filhos */}
+        {hasChildren && (
+          <View style={[styles.cardActionRow, { borderTopColor: theme.border }]}>
+            <TouchableOpacity
+              style={[
+                styles.filterDirectBtn,
+                {
+                  backgroundColor: isSelected ? theme.primary : theme.surfaceVariant,
+                },
+              ]}
+              onPress={() => handleSelect(isSelected ? null : item.id)}
+            >
+              <Filter size={13} color={isSelected ? '#FFFFFF' : theme.primary} />
+              <Text
+                style={[
+                  styles.filterDirectText,
+                  { color: isSelected ? '#FFFFFF' : theme.primary },
+                ]}
+              >
+                {isSelected ? 'Filtrando por este local' : 'Filtrar por este depósito'}
+              </Text>
+            </TouchableOpacity>
+          </View>
+        )}
+      </View>
+    );
+  };
+
+  // Renderização de resultado de busca global
+  const renderSearchResultCard = ({ item }: { item: Location }) => {
+    const isSelected = filters.locationId === item.id;
+    const fullPath = formatLocationFriendlyName(item, locations);
     const count = getItemCount(item.id);
 
     return (
@@ -84,19 +255,16 @@ export const LocationsModal: React.FC<LocationsModalProps> = ({
 
         <View style={styles.infoWrap}>
           <Text style={[styles.locName, { color: theme.text }]}>{item.nome}</Text>
-          <Text style={[styles.locPath, { color: theme.textSecondary }]} numberOfLines={1}>
-            {item.caminho_completo || item.tipo || 'Localização Geral'}
+          <Text style={[styles.locSub, { color: theme.textSecondary }]} numberOfLines={2}>
+            {fullPath}
           </Text>
         </View>
 
-        <View style={styles.badgeWrap}>
+        <View style={styles.rightSide}>
           <View style={[styles.countBadge, { backgroundColor: theme.surfaceVariant }]}>
             <Package size={12} color={theme.textMuted} />
-            <Text style={[styles.countText, { color: theme.text }]}>
-              {count} {count === 1 ? 'item' : 'itens'}
-            </Text>
+            <Text style={[styles.countText, { color: theme.text }]}>{count}</Text>
           </View>
-
           {isSelected && (
             <View style={[styles.checkCircle, { backgroundColor: theme.primary }]}>
               <Check size={12} color="#FFFFFF" />
@@ -108,22 +276,19 @@ export const LocationsModal: React.FC<LocationsModalProps> = ({
   };
 
   return (
-    <Modal
-      visible={visible}
-      animationType="slide"
-      transparent={true}
-      onRequestClose={onClose}
-    >
+    <Modal visible={visible} animationType="slide" transparent={true} onRequestClose={onClose}>
       <View style={styles.backdrop}>
         <View style={[styles.sheet, { backgroundColor: theme.surface, borderColor: theme.border }]}>
-          {/* Header */}
+          {/* Cabeçalho */}
           <View style={styles.header}>
             <View style={styles.titleRow}>
-              <MapPin size={20} color={theme.primary} />
+              <View style={[styles.headerIconWrap, { backgroundColor: theme.badgeBg }]}>
+                <MapPin size={20} color={theme.primary} />
+              </View>
               <View>
                 <Text style={[styles.title, { color: theme.text }]}>Locais Físicos</Text>
                 <Text style={[styles.subtitle, { color: theme.textSecondary }]}>
-                  {locations.length} depósitos, salas e prateleiras
+                  {locations.length} depósitos, armários e prateleiras
                 </Text>
               </View>
             </View>
@@ -136,13 +301,13 @@ export const LocationsModal: React.FC<LocationsModalProps> = ({
             </TouchableOpacity>
           </View>
 
-          {/* Barra de Busca de Locais */}
+          {/* Barra de Busca Rápida */}
           <View style={styles.searchWrapper}>
             <View style={[styles.searchBox, { backgroundColor: theme.inputBg, borderColor: theme.inputBorder }]}>
               <Search size={16} color={theme.textMuted} />
               <TextInput
                 style={[styles.searchInput, { color: theme.text }]}
-                placeholder="Buscar depósito, sala, armário..."
+                placeholder="Buscar depósito, prateleira, armário..."
                 placeholderTextColor={theme.textMuted}
                 value={search}
                 onChangeText={setSearch}
@@ -155,35 +320,131 @@ export const LocationsModal: React.FC<LocationsModalProps> = ({
             </View>
           </View>
 
-          {/* Opção para Ver Todos / Limpar Filtro de Local */}
+          {/* Banner de Filtro Ativo */}
           {filters.locationId !== null && (
-            <View style={styles.activeFilterRow}>
-              <Text style={[styles.activeFilterText, { color: theme.primary }]}>
-                Filtro de local ativo no momento
-              </Text>
+            <View style={[styles.activeFilterBanner, { backgroundColor: theme.badgeBg, borderColor: theme.primary }]}>
+              <View style={styles.activeFilterLeft}>
+                <MapPin size={15} color={theme.primary} />
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.activeFilterLabel, { color: theme.primary }]}>
+                    Filtrando atualmente por:
+                  </Text>
+                  <Text style={[styles.activeFilterName, { color: theme.text }]} numberOfLines={1}>
+                    {formatLocationFriendlyName(
+                      locations.find((l) => l.id === filters.locationId) || { id: 0, nome: 'Local Selecionado' },
+                      locations
+                    )}
+                  </Text>
+                </View>
+              </View>
               <TouchableOpacity
                 onPress={() => handleSelect(null)}
-                style={[styles.clearLocBtn, { backgroundColor: theme.surfaceVariant }]}
+                style={[styles.clearFilterBtn, { backgroundColor: theme.surfaceVariant }]}
               >
-                <Text style={[styles.clearLocText, { color: theme.danger }]}>Remover Filtro</Text>
+                <Text style={[styles.clearFilterText, { color: theme.danger }]}>Remover</Text>
               </TouchableOpacity>
             </View>
           )}
 
-          {/* Lista de Locais */}
-          <FlatList
-            data={filteredLocations}
-            keyExtractor={(item) => item.id.toString()}
-            renderItem={renderLocationItem}
-            contentContainerStyle={[styles.listContent, { paddingBottom: Math.max(insets.bottom, 16) + 16 }]}
-            showsVerticalScrollIndicator={false}
-            ListEmptyComponent={
-              <View style={styles.emptyBox}>
-                <MapPin size={36} color={theme.textMuted} />
-                <Text style={[styles.emptyText, { color: theme.text }]}>Nenhum local encontrado</Text>
+          {/* Barra de Navegação Hierárquica (Breadcrumbs e Voltar) quando não estiver buscando */}
+          {search.trim().length === 0 && currentParentId !== null && currentLocation && (
+            <View style={[styles.breadcrumbBar, { backgroundColor: theme.surfaceVariant, borderColor: theme.border }]}>
+              <TouchableOpacity style={styles.backBtn} onPress={handleGoBackOneLevel}>
+                <ArrowLeft size={16} color={theme.primary} />
+                <Text style={[styles.backBtnText, { color: theme.primary }]}>Voltar um nível</Text>
+              </TouchableOpacity>
+
+              <View style={styles.currentLocHeader}>
+                <CornerDownRight size={15} color={theme.textMuted} />
+                <Text style={[styles.currentLocTitle, { color: theme.text }]} numberOfLines={1}>
+                  {currentLocation.nome}
+                </Text>
               </View>
-            }
-          />
+
+              <TouchableOpacity
+                style={[
+                  styles.selectCurrentLocBtn,
+                  {
+                    backgroundColor:
+                      filters.locationId === currentLocation.id ? theme.primary : theme.badgeBg,
+                  },
+                ]}
+                onPress={() => handleSelect(filters.locationId === currentLocation.id ? null : currentLocation.id)}
+              >
+                <Check
+                  size={14}
+                  color={filters.locationId === currentLocation.id ? '#FFFFFF' : theme.primary}
+                />
+                <Text
+                  style={[
+                    styles.selectCurrentLocText,
+                    {
+                      color:
+                        filters.locationId === currentLocation.id ? '#FFFFFF' : theme.primary,
+                    },
+                  ]}
+                >
+                  {filters.locationId === currentLocation.id ? 'Selecionado' : 'Selecionar este local'}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          )}
+
+          {/* Lista de Locais: Hierárquica ou Resultado de Busca */}
+          {search.trim().length > 0 ? (
+            <FlatList
+              data={searchResults}
+              keyExtractor={(item) => `search-${item.id}`}
+              renderItem={renderSearchResultCard}
+              contentContainerStyle={[styles.listContent, { paddingBottom: Math.max(insets.bottom, 16) + 16 }]}
+              showsVerticalScrollIndicator={false}
+              ListEmptyComponent={
+                <View style={styles.emptyBox}>
+                  <MapPin size={36} color={theme.textMuted} />
+                  <Text style={[styles.emptyTitle, { color: theme.text }]}>Nenhum local encontrado</Text>
+                  <Text style={[styles.emptySub, { color: theme.textSecondary }]}>
+                    Nenhum depósito ou prateleira corresponde à busca "{search}".
+                  </Text>
+                </View>
+              }
+            />
+          ) : (
+            <FlatList
+              data={currentLevelLocations}
+              keyExtractor={(item) => `tree-${item.id}`}
+              renderItem={renderLocationCard}
+              contentContainerStyle={[styles.listContent, { paddingBottom: Math.max(insets.bottom, 16) + 16 }]}
+              showsVerticalScrollIndicator={false}
+              ListHeaderComponent={
+                currentParentId === null ? (
+                  <Text style={[styles.sectionHint, { color: theme.textMuted }]}>
+                    Selecione um depósito para ver as ramificações internas (armários, prateleiras):
+                  </Text>
+                ) : (
+                  <Text style={[styles.sectionHint, { color: theme.textMuted }]}>
+                    Ramificações dentro de "{currentLocation?.nome}":
+                  </Text>
+                )
+              }
+              ListEmptyComponent={
+                <View style={styles.emptyBox}>
+                  <Package size={36} color={theme.textMuted} />
+                  <Text style={[styles.emptyTitle, { color: theme.text }]}>Sem mais ramificações</Text>
+                  <Text style={[styles.emptySub, { color: theme.textSecondary }]}>
+                    Não há outros sublocais dentro de "{currentLocation?.nome}".
+                  </Text>
+                  <TouchableOpacity
+                    style={[styles.selectThisEmptyBtn, { backgroundColor: theme.primary }]}
+                    onPress={() => currentLocation && handleSelect(currentLocation.id)}
+                  >
+                    <Text style={styles.selectThisEmptyText}>
+                      Filtrar por "{currentLocation?.nome}"
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              }
+            />
+          )}
         </View>
       </View>
     </Modal>
@@ -193,14 +454,14 @@ export const LocationsModal: React.FC<LocationsModalProps> = ({
 const styles = StyleSheet.create({
   backdrop: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    backgroundColor: 'rgba(0, 0, 0, 0.65)',
     justifyContent: 'flex-end',
   },
   sheet: {
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     borderTopWidth: 1,
-    maxHeight: '85%',
+    maxHeight: '88%',
   },
   header: {
     flexDirection: 'row',
@@ -216,9 +477,16 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 12,
   },
+  headerIconWrap: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   title: {
     fontSize: 18,
-    fontWeight: '700',
+    fontWeight: '800',
   },
   subtitle: {
     fontSize: 12,
@@ -248,25 +516,88 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 13,
   },
-  activeFilterRow: {
+  activeFilterBanner: {
+    marginHorizontal: 16,
+    marginBottom: 8,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 12,
+    borderWidth: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingBottom: 8,
+    gap: 8,
   },
-  activeFilterText: {
-    fontSize: 12,
-    fontWeight: '600',
+  activeFilterLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    flex: 1,
   },
-  clearLocBtn: {
+  activeFilterLabel: {
+    fontSize: 10,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  activeFilterName: {
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  clearFilterBtn: {
     paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 6,
+    paddingVertical: 6,
+    borderRadius: 8,
   },
-  clearLocText: {
+  clearFilterText: {
     fontSize: 11,
     fontWeight: '700',
+  },
+  breadcrumbBar: {
+    marginHorizontal: 16,
+    marginBottom: 8,
+    padding: 12,
+    borderRadius: 12,
+    borderWidth: StyleSheet.hairlineWidth,
+    gap: 8,
+  },
+  backBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  backBtnText: {
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  currentLocHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  currentLocTitle: {
+    fontSize: 15,
+    fontWeight: '800',
+    flex: 1,
+  },
+  selectCurrentLocBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 8,
+    borderRadius: 8,
+    marginTop: 2,
+  },
+  selectCurrentLocText: {
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  sectionHint: {
+    fontSize: 11,
+    fontWeight: '600',
+    marginBottom: 8,
+    paddingHorizontal: 4,
   },
   listContent: {
     paddingHorizontal: 16,
@@ -274,10 +605,13 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   locCard: {
+    borderRadius: 14,
+    overflow: 'hidden',
+  },
+  cardMainClickable: {
     flexDirection: 'row',
     alignItems: 'center',
     padding: 14,
-    borderRadius: 14,
     gap: 12,
   },
   iconWrap: {
@@ -294,14 +628,14 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '700',
   },
-  locPath: {
+  locSub: {
     fontSize: 11,
     marginTop: 2,
   },
-  badgeWrap: {
+  rightSide: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: 8,
   },
   countBadge: {
     flexDirection: 'row',
@@ -322,13 +656,49 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  cardActionRow: {
+    borderTopWidth: StyleSheet.hairlineWidth,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+  },
+  filterDirectBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 6,
+    borderRadius: 8,
+  },
+  filterDirectText: {
+    fontSize: 11,
+    fontWeight: '700',
+  },
   emptyBox: {
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 40,
+    paddingVertical: 36,
     gap: 8,
   },
-  emptyText: {
-    fontSize: 13,
+  emptyTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+    textAlign: 'center',
+  },
+  emptySub: {
+    fontSize: 12,
+    textAlign: 'center',
+    paddingHorizontal: 20,
+    lineHeight: 16,
+  },
+  selectThisEmptyBtn: {
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 10,
+    marginTop: 8,
+  },
+  selectThisEmptyText: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: '700',
   },
 });

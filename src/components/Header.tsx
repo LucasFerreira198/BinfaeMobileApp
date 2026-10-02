@@ -3,30 +3,68 @@ import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator } from 'rea
 import { useTheme } from '../context/ThemeContext';
 import { useAuth } from '../context/AuthContext';
 import { useStock } from '../context/StockContext';
-import { RefreshCw, Shield, Moon, Sun } from 'lucide-react-native';
+import { useDrawer } from '../context/DrawerContext';
+import { RefreshCw, Moon, Sun, Menu, ArrowLeft } from 'lucide-react-native';
 
 interface HeaderProps {
   title?: string;
   subtitle?: string;
   showSync?: boolean;
+  showBack?: boolean;
+  onBack?: () => void;
 }
 
-export const Header: React.FC<HeaderProps> = ({ title, subtitle, showSync = true }) => {
+export const Header: React.FC<HeaderProps> = ({
+  title,
+  subtitle,
+  showSync = true,
+  showBack = false,
+  onBack,
+}) => {
   const { theme, isDark, toggleTheme } = useTheme();
   const { user } = useAuth();
   const { isSyncing, syncData } = useStock();
+  const { openDrawer, navigateTo, activeScreen } = useDrawer();
 
   const militarInfo = user?.militar
     ? `${user.militar.posto_graduacao} ${user.militar.nome_guerra}`
     : user?.username || 'Militar';
 
+  // Se estiver nas telas acessadas pelo drawer (movements/admin) ou se showBack for true, exibe botão voltar
+  const isBackMode = showBack || (activeScreen === 'movements' || activeScreen === 'admin');
+
+  const handleBack = () => {
+    if (onBack) {
+      onBack();
+    } else {
+      navigateTo('stock');
+    }
+  };
+
   return (
     <View style={[styles.container, { backgroundColor: theme.headerBg, borderBottomColor: theme.border }]}>
       <View style={styles.left}>
-        <View style={[styles.avatar, { backgroundColor: theme.badgeBg }]}>
-          <Shield size={20} color={theme.primary} />
-        </View>
-        <View>
+        {isBackMode ? (
+          <TouchableOpacity
+            style={[styles.menuButton, { backgroundColor: theme.surfaceVariant }]}
+            onPress={handleBack}
+            accessibilityLabel="Voltar para materiais"
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          >
+            <ArrowLeft size={20} color={theme.text} />
+          </TouchableOpacity>
+        ) : (
+          <TouchableOpacity
+            style={[styles.menuButton, { backgroundColor: theme.surfaceVariant }]}
+            onPress={openDrawer}
+            accessibilityLabel="Abrir menu lateral"
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          >
+            <Menu size={20} color={theme.text} />
+          </TouchableOpacity>
+        )}
+
+        <View style={styles.titleWrap}>
           <Text style={[styles.title, { color: theme.text }]} numberOfLines={1}>
             {title || 'Binfae Mobile'}
           </Text>
@@ -83,13 +121,16 @@ const styles = StyleSheet.create({
     flex: 1,
     marginRight: 12,
   },
-  avatar: {
+  menuButton: {
     width: 38,
     height: 38,
-    borderRadius: 10,
+    borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 10,
+  },
+  titleWrap: {
+    flex: 1,
   },
   title: {
     fontSize: 17,
