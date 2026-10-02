@@ -1,16 +1,21 @@
+export interface Military {
+  saram: number;
+  nome_completo: string;
+  nome_guerra: string;
+  posto_graduacao: string;
+  quadro_especialidade?: string | null;
+  secao?: string | null;
+  email?: string | null;
+  telefone?: string | null;
+  ativo?: boolean;
+}
+
 export interface User {
   id: number;
   username: string;
   admin: boolean;
   ativo: boolean;
-  militar?: {
-    saram: number;
-    nome_completo: string;
-    nome_guerra: string;
-    posto_graduacao: string;
-    quadro_especialidade?: string;
-    secao?: string;
-  } | null;
+  militar?: Military | null;
 }
 
 export interface Group {
@@ -65,6 +70,23 @@ export interface Item {
   atualizado_em?: string;
 }
 
+export interface ItemCreateInput {
+  nome: string;
+  subgrupo_id: number;
+  local_id?: number | null;
+  parent_id?: number | null;
+  bmp?: string | null;
+  codigo_interno?: string | null;
+  numero_serie?: string | null;
+  tipo_controle?: ControlType;
+  quantidade?: number;
+  quantidade_minima?: number;
+  unidade_medida?: string;
+  estado_conservacao?: ItemCondition;
+  status?: ItemStatus;
+  observacoes?: string | null;
+}
+
 export interface ItemMovement {
   id: number;
   item_id: number;
@@ -73,10 +95,13 @@ export interface ItemMovement {
   usuario_id?: number | null;
   tipo_movimentacao: string;
   quantidade_movimentada: number;
+  data_hora?: string;
   motivo?: string | null;
   criado_em?: string;
   item_nome?: string;
   usuario_nome?: string;
+  origem?: Location | null;
+  destino?: Location | null;
   origem_nome?: string;
   destino_nome?: string;
 }
@@ -92,6 +117,7 @@ export interface StockMetrics {
 export interface FilterState {
   search: string;
   status: string | null;
+  groupId: number | null;
   subgroupId: number | null;
   locationId: number | null;
   lowStockOnly: boolean;

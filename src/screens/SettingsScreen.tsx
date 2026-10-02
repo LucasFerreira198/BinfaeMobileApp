@@ -6,37 +6,35 @@ import {
   TouchableOpacity,
   ScrollView,
   Alert,
-  TextInput,
   Switch,
 } from 'react-native';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import { useStock } from '../context/StockContext';
-import { getApiBaseUrl, setApiBaseUrl } from '../api/client';
 import { Header } from '../components/Header';
-import { UpdateModal } from '../components/UpdateModal';
+import { UpdateModal, CURRENT_VERSION } from '../components/UpdateModal';
 import {
-  User,
   Shield,
   Moon,
   Sun,
-  Database,
   RefreshCw,
   DownloadCloud,
-  Server,
   LogOut,
   ChevronRight,
-  Sparkles,
+  User,
+  IdCard,
+  Briefcase,
+  Phone,
+  Mail,
+  CheckCircle2,
 } from 'lucide-react-native';
 
 export const SettingsScreen: React.FC = () => {
   const { user, logout } = useAuth();
   const { theme, mode, setMode, isDark, toggleTheme } = useTheme();
-  const { allItems, lastSync, syncData, isSyncing } = useStock();
+  const { lastSync, syncData, isSyncing } = useStock();
 
   const [updateModalVisible, setUpdateModalVisible] = useState<boolean>(false);
-  const [editingServer, setEditingServer] = useState<boolean>(false);
-  const [serverUrl, setServerUrl] = useState<string>(getApiBaseUrl());
 
   const militar = user?.militar;
   const displayName = militar
@@ -60,16 +58,6 @@ export const SettingsScreen: React.FC = () => {
     );
   };
 
-  const handleSaveServer = async () => {
-    try {
-      await setApiBaseUrl(serverUrl);
-      setEditingServer(false);
-      Alert.alert('Sucesso', 'Endereço do servidor atualizado.');
-    } catch {
-      Alert.alert('Erro', 'Não foi possível salvar o endereço.');
-    }
-  };
-
   const formatLastSync = (ts: number | null) => {
     if (!ts) return 'Nunca sincronizado';
     const date = new Date(ts);
@@ -81,31 +69,107 @@ export const SettingsScreen: React.FC = () => {
       <Header title="Configurações" subtitle="Perfil & Preferências" showSync={false} />
 
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-        {/* Card do Militar */}
+        {/* 1. Card Detalhado do Usuário / Militar */}
+        <Text style={[styles.sectionTitle, { color: theme.textSecondary }]}>PERFIL & CONTA</Text>
         <View style={[styles.profileCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
-          <View style={[styles.profileAvatar, { backgroundColor: theme.badgeBg }]}>
-            <Shield size={32} color={theme.primary} />
-          </View>
-          <View style={styles.profileInfo}>
-            <Text style={[styles.profileName, { color: theme.text }]}>{displayName}</Text>
-            {militar ? (
-              <>
-                <Text style={[styles.profileDetails, { color: theme.textSecondary }]}>
-                  SARAM: {militar.saram} • {militar.secao || 'Informática'}
-                </Text>
-                <Text style={[styles.profileRole, { color: theme.primary }]}>
-                  {user?.admin ? 'Administrador do Sistema' : 'Operador'}
-                </Text>
-              </>
-            ) : (
-              <Text style={[styles.profileDetails, { color: theme.textSecondary }]}>
-                {user?.admin ? 'Administrador Geral' : 'Usuário Padrão'}
+          <View style={styles.profileTopRow}>
+            <View style={[styles.profileAvatar, { backgroundColor: theme.badgeBg }]}>
+              <Shield size={28} color={theme.primary} />
+            </View>
+            <View style={styles.profileMainInfo}>
+              <Text style={[styles.profileName, { color: theme.text }]}>{displayName}</Text>
+              <Text style={[styles.profileUsername, { color: theme.textMuted }]}>
+                Login: @{user?.username}
               </Text>
-            )}
+            </View>
+            <View
+              style={[
+                styles.roleBadge,
+                {
+                  backgroundColor: user?.admin ? theme.primary : theme.surfaceVariant,
+                },
+              ]}
+            >
+              <Text
+                style={[
+                  styles.roleBadgeText,
+                  { color: user?.admin ? '#FFFFFF' : theme.textSecondary },
+                ]}
+              >
+                {user?.admin ? 'ADMIN' : 'OPERADOR'}
+              </Text>
+            </View>
           </View>
+
+          {/* Dados Militares Completos */}
+          {militar ? (
+            <View style={[styles.militaryDetailsBox, { backgroundColor: theme.surfaceVariant, borderColor: theme.border }]}>
+              <View style={styles.detailRow}>
+                <IdCard size={15} color={theme.primary} />
+                <Text style={[styles.detailLabel, { color: theme.textSecondary }]}>SARAM:</Text>
+                <Text style={[styles.detailValue, { color: theme.text }]}>{militar.saram}</Text>
+              </View>
+
+              <View style={styles.detailRow}>
+                <User size={15} color={theme.primary} />
+                <Text style={[styles.detailLabel, { color: theme.textSecondary }]}>Nome Completo:</Text>
+                <Text style={[styles.detailValue, { color: theme.text }]}>{militar.nome_completo}</Text>
+              </View>
+
+              <View style={styles.detailRow}>
+                <Briefcase size={15} color={theme.primary} />
+                <Text style={[styles.detailLabel, { color: theme.textSecondary }]}>Posto / Graduação:</Text>
+                <Text style={[styles.detailValue, { color: theme.text }]}>{militar.posto_graduacao}</Text>
+              </View>
+
+              <View style={styles.detailRow}>
+                <Briefcase size={15} color={theme.primary} />
+                <Text style={[styles.detailLabel, { color: theme.textSecondary }]}>Seção:</Text>
+                <Text style={[styles.detailValue, { color: theme.text }]}>{militar.secao || 'Informática'}</Text>
+              </View>
+
+              {militar.quadro_especialidade && (
+                <View style={styles.detailRow}>
+                  <Briefcase size={15} color={theme.primary} />
+                  <Text style={[styles.detailLabel, { color: theme.textSecondary }]}>Quadro/Espec.:</Text>
+                  <Text style={[styles.detailValue, { color: theme.text }]}>{militar.quadro_especialidade}</Text>
+                </View>
+              )}
+
+              {militar.email && (
+                <View style={styles.detailRow}>
+                  <Mail size={15} color={theme.primary} />
+                  <Text style={[styles.detailLabel, { color: theme.textSecondary }]}>E-mail:</Text>
+                  <Text style={[styles.detailValue, { color: theme.text }]}>{militar.email}</Text>
+                </View>
+              )}
+
+              {militar.telefone && (
+                <View style={styles.detailRow}>
+                  <Phone size={15} color={theme.primary} />
+                  <Text style={[styles.detailLabel, { color: theme.textSecondary }]}>Telefone:</Text>
+                  <Text style={[styles.detailValue, { color: theme.text }]}>{militar.telefone}</Text>
+                </View>
+              )}
+
+              <View style={styles.detailRow}>
+                <CheckCircle2 size={15} color={theme.success} />
+                <Text style={[styles.detailLabel, { color: theme.textSecondary }]}>Status da Conta:</Text>
+                <Text style={[styles.detailValue, { color: theme.success, fontWeight: '700' }]}>
+                  {user?.ativo ? 'Ativa & Habilitada' : 'Inativa'}
+                </Text>
+              </View>
+            </View>
+          ) : (
+            <View style={[styles.militaryDetailsBox, { backgroundColor: theme.surfaceVariant, borderColor: theme.border }]}>
+              <Text style={[styles.detailValue, { color: theme.textSecondary }]}>
+                Conta de operador geral sem militar vinculado diretamente.
+              </Text>
+            </View>
+          )}
         </View>
 
-        {/* Seção: Aparência e Tema */}
+        {/* 2. Seção: Aparência e Tema */}
         <Text style={[styles.sectionTitle, { color: theme.textSecondary }]}>APARÊNCIA</Text>
         <View style={[styles.sectionCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
           <View style={styles.row}>
@@ -161,25 +225,9 @@ export const SettingsScreen: React.FC = () => {
           </View>
         </View>
 
-        {/* Seção: Banco de Dados Local & Sincronização */}
-        <Text style={[styles.sectionTitle, { color: theme.textSecondary }]}>BANCO LOCAL NO CELULAR (0MS)</Text>
+        {/* 3. Seção: Sincronização Silenciosa Local */}
+        <Text style={[styles.sectionTitle, { color: theme.textSecondary }]}>SINCRONIZAÇÃO</Text>
         <View style={[styles.sectionCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
-          <View style={styles.row}>
-            <View style={styles.rowLeft}>
-              <View style={[styles.iconCircle, { backgroundColor: theme.badgeBg }]}>
-                <Database size={18} color={theme.primary} />
-              </View>
-              <View>
-                <Text style={[styles.rowTitle, { color: theme.text }]}>Itens em Memória</Text>
-                <Text style={[styles.rowSub, { color: theme.textMuted }]}>
-                  {allItems.length} materiais indexados localmente
-                </Text>
-              </View>
-            </View>
-          </View>
-
-          <View style={[styles.divider, { backgroundColor: theme.border }]} />
-
           <View style={styles.row}>
             <View style={styles.rowLeft}>
               <View style={[styles.iconCircle, { backgroundColor: theme.successBg }]}>
@@ -202,8 +250,8 @@ export const SettingsScreen: React.FC = () => {
           </View>
         </View>
 
-        {/* Seção: Atualização do Aplicativo */}
-        <Text style={[styles.sectionTitle, { color: theme.textSecondary }]}>ATUALIZAÇÕES</Text>
+        {/* 4. Seção: Atualização do Aplicativo */}
+        <Text style={[styles.sectionTitle, { color: theme.textSecondary }]}>VERSÃO & ATUALIZAÇÕES</Text>
         <View style={[styles.sectionCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
           <TouchableOpacity
             style={styles.row}
@@ -217,55 +265,12 @@ export const SettingsScreen: React.FC = () => {
               <View>
                 <Text style={[styles.rowTitle, { color: theme.text }]}>Atualizar Aplicativo</Text>
                 <Text style={[styles.rowSub, { color: theme.textMuted }]}>
-                  Versão instalada: v1.0.0 • Verificar novos releases
+                  Versão instalada: v{CURRENT_VERSION} • Verificar atualizações
                 </Text>
               </View>
             </View>
             <ChevronRight size={18} color={theme.textMuted} />
           </TouchableOpacity>
-        </View>
-
-        {/* Seção: Servidor Backend */}
-        <Text style={[styles.sectionTitle, { color: theme.textSecondary }]}>SERVIDOR</Text>
-        <View style={[styles.sectionCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
-          <View style={styles.row}>
-            <View style={styles.rowLeft}>
-              <View style={[styles.iconCircle, { backgroundColor: theme.surfaceVariant }]}>
-                <Server size={18} color={theme.textSecondary} />
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={[styles.rowTitle, { color: theme.text }]}>Endereço do Servidor</Text>
-                <Text style={[styles.rowSub, { color: theme.textMuted }]} numberOfLines={1}>
-                  {serverUrl}
-                </Text>
-              </View>
-            </View>
-            <TouchableOpacity
-              onPress={() => setEditingServer(!editingServer)}
-              style={[styles.smallBtn, { backgroundColor: theme.surfaceVariant }]}
-            >
-              <Text style={[styles.smallBtnText, { color: theme.text }]}>
-                {editingServer ? 'Cancelar' : 'Alterar'}
-              </Text>
-            </TouchableOpacity>
-          </View>
-
-          {editingServer && (
-            <View style={{ marginTop: 12 }}>
-              <TextInput
-                style={[styles.serverInput, { backgroundColor: theme.inputBg, color: theme.text, borderColor: theme.inputBorder }]}
-                value={serverUrl}
-                onChangeText={setServerUrl}
-                autoCapitalize="none"
-              />
-              <TouchableOpacity
-                style={[styles.serverSaveBtn, { backgroundColor: theme.primary }]}
-                onPress={handleSaveServer}
-              >
-                <Text style={styles.serverSaveText}>Salvar Endereço</Text>
-              </TouchableOpacity>
-            </View>
-          )}
         </View>
 
         {/* Botão de Logout */}
@@ -279,7 +284,7 @@ export const SettingsScreen: React.FC = () => {
         </TouchableOpacity>
 
         <Text style={[styles.versionFoot, { color: theme.textMuted }]}>
-          Binfae Mobile v1.0.0 • Feito sob medida para Android
+          Binfae Mobile v{CURRENT_VERSION} • Sistema Nativo Offline-First
         </Text>
       </ScrollView>
 
@@ -301,44 +306,73 @@ const styles = StyleSheet.create({
     padding: 16,
     paddingBottom: 36,
   },
-  profileCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 16,
-    borderRadius: 16,
-    borderWidth: StyleSheet.hairlineWidth,
-    marginBottom: 20,
-    gap: 14,
-  },
-  profileAvatar: {
-    width: 52,
-    height: 52,
-    borderRadius: 14,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  profileInfo: {
-    flex: 1,
-  },
-  profileName: {
-    fontSize: 17,
-    fontWeight: '700',
-  },
-  profileDetails: {
-    fontSize: 12,
-    marginTop: 2,
-  },
-  profileRole: {
-    fontSize: 11,
-    fontWeight: '600',
-    marginTop: 3,
-  },
   sectionTitle: {
     fontSize: 11,
     fontWeight: '700',
     letterSpacing: 0.8,
     marginBottom: 8,
     marginLeft: 4,
+  },
+  profileCard: {
+    padding: 16,
+    borderRadius: 18,
+    borderWidth: StyleSheet.hairlineWidth,
+    marginBottom: 18,
+    gap: 14,
+  },
+  profileTopRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  profileAvatar: {
+    width: 50,
+    height: 50,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  profileMainInfo: {
+    flex: 1,
+  },
+  profileName: {
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  profileUsername: {
+    fontSize: 12,
+    marginTop: 2,
+  },
+  roleBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+  },
+  roleBadgeText: {
+    fontSize: 10,
+    fontWeight: '800',
+    letterSpacing: 0.5,
+  },
+  militaryDetailsBox: {
+    borderRadius: 12,
+    borderWidth: StyleSheet.hairlineWidth,
+    padding: 12,
+    gap: 8,
+  },
+  detailRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  detailLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    minWidth: 100,
+  },
+  detailValue: {
+    flex: 1,
+    fontSize: 12,
+    fontWeight: '500',
   },
   sectionCard: {
     borderRadius: 16,
@@ -398,24 +432,6 @@ const styles = StyleSheet.create({
   smallBtnText: {
     color: '#FFFFFF',
     fontSize: 11,
-    fontWeight: '600',
-  },
-  serverInput: {
-    borderRadius: 8,
-    borderWidth: 1,
-    paddingHorizontal: 10,
-    height: 38,
-    fontSize: 12,
-    marginBottom: 8,
-  },
-  serverSaveBtn: {
-    paddingVertical: 8,
-    borderRadius: 8,
-    alignItems: 'center',
-  },
-  serverSaveText: {
-    color: '#FFFFFF',
-    fontSize: 12,
     fontWeight: '600',
   },
   logoutBtn: {

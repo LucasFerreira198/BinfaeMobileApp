@@ -67,8 +67,16 @@ jobs:
         if: github.ref == 'refs/heads/main' || github.event_name == 'release'
         with:
           tag_name: latest
-          name: "Binfae Mobile - APK Oficial Assinado"
-          body: "Versão oficial atualizada e assinada do aplicativo nativo Binfae Mobile. Baixe o arquivo BinfaeMobile-release.apk abaixo para instalar diretamente no seu celular Android."
+          name: "Binfae Mobile v1.1.0 - APK Oficial Assinado"
+          body: |
+            ### 🚀 Binfae Mobile v1.1.0 - Novidades & Correções
+
+            - **Gestão de Materiais**: Criação de materiais, filtros por Grupos e Subgrupos e visualizador de Locais Físicos com contagem em tempo real.
+            - **Histórico Geral e Específico**: Histórico geral integrado à rota de movimentações e histórico específico na tela de detalhes do material.
+            - **Safe Area & Teclado**: Correção de sobreposição na barra de navegação do Android e scroll automático com teclado.
+            - **Sincronização Silenciosa**: Banco SQLite sincronizado em background sem piscamento de tela (sem flickering).
+            - **Painel Administrativo**: Aba exclusiva para administradores com lista de usuários e efetivo militar completo.
+            - **Perfil Militar & Hard Update**: Exibição detalhada de SARAM/postos e verificação de versão compatível com atualização in-app.
           files: build-output/BinfaeMobile-release.apk
           prerelease: false
         env:

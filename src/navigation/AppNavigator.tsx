@@ -6,7 +6,6 @@ import {
   StyleSheet,
   BackHandler,
   Alert,
-  Platform,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../context/ThemeContext';
@@ -15,22 +14,61 @@ import { StockScreen } from '../screens/StockScreen';
 import { ScannerScreen } from '../screens/ScannerScreen';
 import { MovementsScreen } from '../screens/MovementsScreen';
 import { SettingsScreen } from '../screens/SettingsScreen';
+import { AdminScreen } from '../screens/AdminScreen';
 import { LoginScreen } from '../screens/LoginScreen';
-import { Box, QrCode, ArrowRightLeft, Settings } from 'lucide-react-native';
+import { UpdateModal, compareVersions, CURRENT_VERSION } from '../components/UpdateModal';
+import { Box, QrCode, ArrowRightLeft, Settings, ShieldCheck } from 'lucide-react-native';
 
-type TabType = 'stock' | 'scanner' | 'movements' | 'settings';
+type TabType = 'stock' | 'scanner' | 'movements' | 'settings' | 'admin';
 
 export const AppNavigator: React.FC = () => {
   const { theme } = useTheme();
-  const { isAuthenticated, isLoading } = useAuth();
+  const { user, isAuthenticated, isLoading } = useAuth();
   const insets = useSafeAreaInsets();
   const [activeTab, setActiveTab] = useState<TabType>('stock');
+  const [mandatoryUpdateVisible, setMandatoryUpdateVisible] = useState<boolean>(false);
+
+  // Verificação Crítica de Inicialização (Hard Update Obrigatório)
+  useEffect(() => {
+    const checkCriticalUpdate = async () => {
+      try {
+        const res = await fetch('https://api.github.com/repos/LucasFerreira198/BinfaeMobileApp/releases/latest', {
+          headers: { Accept: 'application/vnd.github.v3+json' },
+        });
+        if (!res.ok) return;
+        const data = await res.json();
+        const rawTag = (data.tag_name || '').trim();
+        const rawName = (data.name || '').trim();
+        const rawBody = (data.body || '').trim();
+
+        const versionMatch = `${rawTag} ${rawName} ${rawBody}`.match(/v?(\d+\.\d+\.\d+)/i);
+        const remoteVer = versionMatch ? versionMatch[1] : null;
+
+        if (remoteVer && compareVersions(remoteVer, CURRENT_VERSION) > 0) {
+          setMandatoryUpdateVisible(true);
+        }
+      } catch (err) {
+        console.warn('Erro ao verificar atualização crítica inicial:', err);
+      }
+    };
+
+    checkCriticalUpdate();
+  }, []);
+
+  // Se o usuário perder privilégios admin e estiver na aba admin, volta para stock
+  useEffect(() => {
+    if (activeTab === 'admin' && !user?.admin) {
+      setActiveTab('stock');
+    }
+  }, [user?.admin, activeTab]);
 
   // Gerenciamento completo do botão de voltar físico do Android
   useEffect(() => {
     if (!isAuthenticated) return;
 
     const backAction = () => {
+      if (mandatoryUpdateVisible) return true;
+
       // Se estiver em outra aba, volta para a aba inicial de Materiais
       if (activeTab !== 'stock') {
         setActiveTab('stock');
@@ -47,7 +85,7 @@ export const AppNavigator: React.FC = () => {
 
     const handler = BackHandler.addEventListener('hardwareBackPress', backAction);
     return () => handler.remove();
-  }, [activeTab, isAuthenticated]);
+  }, [activeTab, isAuthenticated, mandatoryUpdateVisible]);
 
   if (isLoading) {
     return (
@@ -63,12 +101,16 @@ export const AppNavigator: React.FC = () => {
     return <LoginScreen />;
   }
 
-  const tabs = [
-    { id: 'stock' as TabType, label: 'Materiais', icon: Box },
-    { id: 'scanner' as TabType, label: 'Escanear', icon: QrCode },
-    { id: 'movements' as TabType, label: 'Histórico', icon: ArrowRightLeft },
-    { id: 'settings' as TabType, label: 'Ajustes', icon: Settings },
+  const tabs: Array<{ id: TabType; label: string; icon: any }> = [
+    { id: 'stock', label: 'Materiais', icon: Box },
+    { id: 'scanner', label: 'Escanear', icon: QrCode },
+    { id: 'movements', label: 'Histórico', icon: ArrowRightLeft },
+    { id: 'settings', label: 'Ajustes', icon: Settings },
   ];
+
+  if (user?.admin) {
+    tabs.push({ id: 'admin', label: 'Admin', icon: ShieldCheck });
+  }
 
   return (
     <View style={[styles.container, { backgroundColor: theme.background, paddingTop: insets.top }]}>
@@ -78,6 +120,7 @@ export const AppNavigator: React.FC = () => {
         {activeTab === 'scanner' && <ScannerScreen />}
         {activeTab === 'movements' && <MovementsScreen />}
         {activeTab === 'settings' && <SettingsScreen />}
+        {activeTab === 'admin' && user?.admin && <AdminScreen />}
       </View>
 
       {/* Bottom Navigation Bar Nativa */}
@@ -129,6 +172,13 @@ export const AppNavigator: React.FC = () => {
           );
         })}
       </View>
+
+      {/* Modal de Atualização Obrigatória (Hard Update) */}
+      <UpdateModal
+        visible={mandatoryUpdateVisible}
+        onClose={() => setMandatoryUpdateVisible(false)}
+        isMandatory={true}
+      />
     </View>
   );
 };

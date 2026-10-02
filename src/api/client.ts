@@ -1,5 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { User, Item, Group, Location, ItemMovement } from '../types';
+import { User, Item, Group, Subgroup, Location, ItemMovement, ItemCreateInput, Military } from '../types';
 
 export const DEFAULT_API_BASE = 'https://systeminformaticabinfae.onrender.com';
 const API_URL_KEY = '@binfae_api_url';
@@ -145,8 +145,33 @@ export const api = {
     return await request<Group[]>('/stock/groups');
   },
 
+  fetchSubgroups: async (): Promise<Subgroup[]> => {
+    return await request<Subgroup[]>('/stock/subgroups');
+  },
+
   fetchLocations: async (): Promise<Location[]> => {
     return await request<Location[]>('/stock/locations');
+  },
+
+  fetchMovements: async (itemId?: number): Promise<ItemMovement[]> => {
+    const path = itemId ? `/stock/movements?item_id=${itemId}` : '/stock/movements';
+    return await request<ItemMovement[]>(path);
+  },
+
+  createItem: async (data: ItemCreateInput): Promise<Item> => {
+    return await request<Item>('/stock/items', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+  },
+
+  listUsers: async (): Promise<User[]> => {
+    return await request<User[]>('/users/listUsers');
+  },
+
+  listMilitary: async (): Promise<Military[]> => {
+    return await request<Military[]>('/military/list');
   },
 
   getItemById: async (id: number): Promise<Item> => {

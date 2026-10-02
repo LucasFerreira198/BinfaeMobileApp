@@ -10,25 +10,21 @@ import {
   Platform,
   ScrollView,
   Alert,
-  Dimensions,
 } from 'react-native';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
-import { api, getApiBaseUrl, setApiBaseUrl } from '../api/client';
-import { Shield, User, Lock, Eye, EyeOff, Server, CheckCircle2, AlertCircle } from 'lucide-react-native';
-
-const { width } = Dimensions.get('window');
+import { api } from '../api/client';
+import { CURRENT_VERSION } from '../components/UpdateModal';
+import { Shield, User, Lock, Eye, EyeOff } from 'lucide-react-native';
 
 export const LoginScreen: React.FC = () => {
   const { login, isLoading } = useAuth();
-  const { theme, isDark } = useTheme();
+  const { theme } = useTheme();
 
   const [username, setUsername] = useState<string>('');
   const [password, setPassword] = useState<string>('');
   const [showPassword, setShowPassword] = useState<boolean>(false);
   const [serverOnline, setServerOnline] = useState<boolean | null>(null);
-  const [showServerConfig, setShowServerConfig] = useState<boolean>(false);
-  const [customServerUrl, setCustomServerUrl] = useState<string>(getApiBaseUrl());
   const [submitting, setSubmitting] = useState<boolean>(false);
 
   useEffect(() => {
@@ -57,17 +53,6 @@ export const LoginScreen: React.FC = () => {
       Alert.alert('Falha na autenticação', err.message || 'Verifique seus dados de acesso.');
     } finally {
       setSubmitting(false);
-    }
-  };
-
-  const handleSaveServerUrl = async () => {
-    try {
-      await setApiBaseUrl(customServerUrl);
-      setShowServerConfig(false);
-      checkServer();
-      Alert.alert('Servidor atualizado', 'Nova URL configurada com sucesso.');
-    } catch {
-      Alert.alert('Erro', 'Não foi possível salvar a URL do servidor.');
     }
   };
 
@@ -183,45 +168,10 @@ export const LoginScreen: React.FC = () => {
               <Text style={styles.submitText}>Entrar no Aplicativo</Text>
             )}
           </TouchableOpacity>
-
-          {/* Toggle de Configuração Avançada de Rede */}
-          <TouchableOpacity
-            onPress={() => setShowServerConfig(!showServerConfig)}
-            style={styles.serverConfigToggle}
-          >
-            <Server size={14} color={theme.textMuted} />
-            <Text style={[styles.serverConfigToggleText, { color: theme.textMuted }]}>
-              {showServerConfig ? 'Ocultar Configuração de Servidor' : 'Configurar Servidor'}
-            </Text>
-          </TouchableOpacity>
-
-          {showServerConfig && (
-            <View style={[styles.serverConfigBox, { backgroundColor: theme.surfaceVariant, borderColor: theme.border }]}>
-              <Text style={[styles.serverConfigTitle, { color: theme.text }]}>
-                Endereço do Backend (API Base)
-              </Text>
-              <TextInput
-                style={[styles.serverConfigInput, { backgroundColor: theme.inputBg, color: theme.text, borderColor: theme.inputBorder }]}
-                value={customServerUrl}
-                onChangeText={setCustomServerUrl}
-                autoCapitalize="none"
-                placeholder="https://exemplo.onrender.com"
-                placeholderTextColor={theme.textMuted}
-              />
-              <View style={styles.serverConfigActions}>
-                <TouchableOpacity
-                  style={[styles.serverSaveBtn, { backgroundColor: theme.primary }]}
-                  onPress={handleSaveServerUrl}
-                >
-                  <Text style={styles.serverSaveBtnText}>Salvar URL</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-          )}
         </View>
 
         <Text style={[styles.copyright, { color: theme.textMuted }]}>
-          Binfae Mobile v1.0.0 • Sistema Nativo Offline-First
+          Binfae Mobile v{CURRENT_VERSION} • Sistema Nativo Offline-First
         </Text>
       </ScrollView>
     </KeyboardAvoidingView>
@@ -346,50 +296,6 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 15,
     fontWeight: '700',
-  },
-  serverConfigToggle: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: 18,
-    gap: 6,
-  },
-  serverConfigToggleText: {
-    fontSize: 11,
-    fontWeight: '500',
-  },
-  serverConfigBox: {
-    marginTop: 12,
-    padding: 12,
-    borderRadius: 12,
-    borderWidth: 1,
-  },
-  serverConfigTitle: {
-    fontSize: 11,
-    fontWeight: '600',
-    marginBottom: 6,
-  },
-  serverConfigInput: {
-    borderRadius: 8,
-    borderWidth: 1,
-    paddingHorizontal: 10,
-    height: 38,
-    fontSize: 12,
-  },
-  serverConfigActions: {
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
-    marginTop: 8,
-  },
-  serverSaveBtn: {
-    paddingHorizontal: 14,
-    paddingVertical: 6,
-    borderRadius: 6,
-  },
-  serverSaveBtnText: {
-    color: '#FFFFFF',
-    fontSize: 11,
-    fontWeight: '600',
   },
   copyright: {
     fontSize: 11,

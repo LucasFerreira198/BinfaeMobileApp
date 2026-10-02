@@ -9,14 +9,16 @@ import {
   TextInput,
   TouchableOpacity,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../context/ThemeContext';
 import { api } from '../api/client';
 import { Header } from '../components/Header';
 import { ItemMovement } from '../types';
-import { History, ArrowRightLeft, User, Calendar, Search, X } from 'lucide-react-native';
+import { History, ArrowRightLeft, User, Calendar, Search, X, MapPin } from 'lucide-react-native';
 
 export const MovementsScreen: React.FC = () => {
   const { theme } = useTheme();
+  const insets = useSafeAreaInsets();
   const [movements, setMovements] = useState<ItemMovement[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [refreshing, setRefreshing] = useState<boolean>(false);
@@ -24,24 +26,43 @@ export const MovementsScreen: React.FC = () => {
 
   const loadMovements = useCallback(async () => {
     try {
-      // Tenta buscar movimentações ou monta a partir dos itens
-      const items = await api.fetchItems();
-      const derived: ItemMovement[] = [];
-      items.forEach((item) => {
-        if (item.status === 'CAUTELADO') {
-          derived.push({
-            id: item.id * 100,
-            item_id: item.id,
-            tipo_movimentacao: 'CAUTELA',
-            quantidade_movimentada: item.quantidade,
-            motivo: item.observacoes || 'Material sob cautela operacional',
-            criado_em: item.atualizado_em || item.criado_em || new Date().toISOString(),
-            item_nome: item.nome,
-            usuario_nome: 'Operador Logístico',
-          });
-        }
-      });
-      setMovements(derived);
+      const [remoteMovements, items] = await Promise.all([
+        api.fetchMovements().catch((err) => {
+          console.warn('Erro ao buscar histórico remoto:', err);
+          return [] as ItemMovement[];
+        }),
+        api.fetchItems().catch(() => []),
+      ]);
+
+      const itemsMap = new Map(items.map((i) => [i.id, i.nome]));
+
+      // 1. Processa movimentações vindas da API
+      const enriched: ItemMovement[] = remoteMovements.map((m) => ({
+        ...m,
+        item_nome: m.item_nome || itemsMap.get(m.item_id) || `Material #${m.item_id}`,
+        origem_nome: m.origem?.caminho_completo || m.origem?.nome,
+        destino_nome: m.destino?.caminho_completo || m.destino?.nome,
+      }));
+
+      // 2. Se a API de movimentações ainda não tiver registros (banco novo), deriva itens cautelados
+      if (enriched.length === 0) {
+        items.forEach((item) => {
+          if (item.status === 'CAUTELADO') {
+            enriched.push({
+              id: item.id * 1000,
+              item_id: item.id,
+              tipo_movimentacao: 'CAUTELA',
+              quantidade_movimentada: item.quantidade,
+              motivo: item.observacoes || 'Material sob cautela operacional',
+              criado_em: item.atualizado_em || item.criado_em || new Date().toISOString(),
+              item_nome: item.nome,
+              usuario_nome: 'Operador Logístico',
+            });
+          }
+        });
+      }
+
+      setMovements(enriched);
     } catch (err) {
       console.warn('Erro ao carregar movimentações:', err);
     } finally {
@@ -66,7 +87,9 @@ export const MovementsScreen: React.FC = () => {
       m.item_nome?.toLowerCase().includes(q) ||
       m.motivo?.toLowerCase().includes(q) ||
       m.tipo_movimentacao?.toLowerCase().includes(q) ||
-      m.usuario_nome?.toLowerCase().includes(q)
+      m.usuario_nome?.toLowerCase().includes(q) ||
+      m.origem_nome?.toLowerCase().includes(q) ||
+      m.destino_nome?.toLowerCase().includes(q)
     );
   });
 
@@ -85,6 +108,12 @@ export const MovementsScreen: React.FC = () => {
     }
   };
 
+  const formatDate = (dateStr?: string) => {
+    if (!dateStr) return '';
+    const date = new Date(dateStr);
+    return `${date.toLocaleDateString('pt-BR')} às ${date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`;
+  };
+
   const renderMovementItem = ({ item }: { item: ItemMovement }) => {
     const badge = getMovementBadge(item.tipo_movimentacao);
 
@@ -95,7 +124,7 @@ export const MovementsScreen: React.FC = () => {
             <Text style={[styles.typeText, { color: badge.color }]}>{badge.label}</Text>
           </View>
           <Text style={[styles.dateText, { color: theme.textMuted }]}>
-            {item.criado_em ? new Date(item.criado_em).toLocaleDateString('pt-BR') : ''}
+            {formatDate(item.data_hora || item.criado_em)}
           </Text>
         </View>
 
@@ -107,6 +136,15 @@ export const MovementsScreen: React.FC = () => {
           <Text style={[styles.reason, { color: theme.textSecondary }]}>
             "{item.motivo}"
           </Text>
+        )}
+
+        {(item.origem_nome || item.destino_nome) && (
+          <View style={styles.locationTransferRow}>
+            <MapPin size={12} color={theme.textMuted} />
+            <Text style={[styles.locationTransferText, { color: theme.textSecondary }]} numberOfLines={1}>
+              {item.origem_nome || 'Origem'} ➔ {item.destino_nome || 'Destino'}
+            </Text>
+          </View>
         )}
 
         <View style={[styles.footerRow, { borderTopColor: theme.border }]}>
@@ -133,7 +171,7 @@ export const MovementsScreen: React.FC = () => {
         <View style={[styles.searchBox, { backgroundColor: theme.inputBg, borderColor: theme.inputBorder }]}>
           <Search size={16} color={theme.textMuted} />
           <TextInput
-            placeholder="Buscar por material, militar..."
+            placeholder="Buscar por material, motivo, militar..."
             placeholderTextColor={theme.textMuted}
             value={search}
             onChangeText={setSearch}
@@ -150,13 +188,16 @@ export const MovementsScreen: React.FC = () => {
       {loading ? (
         <View style={styles.centerBox}>
           <ActivityIndicator size="large" color={theme.primary} />
+          <Text style={[styles.loadingSub, { color: theme.textSecondary }]}>
+            Consultando registros de auditoria...
+          </Text>
         </View>
       ) : (
         <FlatList
           data={filtered}
           keyExtractor={(item) => item.id.toString()}
           renderItem={renderMovementItem}
-          contentContainerStyle={styles.listContent}
+          contentContainerStyle={[styles.listContent, { paddingBottom: Math.max(insets.bottom, 16) + 20 }]}
           refreshControl={
             <RefreshControl
               refreshing={refreshing}
@@ -171,7 +212,7 @@ export const MovementsScreen: React.FC = () => {
                 Nenhuma movimentação registrada
               </Text>
               <Text style={[styles.emptySub, { color: theme.textSecondary }]}>
-                As cautelas e devoluções registradas aparecerão aqui.
+                As cautelas, devoluções e transferências salvas aparecerão aqui.
               </Text>
             </View>
           }
@@ -206,6 +247,11 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
+    gap: 8,
+  },
+  loadingSub: {
+    fontSize: 12,
+    marginTop: 4,
   },
   listContent: {
     paddingHorizontal: 16,
@@ -248,7 +294,16 @@ const styles = StyleSheet.create({
   reason: {
     fontSize: 12,
     fontStyle: 'italic',
-    marginBottom: 8,
+    marginBottom: 6,
+  },
+  locationTransferRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 6,
+  },
+  locationTransferText: {
+    fontSize: 11,
   },
   footerRow: {
     flexDirection: 'row',

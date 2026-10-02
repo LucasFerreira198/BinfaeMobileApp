@@ -1,39 +1,45 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Item, Group, Location, StockMetrics, FilterState } from '../types';
+import { Item, Group, Subgroup, Location, StockMetrics, FilterState } from '../types';
 
 const STORAGE_KEY_ITEMS = '@binfae_db_items';
 const STORAGE_KEY_GROUPS = '@binfae_db_groups';
+const STORAGE_KEY_SUBGROUPS = '@binfae_db_subgroups';
 const STORAGE_KEY_LOCATIONS = '@binfae_db_locations';
 const STORAGE_KEY_LAST_SYNC = '@binfae_db_last_sync';
 
 // Cache em memória de alta performance para resposta em 0ms
 let memoryItems: Item[] = [];
 let memoryGroups: Group[] = [];
+let memorySubgroups: Subgroup[] = [];
 let memoryLocations: Location[] = [];
 let lastSyncTimestamp: number | null = null;
 
 export const loadLocalDatabase = async (): Promise<{
   items: Item[];
   groups: Group[];
+  subgroups: Subgroup[];
   locations: Location[];
   lastSync: number | null;
 }> => {
   try {
-    const [rawItems, rawGroups, rawLocations, rawSync] = await Promise.all([
+    const [rawItems, rawGroups, rawSubgroups, rawLocations, rawSync] = await Promise.all([
       AsyncStorage.getItem(STORAGE_KEY_ITEMS),
       AsyncStorage.getItem(STORAGE_KEY_GROUPS),
+      AsyncStorage.getItem(STORAGE_KEY_SUBGROUPS),
       AsyncStorage.getItem(STORAGE_KEY_LOCATIONS),
       AsyncStorage.getItem(STORAGE_KEY_LAST_SYNC),
     ]);
 
     if (rawItems) memoryItems = JSON.parse(rawItems);
     if (rawGroups) memoryGroups = JSON.parse(rawGroups);
+    if (rawSubgroups) memorySubgroups = JSON.parse(rawSubgroups);
     if (rawLocations) memoryLocations = JSON.parse(rawLocations);
     if (rawSync) lastSyncTimestamp = parseInt(rawSync, 10);
 
     return {
       items: memoryItems,
       groups: memoryGroups,
+      subgroups: memorySubgroups,
       locations: memoryLocations,
       lastSync: lastSyncTimestamp,
     };
@@ -42,6 +48,7 @@ export const loadLocalDatabase = async (): Promise<{
     return {
       items: memoryItems,
       groups: memoryGroups,
+      subgroups: memorySubgroups,
       locations: memoryLocations,
       lastSync: lastSyncTimestamp,
     };
@@ -51,7 +58,8 @@ export const loadLocalDatabase = async (): Promise<{
 export const persistLocalDatabase = async (
   items: Item[],
   groups?: Group[],
-  locations?: Location[]
+  locations?: Location[],
+  subgroups?: Subgroup[]
 ): Promise<void> => {
   memoryItems = items;
   lastSyncTimestamp = Date.now();
@@ -66,6 +74,11 @@ export const persistLocalDatabase = async (
     promises.push(AsyncStorage.setItem(STORAGE_KEY_GROUPS, JSON.stringify(groups)));
   }
 
+  if (subgroups) {
+    memorySubgroups = subgroups;
+    promises.push(AsyncStorage.setItem(STORAGE_KEY_SUBGROUPS, JSON.stringify(subgroups)));
+  }
+
   if (locations) {
     memoryLocations = locations;
     promises.push(AsyncStorage.setItem(STORAGE_KEY_LOCATIONS, JSON.stringify(locations)));
@@ -76,6 +89,7 @@ export const persistLocalDatabase = async (
 
 export const getLocalItems = (): Item[] => memoryItems;
 export const getLocalGroups = (): Group[] => memoryGroups;
+export const getLocalSubgroups = (): Subgroup[] => memorySubgroups;
 export const getLocalLocations = (): Location[] => memoryLocations;
 export const getLastSyncTime = (): number | null => lastSyncTimestamp;
 
@@ -85,6 +99,7 @@ export const getLastSyncTime = (): number | null => lastSyncTimestamp;
 export const filterLocalItems = (filters: FilterState): Item[] => {
   const query = filters.search.trim().toLowerCase();
   const statusFilter = filters.status;
+  const groupId = filters.groupId;
   const subgroupId = filters.subgroupId;
   const locationId = filters.locationId;
   const lowStockOnly = filters.lowStockOnly;
@@ -95,34 +110,43 @@ export const filterLocalItems = (filters: FilterState): Item[] => {
       return false;
     }
 
-    // 2. Filtro por subgrupo
+    // 2. Filtro por grupo
+    if (groupId !== null) {
+      const itemGroupId = item.subgrupo?.grupo_id ?? item.subgrupo?.grupo?.id;
+      if (itemGroupId !== groupId) {
+        return false;
+      }
+    }
+
+    // 3. Filtro por subgrupo
     if (subgroupId !== null && item.subgrupo_id !== subgroupId) {
       return false;
     }
 
-    // 3. Filtro por local
+    // 4. Filtro por local
     if (locationId !== null && item.local_id !== locationId) {
       return false;
     }
 
-    // 4. Filtro por estoque baixo
+    // 5. Filtro por estoque baixo
     if (lowStockOnly) {
       if (item.tipo_controle !== 'GRANEL' || item.quantidade > item.quantidade_minima) {
         return false;
       }
     }
 
-    // 5. Busca textual ampla em 0ms (nome, BMP, código interno, serial, observações)
+    // 6. Busca textual ampla em 0ms (nome, BMP, código interno, serial, observações)
     if (query.length > 0) {
       const matchName = item.nome?.toLowerCase().includes(query);
       const matchBmp = item.bmp?.toLowerCase().includes(query);
       const matchCode = item.codigo_interno?.toLowerCase().includes(query);
       const matchSerial = item.numero_serie?.toLowerCase().includes(query);
       const matchObs = item.observacoes?.toLowerCase().includes(query);
-      const matchLocal = item.local?.nome?.toLowerCase().includes(query);
+      const matchLocal = item.local?.nome?.toLowerCase().includes(query) || item.local?.caminho_completo?.toLowerCase().includes(query);
       const matchSub = item.subgrupo?.nome?.toLowerCase().includes(query);
+      const matchGroup = item.subgrupo?.grupo?.nome?.toLowerCase().includes(query);
 
-      if (!matchName && !matchBmp && !matchCode && !matchSerial && !matchObs && !matchLocal && !matchSub) {
+      if (!matchName && !matchBmp && !matchCode && !matchSerial && !matchObs && !matchLocal && !matchSub && !matchGroup) {
         return false;
       }
     }

@@ -10,9 +10,12 @@ import {
   ActivityIndicator,
   Alert,
   BackHandler,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
-import { Item, Location } from '../types';
+import { Item } from '../types';
 import { useTheme } from '../context/ThemeContext';
 import { useStock } from '../context/StockContext';
 import { X, Check } from 'lucide-react-native';
@@ -34,6 +37,7 @@ export const MovementModal: React.FC<MovementModalProps> = ({
 }) => {
   const { theme } = useTheme();
   const { locations, moveItem } = useStock();
+  const insets = useSafeAreaInsets();
 
   const [tipo, setTipo] = useState<MovementType>('CAUTELA');
   const [quantidade, setQuantidade] = useState<string>('1');
@@ -122,7 +126,10 @@ export const MovementModal: React.FC<MovementModalProps> = ({
       onRequestClose={onClose}
     >
       <View style={styles.backdrop}>
-        <View style={[styles.sheet, { backgroundColor: theme.surface, borderColor: theme.border }]}>
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          style={[styles.sheet, { backgroundColor: theme.surface, borderColor: theme.border }]}
+        >
           {/* Header */}
           <View style={styles.header}>
             <View>
@@ -139,7 +146,12 @@ export const MovementModal: React.FC<MovementModalProps> = ({
             </TouchableOpacity>
           </View>
 
-          <ScrollView style={styles.body} contentContainerStyle={styles.scrollContent}>
+          <ScrollView
+            style={styles.body}
+            contentContainerStyle={styles.scrollContent}
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
+          >
             {/* Tipo de Movimentação */}
             <Text style={[styles.label, { color: theme.textSecondary }]}>Tipo de Operação</Text>
             <View style={styles.typeGrid}>
@@ -213,7 +225,7 @@ export const MovementModal: React.FC<MovementModalProps> = ({
                             { color: selected ? '#FFFFFF' : theme.text },
                           ]}
                         >
-                          {loc.nome}
+                          {loc.caminho_completo || loc.nome}
                         </Text>
                       </TouchableOpacity>
                     );
@@ -239,12 +251,21 @@ export const MovementModal: React.FC<MovementModalProps> = ({
             </View>
           </ScrollView>
 
-          {/* Botão de Enviar */}
-          <View style={[styles.footer, { borderTopColor: theme.border }]}>
+          {/* Botão de Enviar com Safe Area */}
+          <View
+            style={[
+              styles.footer,
+              {
+                borderTopColor: theme.border,
+                paddingBottom: Math.max(insets.bottom, 16) + 12,
+              },
+            ]}
+          >
             <TouchableOpacity
               style={[styles.submitBtn, { backgroundColor: theme.primary }]}
               onPress={handleSubmit}
               disabled={isSubmitting}
+              activeOpacity={0.8}
             >
               {isSubmitting ? (
                 <ActivityIndicator color="#FFFFFF" />
@@ -256,7 +277,7 @@ export const MovementModal: React.FC<MovementModalProps> = ({
               )}
             </TouchableOpacity>
           </View>
-        </View>
+        </KeyboardAvoidingView>
       </View>
     </Modal>
   );
@@ -272,7 +293,7 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     borderTopWidth: 1,
-    maxHeight: '85%',
+    maxHeight: '90%',
   },
   header: {
     flexDirection: 'row',
@@ -284,33 +305,31 @@ const styles = StyleSheet.create({
     borderBottomColor: 'rgba(150, 150, 150, 0.2)',
   },
   title: {
-    fontSize: 18,
+    fontSize: 17,
     fontWeight: '700',
   },
   subtitle: {
     fontSize: 12,
     marginTop: 2,
-    maxWidth: 260,
   },
   closeBtn: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
     alignItems: 'center',
     justifyContent: 'center',
   },
   body: {
-    paddingHorizontal: 16,
+    paddingHorizontal: 20,
   },
   scrollContent: {
     paddingVertical: 14,
-    gap: 8,
   },
   label: {
     fontSize: 12,
     fontWeight: '600',
-    marginTop: 6,
-    marginBottom: 4,
+    marginBottom: 8,
+    marginTop: 10,
   },
   typeGrid: {
     flexDirection: 'row',
@@ -360,7 +379,8 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   footer: {
-    padding: 16,
+    paddingHorizontal: 16,
+    paddingTop: 12,
     borderTopWidth: StyleSheet.hairlineWidth,
   },
   submitBtn: {
