@@ -379,20 +379,14 @@ const MovementModalContent: React.FC<MovementModalProps> = ({
               )}
             </TouchableOpacity>
           </View>
-        </View>
 
-        {/* Modal Seletor Hierárquico e Pesquisável de Locais */}
-        <Modal
-          visible={pickerVisible}
-          transparent={true}
-          animationType="slide"
-          onRequestClose={() => setPickerVisible(false)}
-        >
-          <View style={styles.pickerBackdrop}>
+          {/* Seletor Hierárquico Sobreposto na Sheet */}
+          {pickerVisible && (
             <View
               style={[
-                styles.pickerCard,
-                { backgroundColor: theme.surface, borderColor: theme.border },
+                StyleSheet.absoluteFill,
+                styles.pickerOverlay,
+                { backgroundColor: theme.surface },
               ]}
             >
               {/* Header do Seletor */}
@@ -568,8 +562,8 @@ const MovementModalContent: React.FC<MovementModalProps> = ({
                 }}
               />
             </View>
-          </View>
-        </Modal>
+          )}
+        </View>
       </View>
     </Modal>
   );
@@ -599,6 +593,7 @@ const styles = StyleSheet.create({
     borderTopRightRadius: 24,
     borderTopWidth: 1,
     maxHeight: '90%',
+    overflow: 'hidden',
   },
   header: {
     flexDirection: 'row',
@@ -739,17 +734,11 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '700',
   },
-  // Estilos do Seletor Modal
-  pickerBackdrop: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.75)',
-    justifyContent: 'flex-end',
-  },
-  pickerCard: {
+  // Estilos do Seletor Sobreposto
+  pickerOverlay: {
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
-    borderTopWidth: 1,
-    height: '85%',
+    zIndex: 999,
   },
   pickerHeader: {
     flexDirection: 'row',

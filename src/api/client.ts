@@ -153,6 +153,35 @@ export const api = {
     return await request<Location[]>('/stock/locations');
   },
 
+  createLocation: async (data: {
+    nome: string;
+    tipo?: string;
+    descricao?: string;
+    parent_id?: number | null;
+  }): Promise<Location> => {
+    return await request<Location>('/stock/locations', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+  },
+
+  updateLocation: async (
+    id: number,
+    data: {
+      nome?: string;
+      tipo?: string;
+      descricao?: string;
+      parent_id?: number | null;
+    }
+  ): Promise<Location> => {
+    return await request<Location>(`/stock/locations/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+  },
+
   fetchMovements: async (itemId?: number): Promise<ItemMovement[]> => {
     const path = itemId ? `/stock/movements?item_id=${itemId}` : '/stock/movements';
     return await request<ItemMovement[]>(path);

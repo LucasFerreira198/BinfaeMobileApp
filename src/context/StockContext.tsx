@@ -37,6 +37,8 @@ interface StockContextType {
   createSubgroup: (data: { grupo_id: number; nome: string; descricao?: string }) => Promise<Subgroup>;
   updateSubgroup: (subgroupId: number, data: { nome: string; grupo_id?: number; descricao?: string }) => Promise<Subgroup>;
   deleteSubgroup: (subgroupId: number) => Promise<void>;
+  createLocation: (data: { nome: string; tipo?: string; descricao?: string; parent_id?: number | null }) => Promise<Location>;
+  updateLocation: (id: number, data: { nome?: string; tipo?: string; descricao?: string; parent_id?: number | null }) => Promise<Location>;
 }
 
 const defaultFilters: FilterState = {
@@ -76,6 +78,8 @@ const StockContext = createContext<StockContextType>({
   createSubgroup: async () => ({} as Subgroup),
   updateSubgroup: async () => ({} as Subgroup),
   deleteSubgroup: async () => {},
+  createLocation: async () => ({} as Location),
+  updateLocation: async () => ({} as Location),
 });
 
 export const StockProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -287,6 +291,37 @@ export const StockProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     await persistLocalDatabase(allItems, groups, locations, updated);
   };
 
+  const createLocation = async (data: {
+    nome: string;
+    tipo?: string;
+    descricao?: string;
+    parent_id?: number | null;
+  }): Promise<Location> => {
+    const newLoc = await api.createLocation(data);
+    const updated = [...locations, newLoc].sort((a, b) => a.nome.localeCompare(b.nome));
+    setLocations(updated);
+    await persistLocalDatabase(allItems, groups, updated, subgroups);
+    return newLoc;
+  };
+
+  const updateLocation = async (
+    id: number,
+    data: {
+      nome?: string;
+      tipo?: string;
+      descricao?: string;
+      parent_id?: number | null;
+    }
+  ): Promise<Location> => {
+    const updatedLoc = await api.updateLocation(id, data);
+    const updated = locations
+      .map((l) => (l.id === id ? updatedLoc : l))
+      .sort((a, b) => a.nome.localeCompare(b.nome));
+    setLocations(updated);
+    await persistLocalDatabase(allItems, groups, updated, subgroups);
+    return updatedLoc;
+  };
+
   return (
     <StockContext.Provider
       value={{
@@ -317,6 +352,8 @@ export const StockProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         createSubgroup,
         updateSubgroup,
         deleteSubgroup,
+        createLocation,
+        updateLocation,
       }}
     >
       {children}

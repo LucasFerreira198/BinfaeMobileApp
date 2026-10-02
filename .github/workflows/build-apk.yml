@@ -67,17 +67,15 @@ jobs:
         if: github.ref == 'refs/heads/main' || github.event_name == 'release'
         with:
           tag_name: latest
-          name: "Binfae Mobile v1.3.5 - APK Oficial Assinado"
+          name: "Binfae Mobile v1.3.6 - APK Oficial Assinado"
           body: |
-            ### 🛠️ Binfae Mobile v1.3.5 - Correção Definitiva de Visualização de Detalhes do Material
+            ### 🛠️ Binfae Mobile v1.3.6 - Gestão de Locais Físicos e Correção do Seletor de Destino
 
-            - **Renderização Nativa e Pura do QR Code**:
-              - Remoção total do pacote vulnerável `react-native-qrcode-svg` que causava exceção fatal no motor Hermes Android.
-              - Introduzido componente `PureQrCode` vetorial SVG 100% autônomo baseado em matriz matemática sem dependências de browser ou Node.js.
-            - **Isolamento Completo dos Modais e Proteção contra Crash**:
-              - Modais `ItemDetailModal` e `MovementModal` agora só são montados sob demanda na árvore React quando ativados.
-              - Cada modal conta com seu próprio `ErrorBoundary` dedicado com exibição de stack trace e botão de recuperação suave.
-              - Funções de formatação de local (`formatLocationFriendlyName`) e listagem de subcomponentes blindadas contra valores nulos/indefinidos.
+            - **Gestão de Locais Físicos (Adicionar e Editar)**:
+              - Novo botão `[+ Novo]` no cabeçalho do modal de locais físicos para cadastrar depósitos, armários e prateleiras.
+              - Botão de edição rápida (`Pencil`) em cada local físico para atualizar nome, tipo de estrutura, descrição e vínculo hierárquico.
+            - **Correção do Seletor de Destino na Transferência**:
+              - Substituído o seletor modal aninhado por um overlay integrado e fluído, eliminando a incompatibilidade do Dialog nativo do Android que impedia a exibição dos locais de destino ao transferir materiais.
           files: build-output/BinfaeMobile-release.apk
           prerelease: false
         env:
