@@ -1,0 +1,76 @@
+name: Build & Release Signed Android APK
+
+on:
+  push:
+    branches: [ main ]
+  release:
+    types: [ published ]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-android:
+    name: Build Signed APK
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Setup Java JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: 17
+          cache: 'gradle'
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install Dependencies
+        run: npm install
+
+      - name: Prepare Keystore
+        run: |
+          if [ -f "release.keystore" ]; then
+            cp release.keystore android/app/release.keystore
+          fi
+
+      - name: Build Android Release APK
+        run: |
+          cd android
+          chmod +x gradlew
+          ./gradlew assembleRelease --no-daemon
+
+      - name: Copy & Rename APK
+        run: |
+          mkdir -p build-output
+          cp android/app/build/outputs/apk/release/app-release.apk build-output/BinfaeMobile-release.apk
+
+      - name: Upload APK as Workflow Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: BinfaeMobile-Signed-APK
+          path: build-output/BinfaeMobile-release.apk
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Publicar Release com Download Direto do APK
+        uses: softprops/action-gh-release@v2
+        if: github.ref == 'refs/heads/main' || github.event_name == 'release'
+        with:
+          tag_name: latest
+          name: "Binfae Mobile - APK Oficial Assinado"
+          body: "Versão oficial atualizada e assinada do aplicativo nativo Binfae Mobile. Baixe o arquivo BinfaeMobile-release.apk abaixo para instalar diretamente no seu celular Android."
+          files: build-output/BinfaeMobile-release.apk
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
