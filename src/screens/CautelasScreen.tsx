@@ -91,6 +91,11 @@ export const CautelasScreen: React.FC<CautelasScreenProps> = () => {
   const [permission, requestPermission] = useCameraPermissions();
   const [scannedLock, setScannedLock] = useState<boolean>(false);
 
+  // Ações específicas de material (Descautelação Manual ou Câmera Direcionada)
+  const [selectedItemForOptions, setSelectedItemForOptions] = useState<CautelaItem | null>(null);
+  const [itemOptionsModalVisible, setItemOptionsModalVisible] = useState<boolean>(false);
+  const [targetedItemForReturn, setTargetedItemForReturn] = useState<CautelaItem | null>(null);
+
   const loadCautelas = useCallback(async () => {
     try {
       setIsLoading(true);
@@ -179,15 +184,17 @@ export const CautelasScreen: React.FC<CautelasScreenProps> = () => {
     setAddMaterialModalVisible(true);
   };
 
-  // Ação de Devolver Material
+  // Ação de Devolver Material Manualmente
   const handleDevolverItem = (item: CautelaItem) => {
+    const mil = (item as any).militar_responsavel || item.militar;
+    const milName = mil ? `${mil.posto_graduacao || ''} ${mil.nome_guerra || ''}`.trim() : 'Militar';
     Alert.alert(
-      'Confirmar Devolução',
-      `Deseja registrar o retorno do material "${item.item?.nome || 'Item'}" entregue a ${item.militar?.posto_graduacao || ''} ${item.militar?.nome_guerra || ''}?`,
+      'Confirmar Devolução Manual',
+      `Deseja registrar a devolução manual do material "${item.item?.nome || 'Item'}" entregue a ${milName}?`,
       [
         { text: 'Cancelar', style: 'cancel' },
         {
-          text: 'Confirmar Retorno',
+          text: 'Confirmar Devolução',
           style: 'default',
           onPress: async () => {
             if (!selectedCautela) return;
@@ -208,6 +215,21 @@ export const CautelasScreen: React.FC<CautelasScreenProps> = () => {
     );
   };
 
+  // Iniciar scanner de câmera direcionado especificamente a este material
+  const startTargetedScanForItem = async (item: CautelaItem) => {
+    if (!permission?.granted) {
+      const res = await requestPermission();
+      if (!res.granted) {
+        Alert.alert('Acesso à Câmera', 'É necessário permitir o acesso à câmera para escanear.');
+        return;
+      }
+    }
+    setTargetedItemForReturn(item);
+    setCameraMode('RETURN');
+    setScannedLock(false);
+    setCameraModalVisible(true);
+  };
+
   // Scanner Câmera Handler
   const handleBarcodeScanned = async ({ data }: { data: string }) => {
     if (scannedLock) return;
@@ -222,21 +244,143 @@ export const CautelasScreen: React.FC<CautelasScreenProps> = () => {
       const parsed = JSON.parse(cleanData);
       if (parsed.bmp) searchCode = parsed.bmp.toString();
       else if (parsed.id) searchCode = parsed.id.toString();
+      else if (parsed.codigo) searchCode = parsed.codigo.toString();
     } catch {}
 
     if (cameraMode === 'RETURN') {
-      try {
-        const res = await api.scanDevolverItem(searchCode);
-        await syncData();
-        if (selectedCautela) {
-          await refreshSelectedCautela(selectedCautela.id);
-        } else {
-          await loadCautelas();
+      // 1. MODO DIRECIONADO A UM MATERIAL ESPECÍFICO
+      if (targetedItemForReturn) {
+        const itemObj = targetedItemForReturn.item;
+        const validCodes: string[] = [
+          targetedItemForReturn.item_id.toString().toLowerCase(),
+          targetedItemForReturn.id.toString().toLowerCase(),
+        ];
+        if (itemObj?.bmp) validCodes.push(itemObj.bmp.trim().toLowerCase());
+        if (itemObj?.codigo_interno) validCodes.push(itemObj.codigo_interno.trim().toLowerCase());
+        if (itemObj?.numero_serie) validCodes.push(itemObj.numero_serie.trim().toLowerCase());
+        if (itemObj?.id) validCodes.push(itemObj.id.toString().toLowerCase());
+
+        const isMatch = validCodes.includes(searchCode.toLowerCase());
+        if (!isMatch) {
+          try {
+            await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+          } catch {}
+          Alert.alert(
+            'Código Inválido',
+            `O código escaneado "${searchCode}" NÃO pertence ao material selecionado "${itemObj?.nome || 'Item'}" (BMP esperado: ${itemObj?.bmp || 'S/N'}).\n\nPor favor, aponte a câmera para a etiqueta correta deste material.`,
+            [{ text: 'OK', onPress: () => setScannedLock(false) }]
+          );
+          return;
         }
+
+        const mil = (targetedItemForReturn as any).militar_responsavel || targetedItemForReturn.militar;
+        const milName = mil ? `${mil.posto_graduacao || ''} ${mil.nome_guerra || ''}`.trim() : 'Militar';
+        const saram = targetedItemForReturn.militar_saram || mil?.saram;
+
         Alert.alert(
-          'Devolução Confirmada!',
-          `Material "${res.item?.nome || searchCode}" foi devolvido com sucesso.`,
-          [{ text: 'OK', onPress: () => setScannedLock(false) }]
+          'Confirmar Descautelação',
+          `Material: ${itemObj?.nome || 'Item'}\n` +
+          `Missão: ${selectedCautela?.nome || 'Missão Ativa'}\n` +
+          `Responsável: ${milName} (SARAM ${saram || 'N/A'})\n\n` +
+          'Deseja descautelar este material agora?',
+          [
+            {
+              text: 'Cancelar',
+              style: 'cancel',
+              onPress: () => setScannedLock(false),
+            },
+            {
+              text: 'Confirmar Descautelação',
+              style: 'default',
+              onPress: async () => {
+                try {
+                  if (selectedCautela) {
+                    await api.devolverItemCautela(selectedCautela.id, targetedItemForReturn.item_id);
+                    await refreshSelectedCautela(selectedCautela.id);
+                  } else {
+                    await api.scanDevolverItem(searchCode);
+                    await loadCautelas();
+                  }
+                  await syncData();
+                  setCameraModalVisible(false);
+                  setTargetedItemForReturn(null);
+                  setScannedLock(false);
+                  try {
+                    await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+                  } catch {}
+                  Alert.alert('Sucesso', `Material "${itemObj?.nome || 'Item'}" descautelado com sucesso!`);
+                } catch (err: any) {
+                  Alert.alert('Erro', err.message || 'Falha ao descautelar material.', [
+                    { text: 'OK', onPress: () => setScannedLock(false) },
+                  ]);
+                }
+              },
+            },
+          ]
+        );
+        return;
+      }
+
+      // 2. MODO GERAL: Lê QR de retorno, identifica cautela ativa e pede confirmação
+      try {
+        const cautelaStatus = await api.checkItemCautelaStatus(searchCode);
+        if (!cautelaStatus || !cautelaStatus.cautelado) {
+          Alert.alert(
+            'Material Não Cautelado',
+            `O material com código "${searchCode}" não está atualmente em nenhuma cautela ativa.`,
+            [{ text: 'OK', onPress: () => setScannedLock(false) }]
+          );
+          return;
+        }
+
+        const c = cautelaStatus.cautela;
+        const mil = cautelaStatus.militar || c?.militar || (cautelaStatus as any).militar_responsavel;
+        const it = cautelaStatus.item;
+        const itName = it?.nome || searchCode;
+        const missaoNome = c?.nome || (cautelaStatus as any).missao_nome || 'Cautela Ativa';
+        const milName = mil ? `${mil.posto_graduacao || ''} ${mil.nome_guerra || ''}`.trim() : 'Militar Responsável';
+        const saram = cautelaStatus.militar_saram || mil?.saram;
+        const fone = cautelaStatus.telefone_contato || mil?.celular;
+
+        Alert.alert(
+          'Confirmar Descautelação',
+          `Material Identificado: ${itName}\n` +
+          `Missão / Cautela: ${missaoNome}\n` +
+          `Responsável: ${milName} (SARAM ${saram || 'N/A'})\n` +
+          (fone ? `Contato: ${fone}\n\n` : '\n') +
+          'Deseja descautelar este material agora?',
+          [
+            {
+              text: 'Cancelar',
+              style: 'cancel',
+              onPress: () => setScannedLock(false),
+            },
+            {
+              text: 'Confirmar Descautelação',
+              style: 'default',
+              onPress: async () => {
+                try {
+                  const res = await api.scanDevolverItem(searchCode);
+                  await syncData();
+                  if (selectedCautela) {
+                    await refreshSelectedCautela(selectedCautela.id);
+                  } else {
+                    await loadCautelas();
+                  }
+                  setCameraModalVisible(false);
+                  setScannedLock(false);
+                  try {
+                    await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+                  } catch {}
+                  Alert.alert('Sucesso', `Material "${res.item?.nome || itName}" descautelado com sucesso!`);
+                } catch (err: any) {
+                  Alert.alert('Erro', err.message || 'Falha ao descautelar material.', [
+                    { text: 'OK', onPress: () => setScannedLock(false) },
+                  ]);
+                }
+              },
+            },
+          ]
         );
       } catch (err: any) {
         Alert.alert(
@@ -780,13 +924,27 @@ export const CautelasScreen: React.FC<CautelasScreenProps> = () => {
                       </View>
                     }
                     renderItem={({ item }) => {
-                      const isEmUso = item.status === 'EM_USO';
+                      const isEmUso = item.status === 'CAUTELADO' || item.status === 'EM_USO';
+                      const mil = (item as any).militar_responsavel || item.militar;
+                      const saram = item.militar_saram || mil?.saram || 'N/A';
+                      const phone = item.telefone_contato || mil?.celular || mil?.telefone;
+                      const milNome = mil
+                        ? `${mil.posto_graduacao || ''} ${mil.nome_guerra || ''}`.trim()
+                        : 'Militar Responsável';
+
                       return (
-                        <View
+                        <TouchableOpacity
                           style={[
                             styles.materialItemCard,
                             { backgroundColor: theme.surfaceVariant, borderColor: theme.border },
                           ]}
+                          activeOpacity={isEmUso ? 0.7 : 1}
+                          onPress={() => {
+                            if (isEmUso) {
+                              setSelectedItemForOptions(item);
+                              setItemOptionsModalVisible(true);
+                            }
+                          }}
                         >
                           <View style={styles.materialItemTop}>
                             <View style={{ flex: 1 }}>
@@ -825,16 +983,15 @@ export const CautelasScreen: React.FC<CautelasScreenProps> = () => {
                           <View style={styles.militarResponsavelRow}>
                             <UserCheck size={14} color={theme.primary} />
                             <Text style={[styles.militarText, { color: theme.text }]}>
-                              {item.militar?.posto_graduacao || ''} {item.militar?.nome_guerra || ''}{' '}
-                              (SARAM {item.militar_saram})
+                              {milNome} (SARAM {saram})
                             </Text>
                           </View>
 
-                          {item.telefone_contato ? (
+                          {phone ? (
                             <View style={styles.phoneBadgeRow}>
                               <Phone size={12} color={theme.success} />
                               <Text style={[styles.phoneBadgeText, { color: theme.success }]}>
-                                Contato: {item.telefone_contato}
+                                Contato: {phone}
                               </Text>
                             </View>
                           ) : null}
@@ -842,13 +999,16 @@ export const CautelasScreen: React.FC<CautelasScreenProps> = () => {
                           {isEmUso && (
                             <TouchableOpacity
                               style={[styles.devolverBtn, { backgroundColor: theme.success }]}
-                              onPress={() => handleDevolverItem(item)}
+                              onPress={() => {
+                                setSelectedItemForOptions(item);
+                                setItemOptionsModalVisible(true);
+                              }}
                             >
                               <RotateCcw size={14} color="#FFFFFF" />
-                              <Text style={styles.devolverBtnText}>Registrar Devolução</Text>
+                              <Text style={styles.devolverBtnText}>Opções de Devolução</Text>
                             </TouchableOpacity>
                           )}
-                        </View>
+                        </TouchableOpacity>
                       );
                     }}
                   />
@@ -1130,6 +1290,96 @@ export const CautelasScreen: React.FC<CautelasScreenProps> = () => {
         </KeyboardAvoidingView>
       </Modal>
 
+      {/* Modal: Opções do Material Selecionado (Descautelação Manual ou Câmera Específica) */}
+      <Modal visible={itemOptionsModalVisible} animationType="slide" transparent>
+        <View style={styles.optionsModalOverlay}>
+          <View style={[styles.optionsModalContent, { backgroundColor: theme.card, borderColor: theme.border }]}>
+            {selectedItemForOptions && (
+              <>
+                <View style={styles.optionsModalHeader}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={[styles.optionsModalTitle, { color: theme.text }]}>
+                      {selectedItemForOptions.item?.nome || `Material #${selectedItemForOptions.item_id}`}
+                    </Text>
+                    <Text style={[styles.optionsModalSubtitle, { color: theme.textSecondary }]}>
+                      {selectedItemForOptions.item?.bmp ? `BMP ${selectedItemForOptions.item.bmp} • ` : ''}
+                      Responsável: {
+                        ((selectedItemForOptions as any).militar_responsavel || selectedItemForOptions.militar)?.nome_guerra ||
+                        'Militar'
+                      }
+                    </Text>
+                  </View>
+                  <TouchableOpacity onPress={() => setItemOptionsModalVisible(false)}>
+                    <X size={20} color={theme.textSecondary} />
+                  </TouchableOpacity>
+                </View>
+
+                {/* Opção 1: Câmera Direcionada */}
+                <TouchableOpacity
+                  style={[
+                    styles.optionsButtonRow,
+                    { backgroundColor: theme.surfaceVariant, borderColor: theme.border },
+                  ]}
+                  activeOpacity={0.7}
+                  onPress={() => {
+                    const item = selectedItemForOptions;
+                    setItemOptionsModalVisible(false);
+                    startTargetedScanForItem(item);
+                  }}
+                >
+                  <View style={[styles.optionIconCircle, { backgroundColor: theme.badgeBg }]}>
+                    <QrCode size={20} color={theme.primary} />
+                  </View>
+                  <View style={styles.optionsButtonTextWrap}>
+                    <Text style={[styles.optionsButtonTitle, { color: theme.text }]}>
+                      Escanear QR Code deste Material
+                    </Text>
+                    <Text style={[styles.optionsButtonDesc, { color: theme.textSecondary }]}>
+                      Lê a câmera exclusivamente para este item. Rejeita se outro QR for lido.
+                    </Text>
+                  </View>
+                  <ChevronRight size={16} color={theme.textSecondary} />
+                </TouchableOpacity>
+
+                {/* Opção 2: Descautelar Manualmente */}
+                <TouchableOpacity
+                  style={[
+                    styles.optionsButtonRow,
+                    { backgroundColor: theme.surfaceVariant, borderColor: theme.border },
+                  ]}
+                  activeOpacity={0.7}
+                  onPress={() => {
+                    const item = selectedItemForOptions;
+                    setItemOptionsModalVisible(false);
+                    handleDevolverItem(item);
+                  }}
+                >
+                  <View style={[styles.optionIconCircle, { backgroundColor: 'rgba(16, 185, 129, 0.15)' }]}>
+                    <RotateCcw size={20} color={theme.success} />
+                  </View>
+                  <View style={styles.optionsButtonTextWrap}>
+                    <Text style={[styles.optionsButtonTitle, { color: theme.text }]}>
+                      Descautelar Manualmente
+                    </Text>
+                    <Text style={[styles.optionsButtonDesc, { color: theme.textSecondary }]}>
+                      Confirma a devolução e retorno do material sem precisar usar a câmera.
+                    </Text>
+                  </View>
+                  <ChevronRight size={16} color={theme.textSecondary} />
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[styles.optionsModalCloseBtn, { backgroundColor: theme.surfaceVariant }]}
+                  onPress={() => setItemOptionsModalVisible(false)}
+                >
+                  <Text style={[styles.optionsModalCloseText, { color: theme.text }]}>Cancelar</Text>
+                </TouchableOpacity>
+              </>
+            )}
+          </View>
+        </View>
+      </Modal>
+
       {/* Modal: Scanner Câmera (Para Descautelar ou Ler Código) */}
       <Modal visible={cameraModalVisible} animationType="fade" transparent>
         <View style={styles.cameraOverlay}>
@@ -1144,13 +1394,19 @@ export const CautelasScreen: React.FC<CautelasScreenProps> = () => {
 
             <View style={styles.cameraTopHeader}>
               <Text style={styles.cameraTitle}>
-                {cameraMode === 'RETURN'
+                {targetedItemForReturn
+                  ? `Escanear: ${targetedItemForReturn.item?.nome || 'Material'}`
+                  : cameraMode === 'RETURN'
                   ? 'Aponte para o QR Code para Descautelar'
                   : 'Aponte para o QR Code do Material'}
               </Text>
               <TouchableOpacity
                 style={styles.cameraCloseBtn}
-                onPress={() => setCameraModalVisible(false)}
+                onPress={() => {
+                  setCameraModalVisible(false);
+                  setTargetedItemForReturn(null);
+                  setScannedLock(false);
+                }}
               >
                 <X size={20} color="#FFFFFF" />
               </TouchableOpacity>
@@ -1160,8 +1416,10 @@ export const CautelasScreen: React.FC<CautelasScreenProps> = () => {
 
             <View style={styles.cameraFooter}>
               <Text style={styles.cameraHelpText}>
-                {cameraMode === 'RETURN'
-                  ? 'O sistema identificará a missão e dará baixa no material automaticamente.'
+                {targetedItemForReturn
+                  ? `Apenas a etiqueta ou QR deste material (BMP: ${targetedItemForReturn.item?.bmp || 'S/N'}) será aceita.`
+                  : cameraMode === 'RETURN'
+                  ? 'O sistema identificará a missão e solicitará confirmação antes de descautelar.'
                   : 'O material será adicionado à cautela em andamento.'}
               </Text>
             </View>
@@ -1795,5 +2053,67 @@ const styles = StyleSheet.create({
     color: '#E2E8F0',
     fontSize: 12,
     textAlign: 'center',
+  },
+  optionsModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    justifyContent: 'flex-end',
+  },
+  optionsModalContent: {
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    padding: 20,
+    borderWidth: 1,
+  },
+  optionsModalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 16,
+  },
+  optionsModalTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  optionsModalSubtitle: {
+    fontSize: 12,
+    marginTop: 3,
+  },
+  optionsButtonRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 14,
+    borderRadius: 12,
+    borderWidth: 1,
+    marginBottom: 10,
+    gap: 12,
+  },
+  optionIconCircle: {
+    width: 40,
+    height: 40,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  optionsButtonTextWrap: {
+    flex: 1,
+  },
+  optionsButtonTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  optionsButtonDesc: {
+    fontSize: 11,
+    marginTop: 2,
+  },
+  optionsModalCloseBtn: {
+    paddingVertical: 12,
+    borderRadius: 10,
+    alignItems: 'center',
+    marginTop: 4,
+  },
+  optionsModalCloseText: {
+    fontSize: 13,
+    fontWeight: '600',
   },
 });

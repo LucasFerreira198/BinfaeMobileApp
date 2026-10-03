@@ -92,14 +92,18 @@ export interface CautelaItem {
   militar_saram: number;
   telefone_contato?: string | null;
   data_cautela: string;
+  data_saida?: string;
   condicao_saida: string;
   data_devolucao?: string | null;
   condicao_retorno?: string | null;
-  status: 'EM_USO' | 'DEVOLVIDO';
+  status: 'CAUTELADO' | 'EM_USO' | 'DEVOLVIDO' | string;
   recebido_por_id?: number | null;
   observacoes?: string | null;
   item?: Item | null;
   militar?: Military | null;
+  militar_responsavel?: Military | null;
+  usuario_entrega?: User | null;
+  usuario_devolucao?: User | null;
   recebedor?: User | null;
 }
 

@@ -507,8 +507,18 @@ export const api = {
     });
   },
 
-  checkItemCautelaStatus: async (code: string): Promise<{ item: Item; cautelado: boolean; cautela?: any }> => {
+  checkItemCautelaStatus: async (code: string): Promise<{
+    item?: Item | null;
+    cautelado: boolean;
+    cautela?: any;
+    militar?: any;
+    militar_responsavel?: any;
+    militar_saram?: number | null;
+    telefone_contato?: string | null;
+    data_cautela?: string | null;
+    detalhes?: any;
+  }> => {
     const encoded = encodeURIComponent(code.trim());
-    return await request<{ item: Item; cautelado: boolean; cautela?: any }>(`/cautelas/item/${encoded}/status`);
+    return await request<any>(`/cautelas/item/${encoded}/status`);
   },
 };

@@ -67,15 +67,23 @@ export const ScannerScreen: React.FC = () => {
     // 3. Checa se o material está sob cautela ativa
     try {
       const cautelaStatus = await api.checkItemCautelaStatus(cleanData);
-      if (cautelaStatus.cautelado && cautelaStatus.cautela) {
+      if (cautelaStatus && cautelaStatus.cautelado) {
         const c = cautelaStatus.cautela;
-        const mil = c.militar;
+        const mil = cautelaStatus.militar || c?.militar || (cautelaStatus as any).militar_responsavel;
+        const itemObj = cautelaStatus.item || found;
+        const itemName = itemObj?.nome || cleanData;
+        const missaoNome = c?.nome || (cautelaStatus as any).missao_nome || 'Cautela Ativa';
+        const missaoTipo = c?.tipo === 'FIXA' ? 'Cautela Fixa' : 'Missão Operacional';
+        const milNome = mil ? `${mil.posto_graduacao || ''} ${mil.nome_guerra || mil.nome_completo || ''}`.trim() : 'Militar Responsável';
+        const milSaram = cautelaStatus.militar_saram || mil?.saram || 'N/A';
+        const milFone = cautelaStatus.telefone_contato || mil?.celular || mil?.telefone;
+
         Alert.alert(
           'Material Cautelado Identificado',
-          `Material: ${cautelaStatus.item?.nome || cleanData}\n` +
-          `Missão / Cautela: ${c.missao_nome} (${c.tipo === 'MISSAO' ? 'Missão Operacional' : 'Cautela Fixa'})\n` +
-          `Responsável: ${mil?.posto_graduacao || ''} ${mil?.nome_guerra || ''} (SARAM ${mil?.saram})\n` +
-          (c.telefone_contato ? `Telefone: ${c.telefone_contato}\n\n` : '\n') +
+          `Material: ${itemName}\n` +
+          `Missão / Cautela: ${missaoNome} (${missaoTipo})\n` +
+          `Responsável: ${milNome} (SARAM ${milSaram})\n` +
+          (milFone ? `Telefone: ${milFone}\n\n` : '\n') +
           'Deseja realizar a devolução deste material agora?',
           [
             {
@@ -97,7 +105,10 @@ export const ScannerScreen: React.FC = () => {
                 try {
                   await api.scanDevolverItem(cleanData);
                   await syncData();
-                  Alert.alert('Sucesso', 'Material devolvido com sucesso! Status atualizado para DISPONÍVEL.', [
+                  try {
+                    await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+                  } catch {}
+                  Alert.alert('Sucesso', `Material "${itemName}" devolvido com sucesso! Status atualizado para DISPONÍVEL.`, [
                     { text: 'OK', onPress: () => setScanned(false) },
                   ]);
                 } catch (err: any) {
