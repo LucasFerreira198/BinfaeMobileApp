@@ -2,7 +2,7 @@
   "expo": {
     "name": "Informatica - BINFAE-GL",
     "slug": "BinfaeMobileApp",
-    "version": "1.3.11",
+    "version": "1.3.12",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "automatic",
@@ -16,7 +16,7 @@
     },
     "android": {
       "package": "com.binfae.mobileapp",
-      "versionCode": 15,
+      "versionCode": 16,
       "adaptiveIcon": {
         "backgroundColor": "#0F172A",
         "foregroundImage": "./assets/android-icon-foreground.png",

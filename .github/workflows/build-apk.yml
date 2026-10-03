@@ -62,25 +62,36 @@ jobs:
           if-no-files-found: error
           retention-days: 30
 
+      - name: Obter Versao do Projeto
+        id: version
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          echo "val=$VERSION" >> $GITHUB_OUTPUT
+
       - name: Publicar Release com Download Direto do APK
         uses: softprops/action-gh-release@v2
         if: github.ref == 'refs/heads/main' || github.event_name == 'release'
         with:
           tag_name: latest
-          name: "Binfae Mobile v1.3.7 - APK Oficial Assinado"
+          name: "Binfae Mobile v${{ steps.version.outputs.val }} - APK Oficial Assinado"
           body: |
-            ### 🛠️ Binfae Mobile v1.3.7 - Seletor Robusto de Destino e Respeito Total à Barra de Navegação do Android
+            ### 📱 Binfae Mobile v${{ steps.version.outputs.val }} - Versão Oficial Nativa Android 🚀
 
-            - **Seletor de Local de Destino Robusto (Transferir Material)**:
-              - Novo fluxo dedicado de seleção de local com visualização completa de todos os depósitos, armários e prateleiras.
-              - Busca textual em tempo real e chips de filtro por tipo de estrutura (Depósito, Armário, Prateleira, etc.).
-              - Exibição do caminho hierárquico amigável de cada local com identificação clara do local de origem atual.
-              - Carregamento de fallback automático caso a lista de locais esteja vazia, garantindo que os locais sempre apareçam.
-            - **Respeito Completo à Barra de Ferramentas / Navegação do Android**:
-              - Todos os menus, modais e rodapés agora respeitam estritamente a safe area inferior (`insets.bottom`), exatamente como o modal de detalhes do material.
-              - Modais ajustados: Seletor de Transferência (`MovementModal`), Formulário de Locais Físicos (`LocationsModal`), Categorias e Subgrupos (`GroupsModal`), Cadastro/Edição de Usuários e Militares, Tela de Configurações (`SettingsScreen`), Drawer Menu e Cadastro de PIN (`SetPinModal`).
-              - Nenhum botão ou texto de ação fica mais coberto ou cortado pela barra de botões nativa (Voltar, Início, Recentes) ou barra de gestos do Android.
+            Aplicativo móvel Android nativo oficial (**`.apk`**) do ecossistema **BINFAE-GL**, assinado com certificado oficial de release (atualização direta sem desinstalar).
+
+            #### 📥 Download Direto:
+            - **[BinfaeMobile-release.apk](https://github.com/LucasFerreira198/BinfaeMobileApp/releases/download/latest/BinfaeMobile-release.apk)**: Toque para baixar e instalar no celular.
+
+            #### 🚀 Principais Novidades:
+            - 🎯 **Módulo Nativo de Cautelas & Missões Operacionais**: Abertura simplificada de missões e cautelas fixas, abas "Ativas" e "Concluídas", métricas e progresso visual em tempo real.
+            - 👤 **Fluxo Operacional Blindado**: Militar selecionado primeiro, número de telefone em destaque no card com edição inline e persistência direta no backend. Modos de cautela unitário e em lote.
+            - 📷 **Leitor de Câmera QR Code com Descautelação Rápida**: Identificação automática de itens sob cautela ativa ao ler o código com a câmera, exibindo modal com os dados da missão e permitindo confirmação imediata de devolução.
+            - 🔒 **Sessão Estrita de 24 Horas & Refresh Token**: Expiração determinística de 24h a partir do login e renovação transparente de credenciais em segundo plano.
+            - 🏷️ **Identificação Visual no Acervo Geral**: Badges informativos nos cards e detalhes do material indicando se o item está cautelado, qual a missão e o militar responsável.
           files: build-output/BinfaeMobile-release.apk
           prerelease: false
+          overwrite_files: true
+          make_latest: "true"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
