@@ -58,6 +58,7 @@ export const EditMilitaryModal: React.FC<EditMilitaryModalProps> = ({
   const [postoGraduacao, setPostoGraduacao] = useState<string>('3S');
   const [nomeGuerra, setNomeGuerra] = useState<string>('');
   const [nomeCompleto, setNomeCompleto] = useState<string>('');
+  const [secao, setSecao] = useState<string>('');
   const [email, setEmail] = useState<string>('');
   const [celular, setCelular] = useState<string>('');
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
@@ -67,6 +68,7 @@ export const EditMilitaryModal: React.FC<EditMilitaryModalProps> = ({
       setPostoGraduacao(military.posto_graduacao || '3S');
       setNomeGuerra(military.nome_guerra || '');
       setNomeCompleto(military.nome_completo || '');
+      setSecao(military.secao || '');
       setEmail(military.email || '');
       setCelular(military.celular || military.telefone || '');
       setIsSubmitting(false);
@@ -103,6 +105,7 @@ export const EditMilitaryModal: React.FC<EditMilitaryModalProps> = ({
         posto_graduacao: postoGraduacao,
         nome_guerra: nomeGuerra.trim().toUpperCase(),
         nome_completo: nomeCompleto.trim(),
+        secao: secao.trim() ? secao.trim().toUpperCase() : undefined,
         email: email.trim() ? email.trim() : undefined,
         celular: celular.trim() ? celular.trim() : undefined,
       });
@@ -228,6 +231,24 @@ export const EditMilitaryModal: React.FC<EditMilitaryModalProps> = ({
                 onChangeText={setNomeCompleto}
                 placeholder="Nome completo do militar"
                 placeholderTextColor={theme.textMuted}
+              />
+            </View>
+
+            {/* Seção / Subdivisão */}
+            <Text style={[styles.label, { color: theme.textSecondary }]}>Seção / Subdivisão</Text>
+            <View
+              style={[
+                styles.inputBox,
+                { backgroundColor: theme.inputBg, borderColor: theme.inputBorder },
+              ]}
+            >
+              <TextInput
+                style={[styles.input, { color: theme.text }]}
+                value={secao}
+                onChangeText={setSecao}
+                placeholder="Ex: INFORMÁTICA, SEREP, GARAGEM (opcional)"
+                placeholderTextColor={theme.textMuted}
+                autoCapitalize="characters"
               />
             </View>
 

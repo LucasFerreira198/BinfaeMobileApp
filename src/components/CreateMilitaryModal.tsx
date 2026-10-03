@@ -18,7 +18,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../context/ThemeContext';
 import { useKeyboardHeight } from '../hooks/useKeyboardHeight';
 import { api } from '../api/client';
-import { X, UserPlus, IdCard, User, Briefcase, Mail, Phone } from 'lucide-react-native';
+import { X, UserPlus, IdCard, User, Briefcase, Mail, Phone, Building2 } from 'lucide-react-native';
 
 interface CreateMilitaryModalProps {
   visible: boolean;
@@ -42,6 +42,7 @@ export const CreateMilitaryModal: React.FC<CreateMilitaryModalProps> = ({
   const [nomeCompleto, setNomeCompleto] = useState<string>('');
   const [postoGraduacao, setPostoGraduacao] = useState<string>('3S');
   const [nomeGuerra, setNomeGuerra] = useState<string>('');
+  const [secao, setSecao] = useState<string>('');
   const [email, setEmail] = useState<string>('');
   const [celular, setCelular] = useState<string>('');
   const [submitting, setSubmitting] = useState<boolean>(false);
@@ -52,6 +53,7 @@ export const CreateMilitaryModal: React.FC<CreateMilitaryModalProps> = ({
       setNomeCompleto('');
       setPostoGraduacao('3S');
       setNomeGuerra('');
+      setSecao('');
       setEmail('');
       setCelular('');
       setSubmitting(false);
@@ -99,6 +101,7 @@ export const CreateMilitaryModal: React.FC<CreateMilitaryModalProps> = ({
         nome_completo: nomeCompleto.trim(),
         posto_graduacao: postoGraduacao.trim().toUpperCase(),
         nome_guerra: nomeGuerra.trim().toUpperCase(),
+        secao: secao.trim() ? secao.trim().toUpperCase() : undefined,
         email: email.trim() ? email.trim() : undefined,
         celular: celular.trim() ? celular.trim() : undefined,
       });
@@ -260,6 +263,24 @@ export const CreateMilitaryModal: React.FC<CreateMilitaryModalProps> = ({
                   value={nomeCompleto}
                   onChangeText={setNomeCompleto}
                   autoCapitalize="words"
+                />
+              </View>
+            </View>
+
+            {/* Seção / Subdivisão */}
+            <View style={styles.inputGroup}>
+              <Text style={[styles.label, { color: theme.textSecondary }]}>
+                Seção / Subdivisão (Opcional)
+              </Text>
+              <View style={[styles.inputBox, { backgroundColor: theme.inputBg, borderColor: theme.inputBorder }]}>
+                <Building2 size={18} color={theme.textMuted} />
+                <TextInput
+                  style={[styles.input, { color: theme.text }]}
+                  placeholder="Ex: INFORMÁTICA, SEREP, GARAGEM"
+                  placeholderTextColor={theme.textMuted}
+                  value={secao}
+                  onChangeText={setSecao}
+                  autoCapitalize="characters"
                 />
               </View>
             </View>

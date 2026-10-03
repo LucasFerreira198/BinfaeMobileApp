@@ -244,6 +244,7 @@ export const api = {
     nome_completo: string;
     posto_graduacao: string;
     nome_guerra: string;
+    secao?: string;
     email?: string;
     celular?: string;
   }): Promise<Military> => {
@@ -260,6 +261,7 @@ export const api = {
       nome_completo?: string;
       posto_graduacao?: string;
       nome_guerra?: string;
+      secao?: string;
       email?: string;
       celular?: string;
     }

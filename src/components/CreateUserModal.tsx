@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   Modal,
   View,
@@ -20,7 +20,7 @@ import { useTheme } from '../context/ThemeContext';
 import { useKeyboardHeight } from '../hooks/useKeyboardHeight';
 import { api } from '../api/client';
 import { Military } from '../types';
-import { X, UserPlus, Shield, User, Lock, IdCard } from 'lucide-react-native';
+import { X, UserPlus, Shield, User, Lock, IdCard, Search, Check } from 'lucide-react-native';
 
 interface CreateUserModalProps {
   visible: boolean;
@@ -42,6 +42,7 @@ export const CreateUserModal: React.FC<CreateUserModalProps> = ({
 
   const [mode, setMode] = useState<'militar' | 'avulso'>('militar');
   const [selectedSaram, setSelectedSaram] = useState<string>('');
+  const [militarySearch, setMilitarySearch] = useState<string>('');
   const [username, setUsername] = useState<string>('');
   const [password, setPassword] = useState<string>('');
   const [isAdmin, setIsAdmin] = useState<boolean>(false);
@@ -52,6 +53,7 @@ export const CreateUserModal: React.FC<CreateUserModalProps> = ({
     if (visible) {
       setMode('militar');
       setSelectedSaram('');
+      setMilitarySearch('');
       setUsername('');
       setPassword('');
       setIsAdmin(false);
@@ -59,6 +61,29 @@ export const CreateUserModal: React.FC<CreateUserModalProps> = ({
       setSubmitting(false);
     }
   }, [visible]);
+
+  const filteredMilitaries = useMemo(() => {
+    if (!militaryList || militaryList.length === 0) return [];
+    const q = militarySearch.trim().toLowerCase();
+    if (!q) return militaryList.slice(0, 30);
+    return militaryList.filter((m) => {
+      const nomeGuerra = (m.nome_guerra || '').toLowerCase();
+      const nomeCompleto = (m.nome_completo || '').toLowerCase();
+      const saramStr = m.saram ? m.saram.toString() : '';
+      const secaoStr = (m.secao || '').toLowerCase();
+      return (
+        nomeGuerra.includes(q) ||
+        nomeCompleto.includes(q) ||
+        saramStr.includes(q) ||
+        secaoStr.includes(q)
+      );
+    });
+  }, [militaryList, militarySearch]);
+
+  const selectedMilitary = useMemo(() => {
+    if (!selectedSaram || !militaryList) return null;
+    return militaryList.find((m) => m.saram.toString() === selectedSaram) || null;
+  }, [militaryList, selectedSaram]);
 
   useEffect(() => {
     if (!visible) return;
@@ -227,21 +252,144 @@ export const CreateUserModal: React.FC<CreateUserModalProps> = ({
             {mode === 'militar' ? (
               <View style={styles.inputGroup}>
                 <Text style={[styles.label, { color: theme.textSecondary }]}>
-                  SARAM do Militar *
+                  Militar a Vincular *
                 </Text>
+
+                {/* Card do Militar Selecionado */}
+                {selectedMilitary && (
+                  <View
+                    style={[
+                      styles.selectedMilCard,
+                      {
+                        backgroundColor: theme.surfaceVariant,
+                        borderColor: theme.primary,
+                      },
+                    ]}
+                  >
+                    <View style={styles.selectedMilInfo}>
+                      <View style={styles.selectedMilHeader}>
+                        <View style={[styles.selectedCheckBadge, { backgroundColor: theme.primary }]}>
+                          <Check size={12} color="#FFFFFF" />
+                        </View>
+                        <Text style={[styles.selectedMilName, { color: theme.text }]}>
+                          {selectedMilitary.posto_graduacao} {selectedMilitary.nome_guerra}
+                        </Text>
+                      </View>
+                      <Text style={[styles.selectedMilDetails, { color: theme.textSecondary }]}>
+                        SARAM: {selectedMilitary.saram} • {selectedMilitary.nome_completo}
+                      </Text>
+                      {selectedMilitary.secao && (
+                        <Text style={[styles.selectedMilSecao, { color: theme.primary }]}>
+                          Seção: {selectedMilitary.secao}
+                        </Text>
+                      )}
+                    </View>
+                    <TouchableOpacity
+                      onPress={() => setSelectedSaram('')}
+                      style={[styles.clearMilBtn, { backgroundColor: theme.dangerBg }]}
+                    >
+                      <X size={14} color={theme.danger} />
+                    </TouchableOpacity>
+                  </View>
+                )}
+
+                {/* Barra de Busca de Militares */}
                 <View style={[styles.inputBox, { backgroundColor: theme.inputBg, borderColor: theme.inputBorder }]}>
-                  <IdCard size={18} color={theme.textMuted} />
+                  <Search size={18} color={theme.textMuted} />
                   <TextInput
                     style={[styles.input, { color: theme.text }]}
-                    placeholder="Ex: 6891234"
+                    placeholder="Buscar por guerra, nome completo ou SARAM..."
                     placeholderTextColor={theme.textMuted}
-                    keyboardType="numeric"
-                    value={selectedSaram}
-                    onChangeText={setSelectedSaram}
+                    value={militarySearch}
+                    onChangeText={setMilitarySearch}
+                    autoCapitalize="none"
                   />
+                  {militarySearch.length > 0 && (
+                    <TouchableOpacity onPress={() => setMilitarySearch('')}>
+                      <X size={16} color={theme.textMuted} />
+                    </TouchableOpacity>
+                  )}
                 </View>
+
+                {/* Lista com scroll mostrando ~5 militares */}
+                <View
+                  style={[
+                    styles.milListContainer,
+                    {
+                      backgroundColor: theme.card,
+                      borderColor: theme.border,
+                    },
+                  ]}
+                >
+                  <ScrollView
+                    nestedScrollEnabled={true}
+                    style={styles.milListScroll}
+                    showsVerticalScrollIndicator={true}
+                  >
+                    {filteredMilitaries.length === 0 ? (
+                      <View style={styles.milEmptyBox}>
+                        <Text style={[styles.milEmptyText, { color: theme.textMuted }]}>
+                          Nenhum militar encontrado
+                        </Text>
+                      </View>
+                    ) : (
+                      filteredMilitaries.map((m) => {
+                        const isSelected = selectedSaram === m.saram.toString();
+                        return (
+                          <TouchableOpacity
+                            key={m.saram}
+                            style={[
+                              styles.milItemRow,
+                              {
+                                borderBottomColor: theme.border,
+                                backgroundColor: isSelected ? theme.badgeBg : 'transparent',
+                              },
+                            ]}
+                            onPress={() => setSelectedSaram(m.saram.toString())}
+                            activeOpacity={0.7}
+                          >
+                            <View style={styles.milItemLeft}>
+                              <View style={styles.milItemTitleRow}>
+                                <Text
+                                  style={[
+                                    styles.milItemRank,
+                                    { color: isSelected ? theme.primary : theme.text },
+                                  ]}
+                                >
+                                  {m.posto_graduacao} {m.nome_guerra}
+                                </Text>
+                                <Text style={[styles.milItemSaram, { color: theme.textMuted }]}>
+                                  SARAM: {m.saram}
+                                </Text>
+                              </View>
+                              <Text
+                                style={[styles.milItemFull, { color: theme.textSecondary }]}
+                                numberOfLines={1}
+                              >
+                                {m.nome_completo}
+                                {m.secao ? ` • ${m.secao}` : ''}
+                              </Text>
+                            </View>
+                            <View
+                              style={[
+                                styles.milRadio,
+                                {
+                                  borderColor: isSelected ? theme.primary : theme.border,
+                                  backgroundColor: isSelected ? theme.primary : 'transparent',
+                                },
+                              ]}
+                            >
+                              {isSelected && <Check size={11} color="#FFFFFF" />}
+                            </View>
+                          </TouchableOpacity>
+                        );
+                      })
+                    )}
+                  </ScrollView>
+                </View>
+
                 <Text style={[styles.hint, { color: theme.textMuted }]}>
-                  O militar deve estar cadastrado previamente no efetivo.
+                  {filteredMilitaries.length} militares listados (clique para selecionar)
                 </Text>
               </View>
             ) : (
@@ -481,5 +629,103 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 14,
     fontWeight: '800',
+  },
+  selectedMilCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: 12,
+    borderRadius: 12,
+    borderWidth: 1.5,
+    marginBottom: 4,
+  },
+  selectedMilInfo: {
+    flex: 1,
+    gap: 2,
+  },
+  selectedMilHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  selectedCheckBadge: {
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  selectedMilName: {
+    fontSize: 14,
+    fontWeight: '800',
+  },
+  selectedMilDetails: {
+    fontSize: 12,
+  },
+  selectedMilSecao: {
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  clearMilBtn: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginLeft: 8,
+  },
+  milListContainer: {
+    height: 220,
+    borderRadius: 12,
+    borderWidth: 1,
+    overflow: 'hidden',
+  },
+  milListScroll: {
+    flex: 1,
+  },
+  milEmptyBox: {
+    padding: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  milEmptyText: {
+    fontSize: 13,
+  },
+  milItemRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+  },
+  milItemLeft: {
+    flex: 1,
+    gap: 2,
+    marginRight: 8,
+  },
+  milItemTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  milItemRank: {
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  milItemSaram: {
+    fontSize: 11,
+    fontWeight: '600',
+  },
+  milItemFull: {
+    fontSize: 11,
+  },
+  milRadio: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    borderWidth: 1.5,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 });
