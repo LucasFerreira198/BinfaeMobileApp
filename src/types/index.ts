@@ -46,6 +46,18 @@ export type ItemStatus = 'DISPONIVEL' | 'EM_USO' | 'EM_MANUTENCAO' | 'CAUTELADO'
 export type ItemCondition = 'NOVO' | 'BOM' | 'REGULAR' | 'COM_DEFEITO' | 'SUCATA';
 export type ControlType = 'UNITARIO' | 'GRANEL';
 
+export interface ItemCautelaAtiva {
+  id: number;
+  cautela_id: number;
+  missao_nome: string;
+  tipo: 'MISSAO' | 'FIXA';
+  militar_responsavel_saram: number;
+  militar_nome_guerra: string;
+  militar_posto_graduacao: string;
+  militar_celular?: string | null;
+  data_cautela: string;
+}
+
 export interface Item {
   id: number;
   uuid?: string | null;
@@ -68,8 +80,44 @@ export interface Item {
   subgrupo?: Subgroup | null;
   parent?: Item | null;
   componentes?: Item[];
+  cautela_ativa?: ItemCautelaAtiva | null;
   criado_em?: string;
   atualizado_em?: string;
+}
+
+export interface CautelaItem {
+  id: number;
+  cautela_id: number;
+  item_id: number;
+  militar_saram: number;
+  telefone_contato?: string | null;
+  data_cautela: string;
+  condicao_saida: string;
+  data_devolucao?: string | null;
+  condicao_retorno?: string | null;
+  status: 'EM_USO' | 'DEVOLVIDO';
+  recebido_por_id?: number | null;
+  observacoes?: string | null;
+  item?: Item | null;
+  militar?: Military | null;
+  recebedor?: User | null;
+}
+
+export interface Cautela {
+  id: number;
+  nome: string;
+  tipo: 'MISSAO' | 'FIXA';
+  status: 'ATIVA' | 'CONCLUIDA';
+  criado_por_id: number;
+  data_inicio: string;
+  data_fim?: string | null;
+  observacoes?: string | null;
+  criado_em?: string;
+  criador?: User | null;
+  itens: CautelaItem[];
+  total_itens: number;
+  itens_devolvidos: number;
+  itens_pendentes: number;
 }
 
 export interface ItemCreateInput {
@@ -124,3 +172,4 @@ export interface FilterState {
   locationId: number | null;
   lowStockOnly: boolean;
 }
+

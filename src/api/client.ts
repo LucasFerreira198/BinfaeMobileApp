@@ -1,12 +1,23 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { User, Item, Group, Subgroup, Location, ItemMovement, ItemCreateInput, Military } from '../types';
+import { User, Item, Group, Subgroup, Location, ItemMovement, ItemCreateInput, Military, Cautela, CautelaItem } from '../types';
 
 export const DEFAULT_API_BASE = 'https://systeminformaticabinfae.onrender.com';
 const API_URL_KEY = '@binfae_api_url';
 const TOKEN_KEY = '@binfae_token';
+const REFRESH_TOKEN_KEY = '@binfae_refresh_token';
+const LOGIN_TIMESTAMP_KEY = '@binfae_login_timestamp';
 
 let currentApiBase = DEFAULT_API_BASE;
 let currentToken: string | null = null;
+let currentRefreshToken: string | null = null;
+let currentLoginTimestamp: string | null = null;
+
+export const clearAuthSession = async (): Promise<void> => {
+  currentToken = null;
+  currentRefreshToken = null;
+  currentLoginTimestamp = null;
+  await AsyncStorage.multiRemove([TOKEN_KEY, REFRESH_TOKEN_KEY, LOGIN_TIMESTAMP_KEY, '@binfae_auth_user']);
+};
 
 export const initApiClient = async (): Promise<void> => {
   try {
@@ -14,10 +25,19 @@ export const initApiClient = async (): Promise<void> => {
     if (savedUrl && savedUrl.trim().length > 0) {
       currentApiBase = savedUrl.trim().replace(/\/+$/, '');
     }
-    const savedToken = await AsyncStorage.getItem(TOKEN_KEY);
-    if (savedToken) {
-      currentToken = savedToken;
+    currentLoginTimestamp = await AsyncStorage.getItem(LOGIN_TIMESTAMP_KEY);
+
+    // Validação estrita de 24 horas no mobile
+    if (currentLoginTimestamp) {
+      const diffHours = (Date.now() - new Date(currentLoginTimestamp).getTime()) / (1000 * 60 * 60);
+      if (diffHours >= 24) {
+        await clearAuthSession();
+        return;
+      }
     }
+
+    currentToken = await AsyncStorage.getItem(TOKEN_KEY);
+    currentRefreshToken = await AsyncStorage.getItem(REFRESH_TOKEN_KEY);
   } catch (err) {
     console.warn('Erro ao inicializar client API:', err);
   }
@@ -31,18 +51,73 @@ export const setApiBaseUrl = async (url: string): Promise<void> => {
   await AsyncStorage.setItem(API_URL_KEY, cleanUrl);
 };
 
-export const setAuthToken = async (token: string | null): Promise<void> => {
+export const setAuthTokens = async (token: string | null, refreshToken?: string | null): Promise<void> => {
   currentToken = token;
+  currentRefreshToken = refreshToken ?? null;
+
   if (token) {
     await AsyncStorage.setItem(TOKEN_KEY, token);
+    if (refreshToken) {
+      await AsyncStorage.setItem(REFRESH_TOKEN_KEY, refreshToken);
+    }
+    if (!currentLoginTimestamp) {
+      const nowStr = new Date().toISOString();
+      currentLoginTimestamp = nowStr;
+      await AsyncStorage.setItem(LOGIN_TIMESTAMP_KEY, nowStr);
+    }
   } else {
-    await AsyncStorage.removeItem(TOKEN_KEY);
+    await clearAuthSession();
   }
 };
 
-export const getAuthToken = (): string | null => currentToken;
+export const setAuthToken = async (token: string | null): Promise<void> => {
+  await setAuthTokens(token, currentRefreshToken);
+};
 
-const request = async <T>(path: string, options: RequestInit = {}): Promise<T> => {
+export const getAuthToken = (): string | null => currentToken;
+export const getRefreshToken = (): string | null => currentRefreshToken;
+
+const refreshAccessToken = async (): Promise<boolean> => {
+  if (!currentRefreshToken) return false;
+
+  // Se tiver passado mais de 24 horas desde o login, não permite refresh
+  if (currentLoginTimestamp) {
+    const diffHours = (Date.now() - new Date(currentLoginTimestamp).getTime()) / (1000 * 60 * 60);
+    if (diffHours >= 24) {
+      await clearAuthSession();
+      return false;
+    }
+  }
+
+  try {
+    const res = await fetch(`${currentApiBase}/auth/refresh`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      },
+      body: JSON.stringify({ refresh_token: currentRefreshToken }),
+    });
+
+    if (res.ok) {
+      const data = await res.json();
+      currentToken = data.access_token;
+      if (data.refresh_token) {
+        currentRefreshToken = data.refresh_token;
+      }
+      await AsyncStorage.setItem(TOKEN_KEY, currentToken!);
+      if (currentRefreshToken) {
+        await AsyncStorage.setItem(REFRESH_TOKEN_KEY, currentRefreshToken);
+      }
+      return true;
+    }
+  } catch {}
+
+  await clearAuthSession();
+  return false;
+};
+
+const request = async <T>(path: string, options: RequestInit = {}, isRetry = false): Promise<T> => {
   const url = `${currentApiBase}${path.startsWith('/') ? path : '/' + path}`;
   const headers: Record<string, string> = {
     'Accept': 'application/json',
@@ -64,7 +139,11 @@ const request = async <T>(path: string, options: RequestInit = {}): Promise<T> =
     });
     clearTimeout(timeoutId);
 
-    if (response.status === 401) {
+    if (response.status === 401 && !isRetry) {
+      const refreshed = await refreshAccessToken();
+      if (refreshed) {
+        return await request<T>(path, options, true);
+      }
       throw new Error('Sessão expirada. Faça login novamente.');
     }
 
@@ -107,7 +186,7 @@ export const api = {
     }
   },
 
-  login: async (identifier: string, password: string): Promise<{ access_token: string; token_type: string }> => {
+  login: async (identifier: string, password: string): Promise<{ access_token: string; refresh_token?: string; token_type: string }> => {
     const body = new URLSearchParams();
     body.append('username', identifier.trim());
     body.append('password', password);
@@ -357,5 +436,79 @@ export const api = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data),
     });
+  },
+
+  // --- Cautelas de Materiais e Missões ---
+  listCautelas: async (status?: string, tipo?: string): Promise<Cautela[]> => {
+    const params = new URLSearchParams();
+    if (status) params.append('status', status);
+    if (tipo) params.append('tipo', tipo);
+    const qs = params.toString() ? `?${params.toString()}` : '';
+    return await request<Cautela[]>(`/cautelas${qs}`);
+  },
+
+  getCautela: async (id: number): Promise<Cautela> => {
+    return await request<Cautela>(`/cautelas/${id}`);
+  },
+
+  createCautela: async (data: { nome: string; tipo?: 'MISSAO' | 'FIXA'; observacoes?: string }): Promise<Cautela> => {
+    return await request<Cautela>('/cautelas', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+  },
+
+  addItemToCautela: async (cautelaId: number, data: {
+    item_id?: number;
+    item_code?: string;
+    militar_saram: number;
+    telefone_contato?: string;
+    condicao_saida?: string;
+    observacoes?: string;
+  }): Promise<CautelaItem> => {
+    return await request<CautelaItem>(`/cautelas/${cautelaId}/itens`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+  },
+
+  addBatchItemsToCautela: async (cautelaId: number, data: {
+    militar_saram: number;
+    telefone_contato?: string;
+    itens_ids?: number[];
+    itens_codes?: string[];
+    condicao_saida?: string;
+    observacoes?: string;
+  }): Promise<CautelaItem[]> => {
+    return await request<CautelaItem[]>(`/cautelas/${cautelaId}/itens/lote`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+  },
+
+  devolverItemCautela: async (cautelaId: number, itemId: number, data?: {
+    condicao_retorno?: string;
+    observacoes?: string;
+  }): Promise<CautelaItem> => {
+    return await request<CautelaItem>(`/cautelas/${cautelaId}/itens/${itemId}/devolver`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data || {}),
+    });
+  },
+
+  scanDevolverItem: async (code: string): Promise<CautelaItem> => {
+    const encoded = encodeURIComponent(code.trim());
+    return await request<CautelaItem>(`/cautelas/devolver/scan/${encoded}`, {
+      method: 'POST',
+    });
+  },
+
+  checkItemCautelaStatus: async (code: string): Promise<{ item: Item; cautelado: boolean; cautela?: any }> => {
+    const encoded = encodeURIComponent(code.trim());
+    return await request<{ item: Item; cautelado: boolean; cautela?: any }>(`/cautelas/item/${encoded}/status`);
   },
 };

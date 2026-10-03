@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { User } from '../types';
-import { api, setAuthToken, getAuthToken, initApiClient } from '../api/client';
+import { api, setAuthTokens, clearAuthSession, getAuthToken, initApiClient } from '../api/client';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 interface AuthContextType {
@@ -52,11 +52,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           })
           .catch((err) => {
             console.warn('Erro ao revalidar sessão:', err);
-            // Se for 401, faz logout
             if (err.message?.includes('Sessão expirada')) {
               logout();
             }
           });
+      } else {
+        setTokenState(null);
+        setUser(null);
       }
     } catch (err) {
       console.warn('Erro ao inicializar autenticação:', err);
@@ -69,7 +71,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setIsLoading(true);
     try {
       const data = await api.login(identifier, pass);
-      await setAuthToken(data.access_token);
+      await setAuthTokens(data.access_token, data.refresh_token);
       setTokenState(data.access_token);
 
       const me = await api.getMe();
@@ -81,7 +83,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const logout = async () => {
-    await setAuthToken(null);
+    await clearAuthSession();
     setTokenState(null);
     setUser(null);
     await AsyncStorage.removeItem(USER_STORAGE_KEY);

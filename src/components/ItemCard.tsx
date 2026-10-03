@@ -76,6 +76,14 @@ export const ItemCard: React.FC<ItemCardProps> = ({ item, onPress }) => {
         {item.nome}
       </Text>
 
+      {item.cautela_ativa ? (
+        <View style={[styles.cautelaCardBadge, { backgroundColor: 'rgba(245, 158, 11, 0.12)', borderColor: 'rgba(245, 158, 11, 0.3)' }]}>
+          <Text style={[styles.cautelaCardBadgeText, { color: '#D97706' }]} numberOfLines={1}>
+            CAUTELADO: {item.cautela_ativa.missao_nome} • {item.cautela_ativa.militar_posto_graduacao} {item.cautela_ativa.militar_nome_guerra}{item.cautela_ativa.militar_celular ? ` (${item.cautela_ativa.militar_celular})` : ''}
+          </Text>
+        </View>
+      ) : null}
+
       {/* Meta Informações: Categoria e Localização */}
       <View style={styles.metaRow}>
         <View style={styles.metaItem}>
@@ -226,5 +234,17 @@ const styles = StyleSheet.create({
   detailsText: {
     fontSize: 12,
     fontWeight: '600',
+  },
+  cautelaCardBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+    borderWidth: 1,
+    marginTop: 2,
+    marginBottom: 4,
+  },
+  cautelaCardBadgeText: {
+    fontSize: 10,
+    fontWeight: '700',
   },
 });

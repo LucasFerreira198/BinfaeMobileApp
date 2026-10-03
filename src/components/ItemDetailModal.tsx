@@ -31,6 +31,7 @@ import {
   QrCode,
   Printer,
   Share2,
+  ShieldCheck,
 } from 'lucide-react-native';
 
 interface ItemDetailModalProps {
@@ -356,6 +357,28 @@ const ItemDetailModalContent: React.FC<ItemDetailModalProps> = ({
               <X size={20} color={theme.text} />
             </TouchableOpacity>
           </View>
+
+          {item.cautela_ativa ? (
+            <View style={[styles.cautelaAlertCard, { backgroundColor: 'rgba(245, 158, 11, 0.12)', borderColor: 'rgba(245, 158, 11, 0.4)' }]}>
+              <View style={styles.cautelaAlertHeader}>
+                <ShieldCheck size={16} color="#D97706" />
+                <Text style={styles.cautelaAlertTitle}>
+                  MATERIAL EM CAUTELA ATIVA ({item.cautela_ativa.tipo === 'MISSAO' ? 'Missão Operacional' : 'Cautela Fixa'})
+                </Text>
+              </View>
+              <Text style={[styles.cautelaAlertMission, { color: theme.text }]}>
+                Missão: {item.cautela_ativa.missao_nome}
+              </Text>
+              <Text style={[styles.cautelaAlertMilitar, { color: theme.textSecondary }]}>
+                Responsável: {item.cautela_ativa.militar_posto_graduacao} {item.cautela_ativa.militar_nome_guerra} (SARAM {item.cautela_ativa.militar_responsavel_saram})
+              </Text>
+              {item.cautela_ativa.militar_celular ? (
+                <Text style={[styles.cautelaAlertPhone, { color: theme.success }]}>
+                  Telefone: {item.cautela_ativa.militar_celular}
+                </Text>
+              ) : null}
+            </View>
+          ) : null}
 
           {/* Abas Superiores: Informações vs Histórico Específico vs QR Code */}
           <View style={[styles.tabBar, { borderBottomColor: theme.border }]}>
@@ -1097,5 +1120,36 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 14,
     fontWeight: '700',
+  },
+  cautelaAlertCard: {
+    padding: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    marginHorizontal: 16,
+    marginBottom: 8,
+    gap: 4,
+  },
+  cautelaAlertHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 2,
+  },
+  cautelaAlertTitle: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: '#D97706',
+    letterSpacing: 0.5,
+  },
+  cautelaAlertMission: {
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  cautelaAlertMilitar: {
+    fontSize: 11.5,
+  },
+  cautelaAlertPhone: {
+    fontSize: 11.5,
+    fontWeight: '600',
   },
 });

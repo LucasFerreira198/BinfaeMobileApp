@@ -11,6 +11,7 @@ import { CameraView, useCameraPermissions } from 'expo-camera';
 import * as Haptics from 'expo-haptics';
 import { useTheme } from '../context/ThemeContext';
 import { useStock } from '../context/StockContext';
+import { api } from '../api/client';
 import { ItemDetailModal } from '../components/ItemDetailModal';
 import { MovementModal } from '../components/MovementModal';
 import { Item } from '../types';
@@ -21,7 +22,7 @@ const SCANNER_SIZE = width * 0.72;
 
 export const ScannerScreen: React.FC = () => {
   const { theme } = useTheme();
-  const { allItems } = useStock();
+  const { allItems, syncData } = useStock();
   const [permission, requestPermission] = useCameraPermissions();
 
   const [scanned, setScanned] = useState<boolean>(false);
@@ -62,6 +63,55 @@ export const ScannerScreen: React.FC = () => {
       if (item.codigo_interno && item.codigo_interno.toLowerCase() === searchCode.toLowerCase()) return true;
       return false;
     });
+
+    // 3. Checa se o material está sob cautela ativa
+    try {
+      const cautelaStatus = await api.checkItemCautelaStatus(cleanData);
+      if (cautelaStatus.cautelado && cautelaStatus.cautela) {
+        const c = cautelaStatus.cautela;
+        const mil = c.militar;
+        Alert.alert(
+          'Material Cautelado Identificado',
+          `Material: ${cautelaStatus.item?.nome || cleanData}\n` +
+          `Missão / Cautela: ${c.missao_nome} (${c.tipo === 'MISSAO' ? 'Missão Operacional' : 'Cautela Fixa'})\n` +
+          `Responsável: ${mil?.posto_graduacao || ''} ${mil?.nome_guerra || ''} (SARAM ${mil?.saram})\n` +
+          (c.telefone_contato ? `Telefone: ${c.telefone_contato}\n\n` : '\n') +
+          'Deseja realizar a devolução deste material agora?',
+          [
+            {
+              text: 'Ver Detalhes',
+              style: 'cancel',
+              onPress: () => {
+                if (found) {
+                  setMatchedItem(found);
+                  setDetailVisible(true);
+                } else {
+                  setScanned(false);
+                }
+              },
+            },
+            {
+              text: 'Confirmar Devolução',
+              style: 'default',
+              onPress: async () => {
+                try {
+                  await api.scanDevolverItem(cleanData);
+                  await syncData();
+                  Alert.alert('Sucesso', 'Material devolvido com sucesso! Status atualizado para DISPONÍVEL.', [
+                    { text: 'OK', onPress: () => setScanned(false) },
+                  ]);
+                } catch (err: any) {
+                  Alert.alert('Erro', err.message || 'Falha ao devolver material.', [
+                    { text: 'OK', onPress: () => setScanned(false) },
+                  ]);
+                }
+              },
+            },
+          ]
+        );
+        return;
+      }
+    } catch (_) {}
 
     if (found) {
       setMatchedItem(found);

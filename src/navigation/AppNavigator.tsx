@@ -43,7 +43,7 @@ const AppNavigatorInner: React.FC<{
   const bottomTabs: Array<{ id: ScreenType; label: string; icon: any; badge?: string }> = [
     { id: 'stock', label: 'Materiais', icon: Box },
     { id: 'scanner', label: 'Escanear', icon: QrCode },
-    { id: 'cautelas', label: 'Cautelas', icon: ClipboardList, badge: 'Em breve' },
+    { id: 'cautelas', label: 'Cautelas', icon: ClipboardList },
     { id: 'settings', label: 'Ajustes', icon: Settings },
   ];
 
