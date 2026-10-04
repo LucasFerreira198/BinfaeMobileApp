@@ -82,12 +82,12 @@ jobs:
             #### 📥 Download Direto:
             - **[BinfaeMobile-release.apk](https://github.com/LucasFerreira198/BinfaeMobileApp/releases/download/latest/BinfaeMobile-release.apk)**: Toque para baixar e instalar no celular.
 
-            #### 🚀 Principais Novidades:
-            - 🎯 **Módulo Nativo de Cautelas & Missões Operacionais**: Abertura simplificada de missões e cautelas fixas, abas "Ativas" e "Concluídas", métricas e progresso visual em tempo real.
-            - 👤 **Fluxo Operacional Blindado**: Militar selecionado primeiro, número de telefone em destaque no card com edição inline e persistência direta no backend. Modos de cautela unitário e em lote.
-            - 📷 **Leitor de Câmera QR Code com Descautelação Rápida**: Identificação automática de itens sob cautela ativa ao ler o código com a câmera, exibindo modal com os dados da missão e permitindo confirmação imediata de devolução.
+            #### 🚀 Principais Novidades da Versão ${{ steps.version.outputs.val }}:
+            - 🎯 **Correção e Aprimoramento de Cautelas**: Exibição precisa do status "Em Uso" para itens cautelados ativos, sem marcar falsamente como devolvido.
+            - 👤 **Exibição do Militar Responsável e Telefone**: Nome de guerra, posto/graduação, SARAM e telefone de contato visíveis nos detalhes da missão.
+            - 🔄 **Menu de Opções ao Clicar no Material**: Descautelação manual ou abertura de leitor de câmera direcionado exclusivamente àquele material com rejeição de códigos inválidos.
+            - 📷 **Leitor de Câmera QR Code com Confirmação**: O scanner principal de QR Code e a câmera de devolução agora identificam a missão e o militar solicitando confirmação explícita antes da baixa.
             - 🔒 **Sessão Estrita de 24 Horas & Refresh Token**: Expiração determinística de 24h a partir do login e renovação transparente de credenciais em segundo plano.
-            - 🏷️ **Identificação Visual no Acervo Geral**: Badges informativos nos cards e detalhes do material indicando se o item está cautelado, qual a missão e o militar responsável.
           files: build-output/BinfaeMobile-release.apk
           prerelease: false
           overwrite_files: true
