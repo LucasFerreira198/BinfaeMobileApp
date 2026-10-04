@@ -13,10 +13,11 @@ import {
 } from 'react-native';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as IntentLauncher from 'expo-intent-launcher';
+import Constants from 'expo-constants';
 import { useTheme } from '../context/ThemeContext';
 import { DownloadCloud, CheckCircle2, AlertCircle, X, ShieldAlert } from 'lucide-react-native';
 
-export const CURRENT_VERSION = '1.3.13';
+export const CURRENT_VERSION = Constants.expoConfig?.version || '1.3.14';
 const GITHUB_REPO = 'LucasFerreira198/BinfaeMobileApp';
 
 /**
