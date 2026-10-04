@@ -1,7 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { User, Item, Group, Subgroup, Location, ItemMovement, ItemCreateInput, Military, Cautela, CautelaItem } from '../types';
 
-export const DEFAULT_API_BASE = 'https://systeminformaticabinfae.onrender.com';
+export const DEFAULT_API_BASE = 'https://backend-info-binfae.vercel.app';
 const API_URL_KEY = '@binfae_api_url';
 const TOKEN_KEY = '@binfae_token';
 const REFRESH_TOKEN_KEY = '@binfae_refresh_token';
@@ -22,8 +22,13 @@ export const clearAuthSession = async (): Promise<void> => {
 export const initApiClient = async (): Promise<void> => {
   try {
     const savedUrl = await AsyncStorage.getItem(API_URL_KEY);
-    if (savedUrl && savedUrl.trim().length > 0) {
+    if (savedUrl && savedUrl.trim().length > 0 && !savedUrl.includes('onrender.com')) {
       currentApiBase = savedUrl.trim().replace(/\/+$/, '');
+    } else {
+      currentApiBase = DEFAULT_API_BASE;
+      if (savedUrl && savedUrl.includes('onrender.com')) {
+        await AsyncStorage.setItem(API_URL_KEY, DEFAULT_API_BASE);
+      }
     }
     currentLoginTimestamp = await AsyncStorage.getItem(LOGIN_TIMESTAMP_KEY);
 
