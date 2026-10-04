@@ -21,7 +21,7 @@ import { LoginScreen } from '../screens/LoginScreen';
 import { DrawerMenu } from '../components/DrawerMenu';
 import { LocationsModal } from '../components/LocationsModal';
 import { GroupsModal } from '../components/GroupsModal';
-import { UpdateModal, compareVersions, CURRENT_VERSION } from '../components/UpdateModal';
+import { UpdateModal, compareVersions, CURRENT_VERSION, extractReleaseVersion } from '../components/UpdateModal';
 import { Box, QrCode, ClipboardList, Settings } from 'lucide-react-native';
 
 const AppNavigatorInner: React.FC<{
@@ -170,8 +170,7 @@ export const AppNavigator: React.FC = () => {
         const rawName = (data.name || '').trim();
         const rawBody = (data.body || '').trim();
 
-        const versionMatch = `${rawTag} ${rawName} ${rawBody}`.match(/v?(\d+\.\d+\.\d+)/i);
-        const remoteVer = versionMatch ? versionMatch[1] : null;
+        const remoteVer = extractReleaseVersion(rawTag, rawName, rawBody);
 
         if (remoteVer && compareVersions(remoteVer, CURRENT_VERSION) > 0) {
           setMandatoryUpdateVisible(true);

@@ -13,12 +13,31 @@ import {
 } from 'react-native';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as IntentLauncher from 'expo-intent-launcher';
-import Constants from 'expo-constants';
+import appConfig from '../../app.json';
 import { useTheme } from '../context/ThemeContext';
 import { DownloadCloud, CheckCircle2, AlertCircle, X, ShieldAlert } from 'lucide-react-native';
 
-export const CURRENT_VERSION = Constants.expoConfig?.version || '1.3.14';
+export const CURRENT_VERSION: string = (appConfig as any).expo?.version || '1.3.15';
 const GITHUB_REPO = 'LucasFerreira198/BinfaeMobileApp';
+
+/**
+ * Extrai a versão semântica de uma release do GitHub com segurança estrita,
+ * priorizando a tag e o título antes do corpo de notas.
+ */
+export const extractReleaseVersion = (tag: string, name: string, body: string): string => {
+  const cleanTag = (tag || '').trim();
+  if (cleanTag.toLowerCase() !== 'latest') {
+    const tagMatch = cleanTag.match(/(\d+\.\d+\.\d+)/);
+    if (tagMatch) return tagMatch[1];
+  }
+  const nameMatch = (name || '').match(/v?(\d+\.\d+\.\d+)/i);
+  if (nameMatch) return nameMatch[1];
+
+  const bodyMatch = (body || '').match(/v?(\d+\.\d+\.\d+)/i);
+  if (bodyMatch) return bodyMatch[1];
+
+  return '';
+};
 
 /**
  * Compara duas versões no formato semver (ex: "1.1.0" vs "1.0.0")
@@ -122,11 +141,8 @@ export const UpdateModal: React.FC<UpdateModalProps> = ({
       const rawName = (data.name || '').trim();
       const rawBody = (data.body || '').trim();
 
-      // Procura formato semver (ex: v1.1.0 ou 1.1.0)
-      const versionMatch = `${rawTag} ${rawName} ${rawBody}`.match(/v?(\d+\.\d+\.\d+)/i);
-      const parsedRemoteVersion = versionMatch ? versionMatch[1] : null;
-
-      // Determina a versão remota real
+      // Extrai versão da release de forma segura sem misturar notas com números antigos
+      const parsedRemoteVersion = extractReleaseVersion(rawTag, rawName, rawBody);
       const remoteVer = parsedRemoteVersion || rawTag.replace(/^v/i, '');
       setLatestVersion(remoteVer || CURRENT_VERSION);
       setReleaseNotes(rawBody || 'Melhorias de desempenho e correções de segurança.');
@@ -171,7 +187,8 @@ export const UpdateModal: React.FC<UpdateModalProps> = ({
     setDownloadProgress(0);
 
     try {
-      const localApkPath = `${FileSystem.documentDirectory}binfae-update.apk`;
+      const filename = `binfae-update-${Date.now()}.apk`;
+      const localApkPath = `${FileSystem.cacheDirectory}${filename}`;
 
       const downloadResumable = FileSystem.createDownloadResumable(
         downloadUrl,
