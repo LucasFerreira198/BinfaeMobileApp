@@ -18,6 +18,7 @@ import { Item, ItemMovement } from '../types';
 import { useTheme } from '../context/ThemeContext';
 import { api } from '../api/client';
 import { ErrorBoundary } from './ErrorBoundary';
+import { formatDateTime } from '../utils/date';
 import {
   X,
   MapPin,
@@ -147,14 +148,7 @@ const ItemDetailModalContent: React.FC<ItemDetailModalProps> = ({
   };
 
   const formatDate = (dateStr?: string) => {
-    if (!dateStr) return '';
-    try {
-      const date = new Date(dateStr);
-      if (isNaN(date.getTime())) return dateStr;
-      return `${date.toLocaleDateString('pt-BR')} às ${date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`;
-    } catch {
-      return dateStr;
-    }
+    return formatDateTime(dateStr);
   };
 
   const qrPayload = item ? (item.uuid ? `BINFAE:ITEM:${item.uuid}` : `BINFAE:ITEM:${item.id}`) : '';

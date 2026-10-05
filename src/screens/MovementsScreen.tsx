@@ -16,6 +16,7 @@ import { Header } from '../components/Header';
 import { ItemMovement } from '../types';
 import { useKeyboardHeight } from '../hooks/useKeyboardHeight';
 import { History, ArrowRightLeft, User, Calendar, Search, X, MapPin } from 'lucide-react-native';
+import { formatDateTime } from '../utils/date';
 
 export const MovementsScreen: React.FC = () => {
   const { theme } = useTheme();
@@ -110,12 +111,6 @@ export const MovementsScreen: React.FC = () => {
     }
   };
 
-  const formatDate = (dateStr?: string) => {
-    if (!dateStr) return '';
-    const date = new Date(dateStr);
-    return `${date.toLocaleDateString('pt-BR')} às ${date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`;
-  };
-
   const renderMovementItem = ({ item }: { item: ItemMovement }) => {
     const badge = getMovementBadge(item.tipo_movimentacao);
 
@@ -126,7 +121,7 @@ export const MovementsScreen: React.FC = () => {
             <Text style={[styles.typeText, { color: badge.color }]}>{badge.label}</Text>
           </View>
           <Text style={[styles.dateText, { color: theme.textMuted }]}>
-            {formatDate(item.data_hora || item.criado_em)}
+            {formatDateTime(item.data_hora || item.criado_em)}
           </Text>
         </View>
 

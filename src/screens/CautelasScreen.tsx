@@ -41,6 +41,7 @@ import {
 } from 'lucide-react-native';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import * as Haptics from 'expo-haptics';
+import { formatDateTime } from '../utils/date';
 
 interface CautelasScreenProps {
   onGoToStock?: () => void;
@@ -702,26 +703,14 @@ export const CautelasScreen: React.FC<CautelasScreenProps> = () => {
                   <View style={styles.dateItem}>
                     <Clock size={12} color={theme.textMuted} />
                     <Text style={[styles.dateText, { color: theme.textMuted }]}>
-                      Início:{' '}
-                      {new Date(item.data_inicio).toLocaleDateString('pt-BR', {
-                        day: '2-digit',
-                        month: '2-digit',
-                        hour: '2-digit',
-                        minute: '2-digit',
-                      })}
+                      Início: {formatDateTime(item.data_inicio)}
                     </Text>
                   </View>
                   {item.data_fim && (
                     <View style={styles.dateItem}>
                       <CheckCircle2 size={12} color={theme.success} />
                       <Text style={[styles.dateText, { color: theme.success }]}>
-                        Conclusão:{' '}
-                        {new Date(item.data_fim).toLocaleDateString('pt-BR', {
-                          day: '2-digit',
-                          month: '2-digit',
-                          hour: '2-digit',
-                          minute: '2-digit',
-                        })}
+                        Conclusão: {formatDateTime(item.data_fim)}
                       </Text>
                     </View>
                   )}
@@ -876,13 +865,7 @@ export const CautelasScreen: React.FC<CautelasScreenProps> = () => {
                       {selectedCautela.nome}
                     </Text>
                     <Text style={[styles.detailModalSub, { color: theme.textSecondary }]}>
-                      Aberta em{' '}
-                      {new Date(selectedCautela.data_inicio).toLocaleDateString('pt-BR', {
-                        day: '2-digit',
-                        month: '2-digit',
-                        hour: '2-digit',
-                        minute: '2-digit',
-                      })}
+                      Aberta em {formatDateTime(selectedCautela.data_inicio)}
                     </Text>
                   </View>
                   <TouchableOpacity onPress={() => setDetailModalVisible(false)}>
