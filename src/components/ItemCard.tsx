@@ -29,8 +29,14 @@ export const ItemCard: React.FC<ItemCardProps> = ({ item, onPress }) => {
     }
   };
 
-  const statusInfo = getStatusBadge(item.status);
-  const locationName = item.local?.caminho_completo || item.local?.nome || 'Sem Local Definido';
+  const isSetor = item.cautela_ativa?.tipo === 'FIXA' || item.local?.tipo === 'SETOR' || item.status === 'EM_USO';
+  const locationName = item.cautela_ativa?.tipo === 'FIXA'
+    ? `Setor: ${item.cautela_ativa.missao_nome || item.cautela_ativa.cautela_nome}`
+    : item.local?.tipo === 'SETOR'
+    ? `Setor: ${item.local.nome}`
+    : item.cautela_ativa?.tipo === 'MISSAO'
+    ? `Missão: ${item.cautela_ativa.missao_nome}`
+    : item.local?.caminho_completo || item.local?.nome || 'Sem Local Definido';
   const subgroupName = item.subgrupo?.nome || 'Geral';
 
   return (

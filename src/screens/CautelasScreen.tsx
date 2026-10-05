@@ -1231,7 +1231,7 @@ export const CautelasScreen: React.FC<CautelasScreenProps> = () => {
                       {selectedSingleItem.nome}
                     </Text>
                     <Text style={[styles.selectedItemCardBmp, { color: theme.primary }]}>
-                      BMP: {selectedSingleItem.bmp || 'S/N'} • Local: {selectedSingleItem.local?.nome || 'Depósito'}
+                      BMP: {selectedSingleItem.bmp || 'S/N'} • Local: {selectedSingleItem.local?.tipo === 'SETOR' ? `Setor: ${selectedSingleItem.local.nome}` : (selectedSingleItem.local?.nome || 'Sem local')}
                     </Text>
                   </View>
                   <TouchableOpacity onPress={() => setSelectedSingleItem(null)}>

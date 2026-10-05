@@ -123,7 +123,13 @@ const ItemDetailModalContent: React.FC<ItemDetailModalProps> = ({
 
   if (!item) return null;
 
-  const locationPath = item.local?.caminho_completo || item.local?.nome || 'Não definido';
+  const locationPath = item.cautela_ativa?.tipo === 'FIXA'
+    ? `Setor: ${item.cautela_ativa.missao_nome || item.cautela_ativa.cautela_nome}`
+    : item.local?.tipo === 'SETOR'
+    ? `Setor: ${item.local.nome}`
+    : item.cautela_ativa?.tipo === 'MISSAO'
+    ? `Missão: ${item.cautela_ativa.missao_nome}`
+    : item.local?.caminho_completo || item.local?.nome || 'Não definido';
   const subCategory = item.subgrupo?.nome || 'Geral';
   const itemStatus = item.status || 'DISPONIVEL';
   const itemQty = item.quantidade !== undefined && item.quantidade !== null ? item.quantidade : 0;
