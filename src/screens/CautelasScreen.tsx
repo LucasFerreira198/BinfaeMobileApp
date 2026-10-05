@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   View,
   Text,
@@ -50,7 +50,22 @@ interface CautelasScreenProps {
 export const CautelasScreen: React.FC<CautelasScreenProps> = () => {
   const { theme } = useTheme();
   const { user } = useAuth();
-  const { allItems, syncData } = useStock();
+  const { allItems, syncData, cautelasVersion } = useStock();
+  const prevCautelasVersionRef = useRef<number | null>(null);
+
+  // Auto-refresh silencioso instantâneo quando cautelasVersion muda no servidor
+  useEffect(() => {
+    if (cautelasVersion !== null) {
+      if (prevCautelasVersionRef.current !== null && cautelasVersion !== prevCautelasVersionRef.current) {
+        prevCautelasVersionRef.current = cautelasVersion;
+        api.listCautelas().then((list) => {
+          setCautelas(list);
+        }).catch(() => {});
+      } else if (prevCautelasVersionRef.current === null) {
+        prevCautelasVersionRef.current = cautelasVersion;
+      }
+    }
+  }, [cautelasVersion]);
 
   // Abas e Filtros
   const [activeTab, setActiveTab] = useState<'MISSAO' | 'FIXA'>('MISSAO');

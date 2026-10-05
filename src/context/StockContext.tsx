@@ -1,4 +1,5 @@
-import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { AppState, AppStateStatus } from 'react-native';
 import { Item, Group, Subgroup, Location, StockMetrics, FilterState, ItemCreateInput } from '../types';
 import {
   loadLocalDatabase,
@@ -20,6 +21,8 @@ interface StockContextType {
   isSyncing: boolean;
   isManualRefreshing: boolean;
   lastSync: number | null;
+  stockVersion: number | null;
+  cautelasVersion: number | null;
   error: string | null;
   setSearch: (search: string) => void;
   setStatusFilter: (status: string | null) => void;
@@ -61,6 +64,8 @@ const StockContext = createContext<StockContextType>({
   isSyncing: false,
   isManualRefreshing: false,
   lastSync: null,
+  stockVersion: null,
+  cautelasVersion: null,
   error: null,
   setSearch: () => {},
   setStatusFilter: () => {},
@@ -89,10 +94,21 @@ export const StockProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const [subgroups, setSubgroups] = useState<Subgroup[]>([]);
   const [locations, setLocations] = useState<Location[]>([]);
   const [lastSync, setLastSync] = useState<number | null>(null);
+  const [stockVersion, setStockVersion] = useState<number | null>(null);
+  const [cautelasVersion, setCautelasVersion] = useState<number | null>(null);
   const [isSyncing, setIsSyncing] = useState<boolean>(false);
   const [isManualRefreshing, setIsManualRefreshing] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [filters, setFilters] = useState<FilterState>(defaultFilters);
+
+  const stockVersionRef = useRef<number | null>(null);
+  const cautelasVersionRef = useRef<number | null>(null);
+  const isAutoSyncingRef = useRef<boolean>(false);
+  const isSyncingRef = useRef<boolean>(false);
+
+  useEffect(() => {
+    isSyncingRef.current = isSyncing;
+  }, [isSyncing]);
 
   // 1. Carrega dados do armazenamento local em 0ms na inicialização
   useEffect(() => {
@@ -105,7 +121,98 @@ export const StockProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     });
   }, []);
 
-  // 2. Sincronização inteligente sem flickering
+  // Sincronização silenciosa em tempo real via versão atômica do servidor
+  const checkAndSyncSilently = useCallback(async () => {
+    if (!isAuthenticated || isSyncingRef.current || isAutoSyncingRef.current) return;
+    isAutoSyncingRef.current = true;
+
+    try {
+      const status = await api.getSyncStatus();
+      if (status && status.status === 'success') {
+        const remoteStock = status.stock_version;
+        const remoteCautelas = status.cautelas_version;
+
+        let shouldFetchItems = false;
+        if (stockVersionRef.current === null) {
+          stockVersionRef.current = remoteStock;
+          setStockVersion(remoteStock);
+        } else if (remoteStock > stockVersionRef.current) {
+          stockVersionRef.current = remoteStock;
+          setStockVersion(remoteStock);
+          shouldFetchItems = true;
+        }
+
+        if (cautelasVersionRef.current === null) {
+          cautelasVersionRef.current = remoteCautelas;
+          setCautelasVersion(remoteCautelas);
+        } else if (remoteCautelas > cautelasVersionRef.current) {
+          cautelasVersionRef.current = remoteCautelas;
+          setCautelasVersion(remoteCautelas);
+        }
+
+        if (shouldFetchItems) {
+          const remoteItems = await api.fetchItems();
+          setAllItems((prev) => {
+            if (
+              prev.length === remoteItems.length &&
+              JSON.stringify(prev.map((i) => i.id + i.status + i.quantidade)) ===
+                JSON.stringify(remoteItems.map((i) => i.id + i.status + i.quantidade))
+            ) {
+              return prev;
+            }
+            return remoteItems;
+          });
+          const now = Date.now();
+          setLastSync(now);
+          await persistLocalDatabase(remoteItems);
+        }
+      }
+    } catch (e) {
+      // Falha transitória em segundo plano
+    } finally {
+      isAutoSyncingRef.current = false;
+    }
+  }, [isAuthenticated]);
+
+  // Polling em tempo real a cada 2 segundos quando o app está em primeiro plano
+  useEffect(() => {
+    if (!isAuthenticated) return;
+
+    let intervalId: any = null;
+
+    const startPolling = () => {
+      if (intervalId) clearInterval(intervalId);
+      intervalId = setInterval(() => {
+        checkAndSyncSilently();
+      }, 2000);
+      checkAndSyncSilently();
+    };
+
+    const stopPolling = () => {
+      if (intervalId) {
+        clearInterval(intervalId);
+        intervalId = null;
+      }
+    };
+
+    const handleAppStateChange = (nextAppState: AppStateStatus) => {
+      if (nextAppState === 'active') {
+        startPolling();
+      } else {
+        stopPolling();
+      }
+    };
+
+    const sub = AppState.addEventListener('change', handleAppStateChange);
+    startPolling();
+
+    return () => {
+      stopPolling();
+      sub.remove();
+    };
+  }, [isAuthenticated, checkAndSyncSilently]);
+
+  // 2. Sincronização inteligente completa
   const syncData = useCallback(async (manual = false) => {
     if (!isAuthenticated) return;
     if (manual) {
@@ -142,6 +249,15 @@ export const StockProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       const now = Date.now();
       setLastSync(now);
       await persistLocalDatabase(remoteItems, remoteGroups, remoteLocations, remoteSubgroups);
+
+      api.getSyncStatus().then((status) => {
+        if (status && status.status === 'success') {
+          stockVersionRef.current = status.stock_version;
+          cautelasVersionRef.current = status.cautelas_version;
+          setStockVersion(status.stock_version);
+          setCautelasVersion(status.cautelas_version);
+        }
+      }).catch(() => {});
     } catch (err: any) {
       console.warn('Erro ao sincronizar com servidor:', err);
       setError(err.message || 'Falha na conexão com o servidor');
@@ -335,6 +451,8 @@ export const StockProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         isSyncing,
         isManualRefreshing,
         lastSync,
+        stockVersion,
+        cautelasVersion,
         error,
         setSearch,
         setStatusFilter,

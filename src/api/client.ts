@@ -526,4 +526,13 @@ export const api = {
     const encoded = encodeURIComponent(code.trim());
     return await request<any>(`/cautelas/item/${encoded}/status`);
   },
+
+  getSyncStatus: async (): Promise<{
+    status: string;
+    stock_version: number;
+    cautelas_version: number;
+    version_token: string;
+  }> => {
+    return await request<any>('/system/sync-status');
+  },
 };
