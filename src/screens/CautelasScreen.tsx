@@ -18,6 +18,7 @@ import { useTheme } from '../context/ThemeContext';
 import { useAuth } from '../context/AuthContext';
 import { useStock } from '../context/StockContext';
 import { Header } from '../components/Header';
+import { UserAvatar } from '../components/UserAvatar';
 import { api } from '../api/client';
 import { Cautela, CautelaItem, Military, Item } from '../types';
 import {
@@ -979,7 +980,7 @@ export const CautelasScreen: React.FC<CautelasScreenProps> = () => {
 
                           {/* Dados do Militar Responsável e Telefone em Destaque */}
                           <View style={styles.militarResponsavelRow}>
-                            <UserCheck size={14} color={theme.primary} />
+                            <UserAvatar militar={mil} size={22} />
                             <Text style={[styles.militarText, { color: theme.text }]}>
                               {milNome} (SARAM {saram})
                             </Text>
@@ -1044,6 +1045,7 @@ export const CautelasScreen: React.FC<CautelasScreenProps> = () => {
                     { backgroundColor: theme.surfaceVariant, borderColor: theme.primary },
                   ]}
                 >
+                  <UserAvatar militar={selectedMilitary} size={42} showBorder={true} />
                   <View style={{ flex: 1 }}>
                     <Text style={[styles.selectedMilitarName, { color: theme.text }]}>
                       {selectedMilitary.posto_graduacao} {selectedMilitary.nome_guerra}
@@ -1095,12 +1097,15 @@ export const CautelasScreen: React.FC<CautelasScreenProps> = () => {
                             setMilitaryPhone(mil.celular || mil.telefone || '');
                           }}
                         >
-                          <Text style={[styles.militarOptionName, { color: theme.text }]}>
-                            {mil.posto_graduacao} {mil.nome_guerra}
-                          </Text>
-                          <Text style={[styles.militarOptionSaram, { color: theme.textSecondary }]}>
-                            SARAM: {mil.saram}
-                          </Text>
+                          <UserAvatar militar={mil} size={32} />
+                          <View style={{ flex: 1 }}>
+                            <Text style={[styles.militarOptionName, { color: theme.text }]}>
+                              {mil.posto_graduacao} {mil.nome_guerra}
+                            </Text>
+                            <Text style={[styles.militarOptionSaram, { color: theme.textSecondary }]}>
+                              SARAM: {mil.saram}
+                            </Text>
+                          </View>
                         </TouchableOpacity>
                       ))}
                   </ScrollView>
@@ -1845,6 +1850,7 @@ const styles = StyleSheet.create({
     padding: 12,
     borderRadius: 10,
     borderWidth: 1,
+    gap: 10,
   },
   selectedMilitarName: {
     fontSize: 13.5,
@@ -1877,9 +1883,10 @@ const styles = StyleSheet.create({
   },
   militarOptionRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    alignItems: 'center',
     paddingVertical: 8,
     borderBottomWidth: StyleSheet.hairlineWidth,
+    gap: 10,
   },
   militarOptionName: {
     fontSize: 12,

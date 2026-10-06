@@ -16,6 +16,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Header } from '../components/Header';
 import { UpdateModal, CURRENT_VERSION } from '../components/UpdateModal';
 import { SetPinModal } from '../components/SetPinModal';
+import { UserAvatar } from '../components/UserAvatar';
+import { EditProfileModal } from '../components/EditProfileModal';
 import {
   Shield,
   Moon,
@@ -34,6 +36,7 @@ import {
   Fingerprint,
   ShieldOff,
   Check,
+  Edit3,
 } from 'lucide-react-native';
 
 export const SettingsScreen: React.FC = () => {
@@ -51,6 +54,7 @@ export const SettingsScreen: React.FC = () => {
 
   const [updateModalVisible, setUpdateModalVisible] = useState<boolean>(false);
   const [setPinModalVisible, setSetPinModalVisible] = useState<boolean>(false);
+  const [editProfileModalVisible, setEditProfileModalVisible] = useState<boolean>(false);
 
   const militar = user?.militar;
   const displayName = militar
@@ -95,9 +99,13 @@ export const SettingsScreen: React.FC = () => {
         <Text style={[styles.sectionTitle, { color: theme.textSecondary }]}>PERFIL & CONTA</Text>
         <View style={[styles.profileCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
           <View style={styles.profileTopRow}>
-            <View style={[styles.profileAvatar, { backgroundColor: theme.badgeBg }]}>
-              <Shield size={28} color={theme.primary} />
-            </View>
+            <TouchableOpacity
+              onPress={() => setEditProfileModalVisible(true)}
+              activeOpacity={0.8}
+            >
+              <UserAvatar user={user} militar={militar} size={54} showBorder={true} />
+            </TouchableOpacity>
+
             <View style={styles.profileMainInfo}>
               <Text style={[styles.profileName, { color: theme.text }]}>{displayName}</Text>
               <Text style={[styles.profileUsername, { color: theme.textMuted }]}>
@@ -122,6 +130,16 @@ export const SettingsScreen: React.FC = () => {
               </Text>
             </View>
           </View>
+
+          {/* Botão de Auto-Edição de Perfil e Foto */}
+          <TouchableOpacity
+            style={[styles.editProfileBtn, { backgroundColor: theme.primary }]}
+            onPress={() => setEditProfileModalVisible(true)}
+            activeOpacity={0.8}
+          >
+            <Edit3 size={15} color="#FFFFFF" />
+            <Text style={styles.editProfileBtnText}>Editar Meu Perfil & Foto</Text>
+          </TouchableOpacity>
 
           {/* Dados Militares Completos */}
           {militar ? (
@@ -437,6 +455,12 @@ export const SettingsScreen: React.FC = () => {
           Alert.alert('PIN Configurado', 'A segurança com PIN numérico foi ativada com sucesso!');
         }}
       />
+
+      {/* Modal de Edição de Perfil e Foto */}
+      <EditProfileModal
+        visible={editProfileModalVisible}
+        onClose={() => setEditProfileModalVisible(false)}
+      />
     </View>
   );
 };
@@ -467,6 +491,20 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
+  },
+  editProfileBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 10,
+    borderRadius: 12,
+    marginTop: 2,
+  },
+  editProfileBtnText: {
+    color: '#FFFFFF',
+    fontSize: 13,
+    fontWeight: '700',
   },
   profileAvatar: {
     width: 50,

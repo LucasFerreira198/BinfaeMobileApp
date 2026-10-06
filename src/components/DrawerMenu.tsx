@@ -16,6 +16,7 @@ import { useAuth } from '../context/AuthContext';
 import { useStock } from '../context/StockContext';
 import { useDrawer, ScreenType } from '../context/DrawerContext';
 import { CURRENT_VERSION } from './UpdateModal';
+import { UserAvatar } from './UserAvatar';
 import {
   X,
   Shield,
@@ -104,9 +105,15 @@ export const DrawerMenu: React.FC = () => {
           {/* Topo do Usuário / Militar */}
           <View style={[styles.userSection, { borderBottomColor: theme.border }]}>
             <View style={styles.userTopRow}>
-              <View style={[styles.avatarWrap, { backgroundColor: theme.badgeBg }]}>
-                <Shield size={26} color={theme.primary} />
-              </View>
+              <TouchableOpacity
+                onPress={() => {
+                  closeDrawer();
+                  navigateTo('settings');
+                }}
+                activeOpacity={0.8}
+              >
+                <UserAvatar user={user} militar={militar} size={46} showBorder={true} />
+              </TouchableOpacity>
 
               <TouchableOpacity
                 onPress={closeDrawer}
@@ -117,7 +124,14 @@ export const DrawerMenu: React.FC = () => {
               </TouchableOpacity>
             </View>
 
-            <View style={styles.userInfo}>
+            <TouchableOpacity
+              style={styles.userInfo}
+              onPress={() => {
+                closeDrawer();
+                navigateTo('settings');
+              }}
+              activeOpacity={0.8}
+            >
               <Text style={[styles.userName, { color: theme.text }]} numberOfLines={1}>
                 {displayName}
               </Text>
@@ -142,7 +156,7 @@ export const DrawerMenu: React.FC = () => {
                   {user?.admin ? 'ADMINISTRADOR' : 'OPERADOR MILITAR'}
                 </Text>
               </View>
-            </View>
+            </TouchableOpacity>
           </View>
 
           {/* Navegação Principal do Menu Lateral */}

@@ -29,9 +29,10 @@ export const ItemCard: React.FC<ItemCardProps> = ({ item, onPress }) => {
     }
   };
 
+  const statusInfo = getStatusBadge(item.status);
   const isSetor = item.cautela_ativa?.tipo === 'FIXA' || item.local?.tipo === 'SETOR' || item.status === 'EM_USO';
   const locationName = item.cautela_ativa?.tipo === 'FIXA'
-    ? `Setor: ${item.cautela_ativa.missao_nome || item.cautela_ativa.cautela_nome}`
+    ? `Setor: ${item.cautela_ativa.missao_nome}`
     : item.local?.tipo === 'SETOR'
     ? `Setor: ${item.local.nome}`
     : item.cautela_ativa?.tipo === 'MISSAO'
@@ -86,6 +87,41 @@ export const ItemCard: React.FC<ItemCardProps> = ({ item, onPress }) => {
         <View style={[styles.cautelaCardBadge, { backgroundColor: 'rgba(245, 158, 11, 0.12)', borderColor: 'rgba(245, 158, 11, 0.3)' }]}>
           <Text style={[styles.cautelaCardBadgeText, { color: '#D97706' }]} numberOfLines={1}>
             CAUTELADO: {item.cautela_ativa.missao_nome} • {item.cautela_ativa.militar_posto_graduacao} {item.cautela_ativa.militar_nome_guerra}{item.cautela_ativa.militar_celular ? ` (${item.cautela_ativa.militar_celular})` : ''}
+          </Text>
+        </View>
+      ) : null}
+
+      {item.status === 'EM_MANUTENCAO' && (item.caracteristicas as any)?.manutencao ? (
+        <View
+          style={[
+            styles.maintCardBadge,
+            {
+              backgroundColor:
+                (item.caracteristicas as any)?.manutencao?.status_etapa === 'CONSERTADO'
+                  ? 'rgba(16, 185, 129, 0.12)'
+                  : 'rgba(239, 68, 68, 0.12)',
+              borderColor:
+                (item.caracteristicas as any)?.manutencao?.status_etapa === 'CONSERTADO'
+                  ? 'rgba(16, 185, 129, 0.3)'
+                  : 'rgba(239, 68, 68, 0.3)',
+            },
+          ]}
+        >
+          <Text
+            style={[
+              styles.maintCardBadgeText,
+              {
+                color:
+                  (item.caracteristicas as any)?.manutencao?.status_etapa === 'CONSERTADO'
+                    ? '#10B981'
+                    : '#EF4444',
+              },
+            ]}
+            numberOfLines={1}
+          >
+            {(item.caracteristicas as any)?.manutencao?.status_etapa === 'CONSERTADO'
+              ? `CONSERTADO: ${(item.caracteristicas as any)?.manutencao?.laudo_reparo || 'Aguardando devolução'}`
+              : `DEFEITO: ${(item.caracteristicas as any)?.manutencao?.defeito || 'Em bancada de reparo'}`}
           </Text>
         </View>
       ) : null}
@@ -250,6 +286,18 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   cautelaCardBadgeText: {
+    fontSize: 10,
+    fontWeight: '700',
+  },
+  maintCardBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+    borderWidth: 1,
+    marginTop: 2,
+    marginBottom: 4,
+  },
+  maintCardBadgeText: {
     fontSize: 10,
     fontWeight: '700',
   },

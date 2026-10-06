@@ -33,7 +33,11 @@ import {
   Printer,
   Share2,
   ShieldCheck,
+  Wrench,
+  CheckCircle2,
+  RotateCcw,
 } from 'lucide-react-native';
+import { MaintenanceActionModal, MaintenanceActionType } from './MaintenanceActionModal';
 
 interface ItemDetailModalProps {
   item: Item | null;
@@ -87,6 +91,8 @@ const ItemDetailModalContent: React.FC<ItemDetailModalProps> = ({
   const [loadingHistory, setLoadingHistory] = useState<boolean>(false);
   const [isPrinting, setIsPrinting] = useState<boolean>(false);
   const [isGeneratingPdf, setIsGeneratingPdf] = useState<boolean>(false);
+  const [maintModalVisible, setMaintModalVisible] = useState<boolean>(false);
+  const [maintActionType, setMaintActionType] = useState<MaintenanceActionType>('SEND_TO_MAINTENANCE');
 
   // Tratamento nativo do botão Voltar do Android
   useEffect(() => {
@@ -124,7 +130,7 @@ const ItemDetailModalContent: React.FC<ItemDetailModalProps> = ({
   if (!item) return null;
 
   const locationPath = item.cautela_ativa?.tipo === 'FIXA'
-    ? `Setor: ${item.cautela_ativa.missao_nome || item.cautela_ativa.cautela_nome}`
+    ? `Setor: ${item.cautela_ativa.missao_nome}`
     : item.local?.tipo === 'SETOR'
     ? `Setor: ${item.local.nome}`
     : item.cautela_ativa?.tipo === 'MISSAO'
@@ -137,6 +143,9 @@ const ItemDetailModalContent: React.FC<ItemDetailModalProps> = ({
   const itemCondition = item.estado_conservacao || 'BOM';
   const itemControl = item.tipo_controle || 'UNITARIO';
   const itemMinQty = item.quantidade_minima !== undefined && item.quantidade_minima !== null ? item.quantidade_minima : 0;
+  const isMaintenance = item.status === 'EM_MANUTENCAO';
+  const maintInfo = (item.caracteristicas as any)?.manutencao;
+  const isRepaired = isMaintenance && maintInfo?.status_etapa === 'CONSERTADO';
 
   const getMovementBadge = (tipo: string) => {
     switch (tipo) {
@@ -376,6 +385,51 @@ const ItemDetailModalContent: React.FC<ItemDetailModalProps> = ({
                 <Text style={[styles.cautelaAlertPhone, { color: theme.success }]}>
                   Telefone: {item.cautela_ativa.militar_celular}
                 </Text>
+              ) : null}
+            </View>
+          ) : null}
+
+          {isMaintenance ? (
+            <View
+              style={[
+                styles.maintAlertCard,
+                {
+                  backgroundColor: isRepaired ? 'rgba(16, 185, 129, 0.12)' : 'rgba(239, 68, 68, 0.12)',
+                  borderColor: isRepaired ? '#10B981' : '#EF4444',
+                },
+              ]}
+            >
+              <View style={styles.maintAlertHeader}>
+                <Wrench size={16} color={isRepaired ? '#10B981' : '#EF4444'} />
+                <Text style={[styles.maintAlertTitle, { color: isRepaired ? '#10B981' : '#EF4444' }]}>
+                  {isRepaired
+                    ? 'MATERIAL CONSERTADO (AGUARDANDO DEVOLUÇÃO)'
+                    : 'MATERIAL EM MANUTENÇÃO (NA BANCADA)'}
+                </Text>
+              </View>
+              {Boolean(maintInfo?.defeito) ? (
+                <View style={styles.maintFieldRow}>
+                  <Text style={[styles.maintFieldLabel, { color: theme.textMuted }]}>Defeito:</Text>
+                  <Text style={[styles.maintFieldValue, { color: theme.text }]}>
+                    {maintInfo.defeito}
+                  </Text>
+                </View>
+              ) : null}
+              {Boolean(maintInfo?.laudo_reparo) ? (
+                <View style={styles.maintFieldRow}>
+                  <Text style={[styles.maintFieldLabel, { color: '#10B981' }]}>Laudo:</Text>
+                  <Text style={[styles.maintFieldValue, { color: theme.text, fontWeight: '700' }]}>
+                    {maintInfo.laudo_reparo}
+                  </Text>
+                </View>
+              ) : null}
+              {Boolean(maintInfo?.origem_local_nome) ? (
+                <View style={styles.maintFieldRow}>
+                  <Text style={[styles.maintFieldLabel, { color: theme.textMuted }]}>Origem:</Text>
+                  <Text style={[styles.maintFieldValue, { color: theme.textSecondary }]}>
+                    {maintInfo.origem_local_nome}
+                  </Text>
+                </View>
               ) : null}
             </View>
           ) : null}
@@ -781,7 +835,7 @@ const ItemDetailModalContent: React.FC<ItemDetailModalProps> = ({
             )}
           </ScrollView>
 
-          {/* Rodapé com botão de Transferência e Safe Area Padding adequado */}
+          {/* Rodapé com botões de Ação Dinâmicos e Safe Area Padding adequado */}
           <View
             style={[
               styles.footer,
@@ -792,20 +846,110 @@ const ItemDetailModalContent: React.FC<ItemDetailModalProps> = ({
               },
             ]}
           >
-            <TouchableOpacity
-              style={[styles.moveButton, { backgroundColor: theme.primary }]}
-              onPress={() => {
-                onClose();
-                onOpenMovement(item);
-              }}
-              activeOpacity={0.8}
-            >
-              <ArrowRightLeft size={18} color="#FFFFFF" />
-              <Text style={styles.moveButtonText}>Transferir Local</Text>
-            </TouchableOpacity>
+            {isMaintenance ? (
+              <View style={styles.footerBtnGroup}>
+                {isRepaired ? (
+                  <>
+                    <TouchableOpacity
+                      style={[styles.footerBtn, { backgroundColor: '#10B981' }]}
+                      onPress={() => {
+                        setMaintActionType('RETURN_FROM_MAINTENANCE');
+                        setMaintModalVisible(true);
+                      }}
+                      activeOpacity={0.8}
+                    >
+                      <RotateCcw size={18} color="#FFFFFF" />
+                      <Text style={styles.footerBtnText}>Confirmar Devolução</Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                      style={[
+                        styles.footerBtn,
+                        {
+                          backgroundColor: theme.surfaceVariant,
+                          borderColor: theme.border,
+                          borderWidth: 1,
+                        },
+                      ]}
+                      onPress={() => {
+                        onClose();
+                        onOpenMovement(item);
+                      }}
+                      activeOpacity={0.8}
+                    >
+                      <ArrowRightLeft size={16} color={theme.text} />
+                      <Text style={[styles.footerBtnText, { color: theme.text }]}>Transferir</Text>
+                    </TouchableOpacity>
+                  </>
+                ) : (
+                  <>
+                    <TouchableOpacity
+                      style={[styles.footerBtn, { backgroundColor: '#10B981' }]}
+                      onPress={() => {
+                        setMaintActionType('COMPLETE_REPAIR');
+                        setMaintModalVisible(true);
+                      }}
+                      activeOpacity={0.8}
+                    >
+                      <CheckCircle2 size={18} color="#FFFFFF" />
+                      <Text style={styles.footerBtnText}>Concluir Reparo</Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                      style={[styles.footerBtn, { backgroundColor: '#F59E0B' }]}
+                      onPress={() => {
+                        setMaintActionType('RETURN_FROM_MAINTENANCE');
+                        setMaintModalVisible(true);
+                      }}
+                      activeOpacity={0.8}
+                    >
+                      <RotateCcw size={18} color="#FFFFFF" />
+                      <Text style={styles.footerBtnText}>Devolver ao Local</Text>
+                    </TouchableOpacity>
+                  </>
+                )}
+              </View>
+            ) : (
+              <View style={styles.footerBtnGroup}>
+                <TouchableOpacity
+                  style={[styles.footerBtn, { backgroundColor: theme.primary }]}
+                  onPress={() => {
+                    onClose();
+                    onOpenMovement(item);
+                  }}
+                  activeOpacity={0.8}
+                >
+                  <ArrowRightLeft size={18} color="#FFFFFF" />
+                  <Text style={styles.footerBtnText}>Transferir Local</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[styles.footerBtn, { backgroundColor: '#EF4444' }]}
+                  onPress={() => {
+                    setMaintActionType('SEND_TO_MAINTENANCE');
+                    setMaintModalVisible(true);
+                  }}
+                  activeOpacity={0.8}
+                >
+                  <Wrench size={18} color="#FFFFFF" />
+                  <Text style={styles.footerBtnText}>Manutenção</Text>
+                </TouchableOpacity>
+              </View>
+            )}
           </View>
         </View>
       </View>
+
+      <MaintenanceActionModal
+        item={item}
+        actionType={maintActionType}
+        visible={maintModalVisible}
+        onClose={() => setMaintModalVisible(false)}
+        onSuccess={() => {
+          setMaintModalVisible(false);
+          onClose();
+        }}
+      />
     </Modal>
   );
 };
@@ -1151,5 +1295,57 @@ const styles = StyleSheet.create({
   cautelaAlertPhone: {
     fontSize: 11.5,
     fontWeight: '600',
+  },
+  footerBtnGroup: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  footerBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 14,
+    borderRadius: 14,
+    gap: 8,
+  },
+  footerBtnText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  maintAlertCard: {
+    padding: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    marginHorizontal: 16,
+    marginBottom: 8,
+    gap: 6,
+  },
+  maintAlertHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 2,
+  },
+  maintAlertTitle: {
+    fontSize: 11,
+    fontWeight: '800',
+    letterSpacing: 0.5,
+  },
+  maintFieldRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 8,
+  },
+  maintFieldLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    minWidth: 80,
+  },
+  maintFieldValue: {
+    flex: 1,
+    fontSize: 12,
+    fontWeight: '500',
   },
 });

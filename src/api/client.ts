@@ -221,6 +221,21 @@ export const api = {
     return await request<User>('/auth/me');
   },
 
+  updateMe: async (data: {
+    foto_url?: string | null;
+    password?: string | null;
+    celular?: string | null;
+    email?: string | null;
+    nome_guerra?: string | null;
+    secao?: string | null;
+  }): Promise<User> => {
+    return await request<User>('/auth/me', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+  },
+
   fetchItems: async (): Promise<Item[]> => {
     return await request<Item[]>('/stock/items');
   },

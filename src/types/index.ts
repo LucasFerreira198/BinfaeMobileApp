@@ -9,6 +9,7 @@ export interface Military {
   telefone?: string | null;
   celular?: string | null;
   ativo?: boolean;
+  foto_url?: string | null;
 }
 
 export interface User {
@@ -16,6 +17,7 @@ export interface User {
   username: string;
   admin: boolean;
   ativo: boolean;
+  foto_url?: string | null;
   militar?: Military | null;
 }
 

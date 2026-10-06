@@ -5,6 +5,7 @@ import { useAuth } from '../context/AuthContext';
 import { useStock } from '../context/StockContext';
 import { useDrawer } from '../context/DrawerContext';
 import { RefreshCw, Moon, Sun, Menu, ArrowLeft } from 'lucide-react-native';
+import { UserAvatar } from './UserAvatar';
 
 interface HeaderProps {
   title?: string;
@@ -100,6 +101,15 @@ export const Header: React.FC<HeaderProps> = ({
           ) : (
             <Moon size={18} color="#6366F1" />
           )}
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          onPress={openDrawer}
+          accessibilityLabel="Abrir perfil e menu"
+          activeOpacity={0.8}
+          style={{ marginLeft: 2 }}
+        >
+          <UserAvatar user={user} size={34} showBorder={true} />
         </TouchableOpacity>
       </View>
     </View>

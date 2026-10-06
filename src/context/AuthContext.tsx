@@ -11,6 +11,14 @@ interface AuthContextType {
   login: (username: string, pass: string) => Promise<void>;
   logout: () => Promise<void>;
   reloadUser: () => Promise<void>;
+  updateProfile: (data: {
+    foto_url?: string | null;
+    password?: string | null;
+    celular?: string | null;
+    email?: string | null;
+    nome_guerra?: string | null;
+    secao?: string | null;
+  }) => Promise<User>;
 }
 
 const USER_STORAGE_KEY = '@binfae_auth_user';
@@ -23,6 +31,7 @@ const AuthContext = createContext<AuthContextType>({
   login: async () => {},
   logout: async () => {},
   reloadUser: async () => {},
+  updateProfile: async () => ({} as User),
 });
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -97,6 +106,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } catch {}
   };
 
+  const updateProfile = async (data: {
+    foto_url?: string | null;
+    password?: string | null;
+    celular?: string | null;
+    email?: string | null;
+    nome_guerra?: string | null;
+    secao?: string | null;
+  }): Promise<User> => {
+    const updated = await api.updateMe(data);
+    setUser(updated);
+    await AsyncStorage.setItem(USER_STORAGE_KEY, JSON.stringify(updated));
+    return updated;
+  };
+
   return (
     <AuthContext.Provider
       value={{
@@ -107,6 +130,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         login,
         logout,
         reloadUser,
+        updateProfile,
       }}
     >
       {children}
