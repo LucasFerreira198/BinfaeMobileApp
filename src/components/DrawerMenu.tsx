@@ -30,6 +30,9 @@ import {
   ChevronRight,
   FolderTree,
   Layers,
+  ListTodo,
+  CalendarDays,
+  Clock,
 } from 'lucide-react-native';
 
 export const DrawerMenu: React.FC = () => {
@@ -205,7 +208,79 @@ export const DrawerMenu: React.FC = () => {
               <ChevronRight size={18} color={theme.textMuted} />
             </TouchableOpacity>
 
-            {/* 3. Histórico Geral de Movimentações */}
+            {/* 3. Pendências & Metas */}
+            <TouchableOpacity
+              style={[
+                styles.menuItem,
+                {
+                  backgroundColor: activeScreen === 'pendencias' ? theme.badgeBg : theme.card,
+                  borderColor: activeScreen === 'pendencias' ? theme.primary : theme.border,
+                },
+              ]}
+              onPress={() => navigateTo('pendencias')}
+              activeOpacity={0.7}
+            >
+              <View style={[styles.menuItemIcon, { backgroundColor: 'rgba(99, 102, 241, 0.15)' }]}>
+                <ListTodo size={20} color="#6366F1" />
+              </View>
+              <View style={styles.menuItemInfo}>
+                <Text style={[styles.menuItemTitle, { color: theme.text }]}>Pendências & Metas</Text>
+                <Text style={[styles.menuItemSub, { color: theme.textSecondary }]}>
+                  Manutenções, tarefas operacionais e baixas
+                </Text>
+              </View>
+              <ChevronRight size={18} color={theme.textMuted} />
+            </TouchableOpacity>
+
+            {/* 4. Escala de Serviço Mensal */}
+            <TouchableOpacity
+              style={[
+                styles.menuItem,
+                {
+                  backgroundColor: activeScreen === 'escala' ? theme.badgeBg : theme.card,
+                  borderColor: activeScreen === 'escala' ? theme.primary : theme.border,
+                },
+              ]}
+              onPress={() => navigateTo('escala')}
+              activeOpacity={0.7}
+            >
+              <View style={[styles.menuItemIcon, { backgroundColor: 'rgba(0, 210, 180, 0.15)' }]}>
+                <CalendarDays size={20} color="#00D2B4" />
+              </View>
+              <View style={styles.menuItemInfo}>
+                <Text style={[styles.menuItemTitle, { color: theme.text }]}>Escala de Serviço</Text>
+                <Text style={[styles.menuItemSub, { color: theme.textSecondary }]}>
+                  Plantões mensais, estatísticas e exportação PDF
+                </Text>
+              </View>
+              <ChevronRight size={18} color={theme.textMuted} />
+            </TouchableOpacity>
+
+            {/* 5. Relatório Diário (24h) */}
+            <TouchableOpacity
+              style={[
+                styles.menuItem,
+                {
+                  backgroundColor: activeScreen === 'relatorio_diario' ? theme.badgeBg : theme.card,
+                  borderColor: activeScreen === 'relatorio_diario' ? theme.primary : theme.border,
+                },
+              ]}
+              onPress={() => navigateTo('relatorio_diario')}
+              activeOpacity={0.7}
+            >
+              <View style={[styles.menuItemIcon, { backgroundColor: 'rgba(245, 158, 11, 0.15)' }]}>
+                <Clock size={20} color="#F59E0B" />
+              </View>
+              <View style={styles.menuItemInfo}>
+                <Text style={[styles.menuItemTitle, { color: theme.text }]}>Relatório Diário (24h)</Text>
+                <Text style={[styles.menuItemSub, { color: theme.textSecondary }]}>
+                  Passagem de serviço das 07:30 e envio por e-mail
+                </Text>
+              </View>
+              <ChevronRight size={18} color={theme.textMuted} />
+            </TouchableOpacity>
+
+            {/* 6. Histórico Geral de Movimentações */}
             <TouchableOpacity
               style={[
                 styles.menuItem,

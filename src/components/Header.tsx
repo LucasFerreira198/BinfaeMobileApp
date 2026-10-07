@@ -31,8 +31,14 @@ export const Header: React.FC<HeaderProps> = ({
     ? `${user.militar.posto_graduacao} ${user.militar.nome_guerra}`
     : user?.username || 'Militar';
 
-  // Se estiver nas telas acessadas pelo drawer (movements/admin) ou se showBack for true, exibe botão voltar
-  const isBackMode = showBack || (activeScreen === 'movements' || activeScreen === 'admin');
+  // Se estiver nas telas secundárias (movements/admin/pendencias/escala/relatorio_diario) ou se showBack for true, exibe botão voltar
+  const isBackMode =
+    showBack ||
+    activeScreen === 'movements' ||
+    activeScreen === 'admin' ||
+    activeScreen === 'pendencias' ||
+    activeScreen === 'escala' ||
+    activeScreen === 'relatorio_diario';
 
   const handleBack = () => {
     if (onBack) {

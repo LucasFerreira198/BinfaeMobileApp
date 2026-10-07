@@ -17,6 +17,9 @@ import { CautelasScreen } from '../screens/CautelasScreen';
 import { MovementsScreen } from '../screens/MovementsScreen';
 import { SettingsScreen } from '../screens/SettingsScreen';
 import { AdminScreen } from '../screens/AdminScreen';
+import { PendenciasScreen } from '../screens/PendenciasScreen';
+import { EscalaScreen } from '../screens/EscalaScreen';
+import { RelatorioDiarioScreen } from '../screens/RelatorioDiarioScreen';
 import { LoginScreen } from '../screens/LoginScreen';
 import { DrawerMenu } from '../components/DrawerMenu';
 import { LocationsModal } from '../components/LocationsModal';
@@ -62,6 +65,9 @@ const AppNavigatorInner: React.FC<{
         {activeScreen === 'settings' && <SettingsScreen />}
         {activeScreen === 'movements' && <MovementsScreen />}
         {activeScreen === 'admin' && user?.admin && <AdminScreen />}
+        {activeScreen === 'pendencias' && <PendenciasScreen />}
+        {activeScreen === 'escala' && <EscalaScreen />}
+        {activeScreen === 'relatorio_diario' && <RelatorioDiarioScreen />}
       </View>
 
       {/* Bottom Navigation Bar Nativa */}

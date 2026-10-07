@@ -1,5 +1,19 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { User, Item, Group, Subgroup, Location, ItemMovement, ItemCreateInput, Military, Cautela, CautelaItem } from '../types';
+import {
+  User,
+  Item,
+  Group,
+  Subgroup,
+  Location,
+  ItemMovement,
+  ItemCreateInput,
+  Military,
+  Cautela,
+  CautelaItem,
+  Pendencia,
+  EscalaMensal,
+  RelatorioDiario,
+} from '../types';
 
 export const DEFAULT_API_BASE = 'https://backend-info-binfae.vercel.app';
 const API_URL_KEY = '@binfae_api_url';
@@ -549,5 +563,89 @@ export const api = {
     version_token: string;
   }> => {
     return await request<any>('/system/sync-status');
+  },
+
+  // --- MÓDULO PENDÊNCIAS E METAS ---
+  getPendencias: async (status?: string): Promise<Pendencia[]> => {
+    const query = status ? `?status=${encodeURIComponent(status)}` : '';
+    return await request<Pendencia[]>(`/pendencias/list${query}`);
+  },
+
+  createPendencia: async (data: {
+    titulo: string;
+    descricao?: string | null;
+    tipo?: string;
+    prioridade?: string;
+    prazo?: string | null;
+    responsavel_saram?: number | null;
+  }): Promise<Pendencia> => {
+    return await request<Pendencia>('/pendencias/create', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+  },
+
+  concluirPendencia: async (id: number, laudo?: string): Promise<Pendencia> => {
+    return await request<Pendencia>(`/pendencias/${id}/concluir`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ laudo_resolucao: laudo }),
+    });
+  },
+
+  baixarItemManutencao: async (pendenciaId: number, motivo: string): Promise<any> => {
+    return await request<any>(`/pendencias/${pendenciaId}/baixar-item`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ motivo }),
+    });
+  },
+
+  // --- MÓDULO ESCALA DE SERVIÇO ---
+  getEscalaMensal: async (mes: number, ano: number): Promise<EscalaMensal> => {
+    return await request<EscalaMensal>(`/escalas/mensal?mes=${mes}&ano=${ano}`);
+  },
+
+  salvarEscalaMensal: async (data: {
+    mes: number;
+    ano: number;
+    titulo?: string;
+    dias: any[];
+  }): Promise<EscalaMensal> => {
+    return await request<EscalaMensal>('/escalas/salvar', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+  },
+
+  getMilitaresInformatica: async (): Promise<Military[]> => {
+    return await request<Military[]>('/escalas/militares');
+  },
+
+  // --- MÓDULO RELATÓRIO DIÁRIO (24H) ---
+  getRelatorioDiario: async (dataRef?: string): Promise<RelatorioDiario> => {
+    const query = dataRef ? `?data_ref=${encodeURIComponent(dataRef)}` : '';
+    return await request<RelatorioDiario>(`/relatorios-diarios/hoje${query}`);
+  },
+
+  salvarRascunhoRelatorio: async (id: number, ocorrencias: string): Promise<RelatorioDiario> => {
+    return await request<RelatorioDiario>(`/relatorios-diarios/${id}/rascunho`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ocorrencias_militar: ocorrencias }),
+    });
+  },
+
+  lancarRelatorioDiario: async (id: number, data: {
+    ocorrencias_militar?: string;
+    militar_servico_id?: number | null;
+  }): Promise<RelatorioDiario> => {
+    return await request<RelatorioDiario>(`/relatorios-diarios/${id}/lancar`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
   },
 };

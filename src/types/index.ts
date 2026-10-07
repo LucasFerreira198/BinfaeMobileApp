@@ -6,10 +6,12 @@ export interface Military {
   quadro_especialidade?: string | null;
   secao?: string | null;
   email?: string | null;
+  emails?: string[];
   telefone?: string | null;
   celular?: string | null;
   ativo?: boolean;
   foto_url?: string | null;
+  is_informatica?: boolean;
 }
 
 export interface User {
@@ -177,5 +179,98 @@ export interface FilterState {
   subgroupId: number | null;
   locationId: number | null;
   lowStockOnly: boolean;
+}
+
+// --- MÓDULO PENDÊNCIAS & METAS ---
+export type PendenciaStatus = 'PENDENTE' | 'CONCLUIDA' | 'CANCELADA';
+export type PendenciaTipo = 'GERAL' | 'MANUTENCAO' | 'META' | 'INVENTARIO';
+export type PendenciaPrioridade = 'BAIXA' | 'MEDIA' | 'ALTA' | 'URGENTE';
+
+export interface Pendencia {
+  id: number;
+  titulo: string;
+  descricao?: string | null;
+  tipo: PendenciaTipo;
+  prioridade: PendenciaPrioridade;
+  status: PendenciaStatus;
+  item_id?: number | null;
+  item_codigo?: string | null;
+  item_nome?: string | null;
+  responsavel_saram?: number | null;
+  responsavel_nome?: string | null;
+  prazo?: string | null;
+  criado_por_id?: number | null;
+  criado_por_nome?: string | null;
+  laudo_resolucao?: string | null;
+  concluido_por_nome?: string | null;
+  concluido_em?: string | null;
+  is_baixa_definitiva?: boolean;
+  criado_em?: string;
+  atualizado_em?: string;
+}
+
+// --- MÓDULO ESCALA DE SERVIÇO ---
+export interface EscalaDia {
+  id?: number;
+  dia: number;
+  dia_semana: string;
+  is_weekend: boolean;
+  is_feriado: boolean;
+  feriado_nome?: string | null;
+  militar_sv_id?: number | null;
+  militar_sv_saram?: number | null;
+  militar_sv_nome?: string | null;
+  militar_sv_posto?: string | null;
+  militar_expd_1_id?: number | null;
+  militar_expd_1_nome?: string | null;
+  militar_expd_2_id?: number | null;
+  militar_expd_2_nome?: string | null;
+}
+
+export interface EstatisticaMilitar {
+  militar_id: number;
+  saram: number;
+  nome_guerra: string;
+  posto_graduacao: string;
+  total_sv: number;
+  total_expd: number;
+  semana_1_sv: number;
+  semana_2_sv: number;
+  semana_3_sv: number;
+  semana_4_sv: number;
+  semana_5_sv: number;
+}
+
+export interface EscalaMensal {
+  id?: number;
+  mes: number;
+  ano: number;
+  titulo: string;
+  status: string;
+  dias: EscalaDia[];
+  estatisticas?: EstatisticaMilitar[];
+}
+
+// --- MÓDULO RELATÓRIO DIÁRIO (PASSAGEM 24H) ---
+export interface RelatorioDiario {
+  id?: number;
+  data_referencia: string;
+  periodo_inicio: string;
+  periodo_fim: string;
+  militar_servico_id?: number | null;
+  militar_servico_nome?: string | null;
+  militar_servico_posto?: string | null;
+  status: 'RASCUNHO' | 'LANCADO';
+  ocorrencias_militar?: string | null;
+  dados_automaticos: {
+    manutencoes_abertas: any[];
+    cautelas_abertas: any[];
+    cautelas_devolvidas: any[];
+    pendencias_criadas: any[];
+    pendencias_concluidas: any[];
+    itens_baixados: any[];
+  };
+  lancado_em?: string | null;
+  criado_em?: string;
 }
 

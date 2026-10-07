@@ -1,6 +1,15 @@
 import React, { createContext, useContext, useState } from 'react';
 
-export type ScreenType = 'stock' | 'scanner' | 'cautelas' | 'settings' | 'movements' | 'admin';
+export type ScreenType =
+  | 'stock'
+  | 'scanner'
+  | 'cautelas'
+  | 'settings'
+  | 'movements'
+  | 'admin'
+  | 'pendencias'
+  | 'escala'
+  | 'relatorio_diario';
 
 interface DrawerContextType {
   isDrawerOpen: boolean;
