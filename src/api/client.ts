@@ -590,7 +590,10 @@ export const api = {
     return await request<Pendencia>(`/pendencias/${id}/concluir`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ laudo_resolucao: laudo }),
+      body: JSON.stringify({
+        resolucao: laudo || 'Concluído com sucesso',
+        laudo_resolucao: laudo || 'Concluído com sucesso',
+      }),
     });
   },
 
@@ -598,7 +601,10 @@ export const api = {
     return await request<any>(`/pendencias/${pendenciaId}/baixar-item`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ motivo }),
+      body: JSON.stringify({
+        justificativa_baixa: motivo || 'Baixa por quebra/defeito irrecuperável',
+        motivo: motivo || 'Baixa por quebra/defeito irrecuperável',
+      }),
     });
   },
 

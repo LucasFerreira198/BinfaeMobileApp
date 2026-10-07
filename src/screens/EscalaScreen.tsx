@@ -45,7 +45,11 @@ export const EscalaScreen: React.FC = () => {
   const { user } = useAuth();
   const { navigateTo } = useDrawer();
   const insets = useSafeAreaInsets();
-  const isAdmin = user?.admin ?? false;
+  const isAdmin = Boolean(
+    user?.admin ||
+    user?.militar?.is_informatica ||
+    (user?.militar?.secao && user?.militar?.secao.toLowerCase().includes('inform'))
+  );
 
   const [mes, setMes] = useState<number>(new Date().getMonth() + 1);
   const [ano, setAno] = useState<number>(new Date().getFullYear());
