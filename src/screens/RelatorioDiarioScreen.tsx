@@ -144,14 +144,15 @@ export const RelatorioDiarioScreen: React.FC = () => {
   };
 
   const isLancado = relatorio?.status === 'LANCADO';
-  const autoData = relatorio?.dados_automaticos || {
-    manutencoes_abertas: [],
-    cautelas_abertas: [],
-    cautelas_devolvidas: [],
-    pendencias_criadas: [],
-    pendencias_concluidas: [],
-    itens_baixados: [],
-  };
+  const autoData = relatorio?.dados_automaticos || {};
+  const itensManutencao = autoData.itens_manutencao || autoData.manutencoes_abertas || [];
+  const itensConsertados = autoData.itens_consertados || [];
+  const missoesCautelas = autoData.missoes_cautelas || [];
+  const cautelasPeriodo = autoData.cautelas_periodo || autoData.cautelas_abertas || [];
+  const devolucoesPeriodo = autoData.devolucoes_periodo || autoData.cautelas_devolvidas || [];
+  const pendenciasCriadas = autoData.pendencias_criadas || [];
+  const pendenciasResolvidas = autoData.pendencias_resolvidas || autoData.pendencias_concluidas || [];
+  const itensBaixados = autoData.itens_baixados || [];
 
   return (
     <View style={[styles.container, { backgroundColor: theme.background }]}>
@@ -232,18 +233,34 @@ export const RelatorioDiarioScreen: React.FC = () => {
             <View style={styles.militarCardHeader}>
               <UserCheck size={18} color={theme.primary} />
               <Text style={[styles.militarCardTitle, { color: theme.text }]}>Militar de Serviço do Plantão</Text>
+              {relatorio?.militar_servico_id ? (
+                <View style={{ backgroundColor: 'rgba(56, 189, 248, 0.15)', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 6 }}>
+                  <Text style={{ color: '#38BDF8', fontSize: 11, fontWeight: '700' }}>Definido pela Escala</Text>
+                </View>
+              ) : null}
             </View>
 
             <TouchableOpacity
-              style={[styles.selectMilitarBtn, { backgroundColor: theme.surfaceVariant, borderColor: theme.border }]}
+              style={[
+                styles.selectMilitarBtn,
+                {
+                  backgroundColor: theme.surfaceVariant,
+                  borderColor: !relatorio?.militar_servico_id ? '#F59E0B' : theme.border,
+                },
+              ]}
               onPress={() => !isLancado && setMilitarSvModal(true)}
               disabled={isLancado}
             >
-              <Text style={[styles.militarNomeText, { color: theme.text }]}>
+              <Text style={[styles.militarNomeText, { color: !relatorio?.militar_servico_id ? '#F59E0B' : theme.text }]}>
                 {relatorio?.militar_servico_nome
                   ? `${relatorio.militar_servico_posto || ''} ${relatorio.militar_servico_nome}`
-                  : '(Nenhum militar selecionado - toque para escolher)'}
+                  : '⚠️ Nenhum militar escalado nesta data. Toque para escolher.'}
               </Text>
+              {!isLancado ? (
+                <Text style={{ fontSize: 11, color: theme.textMuted, marginTop: 4 }}>
+                  {relatorio?.militar_servico_id ? 'Toque para alterar manualmente se necessário' : 'Toque para selecionar quem está de serviço'}
+                </Text>
+              ) : null}
             </TouchableOpacity>
           </View>
 
@@ -252,70 +269,133 @@ export const RelatorioDiarioScreen: React.FC = () => {
             ATIVIDADES AUTOMÁTICAS (ÚLTIMAS 24H)
           </Text>
 
-          {/* 1. Manutenções Abertas */}
+          {/* 1. Computadores Consertados / Saídos da Manutenção */}
+          <View style={[styles.summaryCard, { backgroundColor: theme.surface, borderColor: '#10B981' }]}>
+            <View style={styles.summaryHeader}>
+              <View style={[styles.summaryIconWrap, { backgroundColor: 'rgba(16, 185, 129, 0.15)' }]}>
+                <CheckCircle2 size={18} color="#10B981" />
+              </View>
+              <Text style={[styles.summaryTitle, { color: '#10B981' }]}>
+                Computadores Consertados ({itensConsertados.length})
+              </Text>
+            </View>
+
+            {itensConsertados.length === 0 ? (
+              <Text style={[styles.emptyText, { color: theme.textMuted }]}>
+                Nenhum equipamento finalizou manutenção nas últimas 24h.
+              </Text>
+            ) : (
+              itensConsertados.map((c: any, idx: number) => (
+                <View key={`cons-${idx}`} style={[styles.itemDetailRow, { borderTopColor: theme.border }]}>
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <Text style={[styles.itemDetailTitle, { color: theme.text, flex: 1 }]}>
+                      • {c.nome} (BMP: {c.bmp || 'S/N'}{c.numero_serie ? ` | Série: ${c.numero_serie}` : ''})
+                    </Text>
+                    <View style={{ backgroundColor: 'rgba(16, 185, 129, 0.2)', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 }}>
+                      <Text style={{ color: '#10B981', fontSize: 10, fontWeight: '700' }}>CONSERTADO</Text>
+                    </View>
+                  </View>
+                  <Text style={[styles.itemDetailSub, { color: '#10B981', marginTop: 2 }]}>
+                    ✔ Resolução: {c.resolucao || 'Reparo concluído com êxito'}
+                  </Text>
+                  {c.defeito ? (
+                    <Text style={[styles.itemDetailSub, { color: theme.textMuted }]}>
+                      Defeito inicial: {c.defeito}
+                    </Text>
+                  ) : null}
+                </View>
+              ))
+            )}
+          </View>
+
+          {/* 2. Itens em Manutenção Atualmente */}
           <View style={[styles.summaryCard, { backgroundColor: theme.surface, borderColor: theme.border }]}>
             <View style={styles.summaryHeader}>
               <View style={[styles.summaryIconWrap, { backgroundColor: 'rgba(234, 179, 8, 0.15)' }]}>
                 <Wrench size={18} color="#EAB308" />
               </View>
               <Text style={[styles.summaryTitle, { color: theme.text }]}>
-                Manutenções Iniciadas ({autoData.manutencoes_abertas.length})
+                Itens em Manutenção Atualmente ({itensManutencao.length})
               </Text>
             </View>
 
-            {autoData.manutencoes_abertas.length === 0 ? (
-              <Text style={[styles.emptyText, { color: theme.textMuted }]}>Nenhum equipamento entrou em manutenção.</Text>
+            {itensManutencao.length === 0 ? (
+              <Text style={[styles.emptyText, { color: theme.textMuted }]}>Nenhum equipamento aguardando manutenção.</Text>
             ) : (
-              autoData.manutencoes_abertas.map((m: any, idx: number) => (
-                <View key={idx} style={[styles.itemDetailRow, { borderTopColor: theme.border }]}>
+              itensManutencao.map((m: any, idx: number) => (
+                <View key={`man-${idx}`} style={[styles.itemDetailRow, { borderTopColor: theme.border }]}>
                   <Text style={[styles.itemDetailTitle, { color: theme.text }]}>
-                    • {m.nome || m.item_nome} {m.codigo_interno ? `(${m.codigo_interno})` : ''}
+                    • {m.nome} (BMP: {m.bmp || 'S/N'}{m.numero_serie ? ` | Série: ${m.numero_serie}` : ''})
                   </Text>
-                  {m.motivo ? <Text style={[styles.itemDetailSub, { color: theme.textSecondary }]}>Motivo: {m.motivo}</Text> : null}
+                  <Text style={[styles.itemDetailSub, { color: '#F59E0B' }]}>
+                    Defeito: {m.defeito || 'Em processo de reparo'}
+                  </Text>
                 </View>
               ))
             )}
           </View>
 
-          {/* 2. Cautelas e Devoluções */}
+          {/* 3. Missões e Cautelas Detalhadas */}
           <View style={[styles.summaryCard, { backgroundColor: theme.surface, borderColor: theme.border }]}>
             <View style={styles.summaryHeader}>
               <View style={[styles.summaryIconWrap, { backgroundColor: 'rgba(56, 189, 248, 0.15)' }]}>
                 <ClipboardList size={18} color="#38BDF8" />
               </View>
               <Text style={[styles.summaryTitle, { color: theme.text }]}>
-                Cautelas & Devoluções de Materiais
+                Missões e Cautelas de Materiais
               </Text>
             </View>
 
             <Text style={[styles.subCount, { color: theme.textSecondary }]}>
-              {autoData.cautelas_abertas.length} abertas • {autoData.cautelas_devolvidas.length} devolvidas
+              {missoesCautelas.length} Missão/Cautela • {cautelasPeriodo.length} materiais cautelados • {devolucoesPeriodo.length} devoluções
             </Text>
 
-            {autoData.cautelas_abertas.map((c: any, idx: number) => (
-              <View key={`c-${idx}`} style={[styles.itemDetailRow, { borderTopColor: theme.border }]}>
-                <Text style={[styles.itemDetailTitle, { color: '#38BDF8' }]}>
-                  ↗ Cautela: {c.missao_nome || c.finalidade || 'Serviço'}
-                </Text>
-                <Text style={[styles.itemDetailSub, { color: theme.textSecondary }]}>
-                  Resp: {c.militar_nome || c.militar_responsavel} • {c.total_itens || 1} itens
-                </Text>
-              </View>
-            ))}
+            {missoesCautelas.length === 0 && cautelasPeriodo.length === 0 ? (
+              <Text style={[styles.emptyText, { color: theme.textMuted }]}>Nenhuma nova missão ou cautela nas últimas 24h.</Text>
+            ) : (
+              missoesCautelas.map((m: any, idx: number) => {
+                const isMissao = m.tipo === 'Missão';
+                const materiais = m.materiais || [];
+                return (
+                  <View key={`mis-${idx}`} style={[styles.itemDetailRow, { borderTopColor: theme.border }]}>
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <Text style={[styles.itemDetailTitle, { color: theme.text, fontWeight: '700', flex: 1 }]}>
+                        {m.missao_nome}
+                      </Text>
+                      <View style={{ backgroundColor: isMissao ? 'rgba(56, 189, 248, 0.15)' : 'rgba(168, 85, 247, 0.15)', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 }}>
+                        <Text style={{ color: isMissao ? '#38BDF8' : '#A855F7', fontSize: 10, fontWeight: '700' }}>
+                          {m.tipo || 'Missão'}
+                        </Text>
+                      </View>
+                    </View>
+                    <Text style={[styles.itemDetailSub, { color: theme.textSecondary, marginTop: 2 }]}>
+                      Responsável: {m.militar_responsavel} • Total: {m.total_materiais || materiais.length} material(is)
+                    </Text>
+                    {materiais.map((mat: any, mIdx: number) => (
+                      <Text key={`mat-${mIdx}`} style={[styles.itemDetailSub, { color: theme.text, paddingLeft: 8, marginTop: 1 }]}>
+                        ↳ {mat.nome} (BMP: {mat.bmp || 'S/N'}{mat.numero_serie ? ` | Série: ${mat.numero_serie}` : ''})
+                      </Text>
+                    ))}
+                  </View>
+                );
+              })
+            )}
 
-            {autoData.cautelas_devolvidas.map((d: any, idx: number) => (
-              <View key={`d-${idx}`} style={[styles.itemDetailRow, { borderTopColor: theme.border }]}>
-                <Text style={[styles.itemDetailTitle, { color: '#10B981' }]}>
-                  ↙ Devolução: {d.item_nome || d.material}
+            {devolucoesPeriodo.length > 0 && (
+              <View style={{ marginTop: 10, paddingTop: 10, borderTopWidth: 1, borderTopColor: theme.border }}>
+                <Text style={{ fontSize: 12, fontWeight: '700', color: '#10B981', marginBottom: 4 }}>
+                  Devoluções Realizadas ({devolucoesPeriodo.length}):
                 </Text>
-                <Text style={[styles.itemDetailSub, { color: theme.textSecondary }]}>
-                  Devolvido por: {d.militar_nome || 'Militar'}
-                </Text>
+                {devolucoesPeriodo.map((d: any, idx: number) => (
+                  <Text key={`dev-${idx}`} style={[styles.itemDetailSub, { color: theme.text, marginBottom: 2 }]}>
+                    • {d.item_nome || d.material} (BMP: {d.bmp || 'S/N'}) - Devolvido por {d.militar_nome || 'Militar'} ({d.missao_nome || 'Missão'})
+                  </Text>
+                ))}
               </View>
-            ))}
+            )}
           </View>
 
-          {/* 3. Pendências Criadas & Solucionadas */}
+          {/* 4. Pendências Criadas & Solucionadas */}
           <View style={[styles.summaryCard, { backgroundColor: theme.surface, borderColor: theme.border }]}>
             <View style={styles.summaryHeader}>
               <View style={[styles.summaryIconWrap, { backgroundColor: 'rgba(99, 102, 241, 0.15)' }]}>
@@ -326,32 +406,69 @@ export const RelatorioDiarioScreen: React.FC = () => {
               </Text>
             </View>
 
-            <Text style={[styles.subCount, { color: theme.textSecondary }]}>
-              {autoData.pendencias_criadas.length} geradas • {autoData.pendencias_concluidas.length} solucionadas
+            {/* Solucionadas */}
+            <Text style={{ fontSize: 12, fontWeight: '700', color: '#10B981', marginTop: 4 }}>
+              ✔ Solucionadas no Plantão ({pendenciasResolvidas.length}):
             </Text>
+            {pendenciasResolvidas.length === 0 ? (
+              <Text style={[styles.emptyText, { color: theme.textMuted }]}>Nenhuma pendência finalizada no período.</Text>
+            ) : (
+              pendenciasResolvidas.map((p: any, idx: number) => (
+                <View key={`pres-${idx}`} style={[styles.itemDetailRow, { borderTopColor: theme.border }]}>
+                  <Text style={[styles.itemDetailTitle, { color: '#10B981' }]}>
+                    ✓ [{p.tipo || 'GERAL'}] {p.titulo}
+                  </Text>
+                  <Text style={[styles.itemDetailSub, { color: theme.text }]}>
+                    Resolução: {p.resolucao || p.laudo || 'Concluída com sucesso'}
+                  </Text>
+                  {p.responsavel ? (
+                    <Text style={[styles.itemDetailSub, { color: theme.textMuted }]}>
+                      Responsável: {p.responsavel}
+                    </Text>
+                  ) : null}
+                </View>
+              ))
+            )}
 
-            {autoData.pendencias_concluidas.map((p: any, idx: number) => (
-              <View key={`pcon-${idx}`} style={[styles.itemDetailRow, { borderTopColor: theme.border }]}>
-                <Text style={[styles.itemDetailTitle, { color: '#10B981' }]}>
-                  ✓ {p.titulo}
-                </Text>
-                {p.laudo ? <Text style={[styles.itemDetailSub, { color: theme.textSecondary }]}>Laudo: {p.laudo}</Text> : null}
-              </View>
-            ))}
+            {/* Criadas */}
+            <Text style={{ fontSize: 12, fontWeight: '700', color: '#F59E0B', marginTop: 10 }}>
+              ⚠️ Novas Pendências Registradas ({pendenciasCriadas.length}):
+            </Text>
+            {pendenciasCriadas.length === 0 ? (
+              <Text style={[styles.emptyText, { color: theme.textMuted }]}>Nenhuma nova pendência aberta no plantão.</Text>
+            ) : (
+              pendenciasCriadas.map((p: any, idx: number) => (
+                <View key={`pcri-${idx}`} style={[styles.itemDetailRow, { borderTopColor: theme.border }]}>
+                  <Text style={[styles.itemDetailTitle, { color: '#F59E0B' }]}>
+                    • [{p.tipo || 'GERAL'}] {p.titulo} {p.prioridade ? `(${p.prioridade})` : ''}
+                  </Text>
+                  {p.descricao ? (
+                    <Text style={[styles.itemDetailSub, { color: theme.text }]}>
+                      {p.descricao}
+                    </Text>
+                  ) : null}
+                  {p.responsavel ? (
+                    <Text style={[styles.itemDetailSub, { color: theme.textMuted }]}>
+                      Responsável: {p.responsavel}
+                    </Text>
+                  ) : null}
+                </View>
+              ))
+            )}
           </View>
 
-          {/* 4. Baixas Patrimoniais */}
-          {autoData.itens_baixados && autoData.itens_baixados.length > 0 && (
+          {/* 5. Baixas Patrimoniais */}
+          {itensBaixados && itensBaixados.length > 0 && (
             <View style={[styles.summaryCard, { backgroundColor: theme.surface, borderColor: '#EF4444' }]}>
               <View style={styles.summaryHeader}>
                 <View style={[styles.summaryIconWrap, { backgroundColor: 'rgba(239, 68, 68, 0.15)' }]}>
                   <Trash2 size={18} color="#EF4444" />
                 </View>
                 <Text style={[styles.summaryTitle, { color: '#EF4444' }]}>
-                  Equipamentos Baixados ({autoData.itens_baixados.length})
+                  Equipamentos Baixados ({itensBaixados.length})
                 </Text>
               </View>
-              {autoData.itens_baixados.map((b: any, idx: number) => (
+              {itensBaixados.map((b: any, idx: number) => (
                 <View key={`b-${idx}`} style={[styles.itemDetailRow, { borderTopColor: theme.border }]}>
                   <Text style={[styles.itemDetailTitle, { color: '#EF4444' }]}>
                     • {b.nome || b.item_nome}

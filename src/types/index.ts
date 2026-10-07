@@ -263,12 +263,28 @@ export interface RelatorioDiario {
   status: 'RASCUNHO' | 'LANCADO';
   ocorrencias_militar?: string | null;
   dados_automaticos: {
-    manutencoes_abertas: any[];
-    cautelas_abertas: any[];
-    cautelas_devolvidas: any[];
-    pendencias_criadas: any[];
-    pendencias_concluidas: any[];
-    itens_baixados: any[];
+    itens_manutencao?: any[];
+    itens_consertados?: any[];
+    itens_baixados?: any[];
+    missoes_cautelas?: any[];
+    cautelas_periodo?: any[];
+    devolucoes_periodo?: any[];
+    pendencias_criadas?: any[];
+    pendencias_resolvidas?: any[];
+    total_itens_manutencao?: number;
+    total_itens_consertados?: number;
+    total_itens_baixados?: number;
+    total_missoes?: number;
+    total_cautelas?: number;
+    total_devolucoes?: number;
+    total_pendencias_criadas?: number;
+    total_pendencias_resolvidas?: number;
+    // Compatibilidade com chaves legadas
+    manutencoes_abertas?: any[];
+    cautelas_abertas?: any[];
+    cautelas_devolvidas?: any[];
+    pendencias_concluidas?: any[];
+    [key: string]: any;
   };
   lancado_em?: string | null;
   criado_em?: string;

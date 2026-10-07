@@ -148,7 +148,7 @@ const request = async <T>(path: string, options: RequestInit = {}, isRetry = fal
   }
 
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 18000); // 18s timeout
+  const timeoutId = setTimeout(() => controller.abort(), 30000); // 30s timeout
 
   try {
     const response = await fetch(url, {
@@ -196,7 +196,7 @@ export const api = {
   checkHealth: async (): Promise<boolean> => {
     try {
       const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 4000);
+      const timeout = setTimeout(() => controller.abort(), 15000);
       const res = await fetch(`${currentApiBase}/`, { signal: controller.signal });
       clearTimeout(timeout);
       return res.status < 500;
