@@ -16,6 +16,14 @@ import { useTheme } from '../context/ThemeContext';
 import { useAuth } from '../context/AuthContext';
 import { useDrawer } from '../context/DrawerContext';
 import { api } from '../api/client';
+import {
+  loadLocalRelatorio,
+  persistLocalRelatorio,
+  getLocalRelatorio,
+  loadLocalMilitares,
+  persistLocalMilitares,
+  getLocalMilitares,
+} from '../storage/db';
 import { RelatorioDiario, Military } from '../types';
 import {
   Clock,
@@ -45,12 +53,13 @@ export const RelatorioDiarioScreen: React.FC = () => {
   const insets = useSafeAreaInsets();
 
   const [dataRef, setDataRef] = useState<Date>(new Date());
-  const [relatorio, setRelatorio] = useState<RelatorioDiario | null>(null);
-  const [ocorrencias, setOcorrencias] = useState<string>('');
-  const [loading, setLoading] = useState<boolean>(true);
+  // 0ms Cache-First: renderiza instantaneamente o último relatório e militares em memória
+  const [relatorio, setRelatorio] = useState<RelatorioDiario | null>(() => getLocalRelatorio());
+  const [ocorrencias, setOcorrencias] = useState<string>(() => getLocalRelatorio()?.ocorrencias_militar || '');
+  const [loading, setLoading] = useState<boolean>(() => !getLocalRelatorio());
   const [savingDraft, setSavingDraft] = useState<boolean>(false);
   const [submittingLancar, setSubmittingLancar] = useState<boolean>(false);
-  const [militaresInfo, setMilitaresInfo] = useState<Military[]>([]);
+  const [militaresInfo, setMilitaresInfo] = useState<Military[]>(() => getLocalMilitares());
   const [militarSvModal, setMilitarSvModal] = useState<boolean>(false);
 
   const formatDateYMD = (d: Date) => {
@@ -61,25 +70,44 @@ export const RelatorioDiarioScreen: React.FC = () => {
   };
 
   const loadRelatorio = useCallback(async () => {
-    setLoading(true);
+    if (!relatorio && militaresInfo.length === 0) {
+      setLoading(true);
+    }
     try {
       const dataStr = formatDateYMD(dataRef);
       const [rel, mils] = await Promise.all([
         api.getRelatorioDiario(dataStr),
         api.getMilitaresInformatica(),
       ]);
+      persistLocalRelatorio(rel);
+      persistLocalMilitares(mils);
       setRelatorio(rel);
       setOcorrencias(rel.ocorrencias_militar || '');
       setMilitaresInfo(mils);
     } catch (err: any) {
       console.warn('Erro ao carregar relatório diário:', err);
-      Alert.alert('Erro', err.message || 'Falha ao buscar relatório diário.');
+      if (!relatorio) {
+        Alert.alert('Erro', err.message || 'Falha ao buscar relatório diário.');
+      }
     } finally {
       setLoading(false);
     }
-  }, [dataRef]);
+  }, [dataRef, relatorio, militaresInfo.length]);
 
   useEffect(() => {
+    // Busca do cache persistente em disco se a memória ainda não estava preenchida
+    Promise.all([loadLocalRelatorio(), loadLocalMilitares()]).then(([cachedRel, cachedMils]) => {
+      if (cachedRel) {
+        setRelatorio(cachedRel);
+        setOcorrencias(cachedRel.ocorrencias_militar || '');
+      }
+      if (cachedMils && cachedMils.length > 0) {
+        setMilitaresInfo(cachedMils);
+      }
+      if (cachedRel || (cachedMils && cachedMils.length > 0)) {
+        setLoading(false);
+      }
+    });
     loadRelatorio();
   }, [loadRelatorio]);
 

@@ -19,6 +19,7 @@ import { useTheme } from '../context/ThemeContext';
 import { useAuth } from '../context/AuthContext';
 import { useDrawer } from '../context/DrawerContext';
 import { api } from '../api/client';
+import { loadLocalPendencias, persistLocalPendencias, getLocalPendencias } from '../storage/db';
 import { Pendencia, PendenciaTipo, PendenciaPrioridade } from '../types';
 import {
   ListTodo,
@@ -46,8 +47,12 @@ export const PendenciasScreen: React.FC = () => {
   const insets = useSafeAreaInsets();
 
   const [activeTab, setActiveTab] = useState<'ATIVAS' | 'CONCLUIDAS'>('ATIVAS');
-  const [pendencias, setPendencias] = useState<Pendencia[]>([]);
-  const [loading, setLoading] = useState<boolean>(true);
+  // 0ms Cache-First: carrega dados locais instantaneamente da memória RAM
+  const [pendencias, setPendencias] = useState<Pendencia[]>(() => {
+    const all = getLocalPendencias();
+    return all.filter((p) => p.status === 'PENDENTE');
+  });
+  const [loading, setLoading] = useState<boolean>(() => getLocalPendencias().length === 0);
   const [refreshing, setRefreshing] = useState<boolean>(false);
   const [search, setSearch] = useState<string>('');
 
@@ -74,7 +79,11 @@ export const PendenciasScreen: React.FC = () => {
   const loadData = useCallback(async () => {
     try {
       const statusQuery = activeTab === 'ATIVAS' ? 'PENDENTE' : 'CONCLUIDA';
+      if (pendencias.length === 0) {
+        setLoading(true);
+      }
       const list = await api.getPendencias(statusQuery);
+      persistLocalPendencias(list);
       setPendencias(list);
     } catch (err: any) {
       console.warn('Erro ao carregar pendências:', err);
@@ -82,12 +91,22 @@ export const PendenciasScreen: React.FC = () => {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [activeTab]);
+  }, [activeTab, pendencias.length]);
 
   useEffect(() => {
-    setLoading(true);
+    // Busca do cache persistente de disco se a memória estiver vazia
+    loadLocalPendencias().then((all) => {
+      if (all && all.length > 0) {
+        const expectedStatus = activeTab === 'ATIVAS' ? 'PENDENTE' : 'CONCLUIDA';
+        const filtered = all.filter((p) => p.status === expectedStatus);
+        if (filtered.length > 0) {
+          setPendencias(filtered);
+          setLoading(false);
+        }
+      }
+    });
     loadData();
-  }, [loadData]);
+  }, [activeTab, loadData]);
 
   const onRefresh = () => {
     setRefreshing(true);

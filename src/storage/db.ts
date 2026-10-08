@@ -1,17 +1,39 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Item, Group, Subgroup, Location, StockMetrics, FilterState } from '../types';
+import {
+  Item,
+  Group,
+  Subgroup,
+  Location,
+  StockMetrics,
+  FilterState,
+  Cautela,
+  Pendencia,
+  Military,
+  RelatorioDiario,
+  InformaticaConfig,
+} from '../types';
 
 const STORAGE_KEY_ITEMS = '@binfae_db_items';
 const STORAGE_KEY_GROUPS = '@binfae_db_groups';
 const STORAGE_KEY_SUBGROUPS = '@binfae_db_subgroups';
 const STORAGE_KEY_LOCATIONS = '@binfae_db_locations';
+const STORAGE_KEY_CAUTELAS = '@binfae_db_cautelas';
+const STORAGE_KEY_PENDENCIAS = '@binfae_db_pendencias';
+const STORAGE_KEY_MILITARES = '@binfae_db_militares';
+const STORAGE_KEY_RELATORIO = '@binfae_db_relatorio_diario';
+const STORAGE_KEY_CONFIG_TI = '@binfae_db_config_ti';
 const STORAGE_KEY_LAST_SYNC = '@binfae_db_last_sync';
 
-// Cache em memória de alta performance para resposta em 0ms
+// Cache em memória de altíssima performance para resposta imediata em 0ms
 let memoryItems: Item[] = [];
 let memoryGroups: Group[] = [];
 let memorySubgroups: Subgroup[] = [];
 let memoryLocations: Location[] = [];
+let memoryCautelas: Cautela[] = [];
+let memoryPendencias: Pendencia[] = [];
+let memoryMilitares: Military[] = [];
+let memoryRelatorio: RelatorioDiario | null = null;
+let memoryConfigTI: InformaticaConfig | null = null;
 let lastSyncTimestamp: number | null = null;
 
 export const loadLocalDatabase = async (): Promise<{
@@ -19,15 +41,36 @@ export const loadLocalDatabase = async (): Promise<{
   groups: Group[];
   subgroups: Subgroup[];
   locations: Location[];
+  cautelas: Cautela[];
+  pendencias: Pendencia[];
+  militares: Military[];
+  relatorio: RelatorioDiario | null;
+  configTI: InformaticaConfig | null;
   lastSync: number | null;
 }> => {
   try {
-    const [rawItems, rawGroups, rawSubgroups, rawLocations, rawSync] = await Promise.all([
+    const [
+      rawItems,
+      rawGroups,
+      rawSubgroups,
+      rawLocations,
+      rawSync,
+      rawCautelas,
+      rawPendencias,
+      rawMilitares,
+      rawRelatorio,
+      rawConfigTI,
+    ] = await Promise.all([
       AsyncStorage.getItem(STORAGE_KEY_ITEMS),
       AsyncStorage.getItem(STORAGE_KEY_GROUPS),
       AsyncStorage.getItem(STORAGE_KEY_SUBGROUPS),
       AsyncStorage.getItem(STORAGE_KEY_LOCATIONS),
       AsyncStorage.getItem(STORAGE_KEY_LAST_SYNC),
+      AsyncStorage.getItem(STORAGE_KEY_CAUTELAS),
+      AsyncStorage.getItem(STORAGE_KEY_PENDENCIAS),
+      AsyncStorage.getItem(STORAGE_KEY_MILITARES),
+      AsyncStorage.getItem(STORAGE_KEY_RELATORIO),
+      AsyncStorage.getItem(STORAGE_KEY_CONFIG_TI),
     ]);
 
     if (rawItems) memoryItems = JSON.parse(rawItems);
@@ -35,12 +78,22 @@ export const loadLocalDatabase = async (): Promise<{
     if (rawSubgroups) memorySubgroups = JSON.parse(rawSubgroups);
     if (rawLocations) memoryLocations = JSON.parse(rawLocations);
     if (rawSync) lastSyncTimestamp = parseInt(rawSync, 10);
+    if (rawCautelas) memoryCautelas = JSON.parse(rawCautelas);
+    if (rawPendencias) memoryPendencias = JSON.parse(rawPendencias);
+    if (rawMilitares) memoryMilitares = JSON.parse(rawMilitares);
+    if (rawRelatorio) memoryRelatorio = JSON.parse(rawRelatorio);
+    if (rawConfigTI) memoryConfigTI = JSON.parse(rawConfigTI);
 
     return {
       items: memoryItems,
       groups: memoryGroups,
       subgroups: memorySubgroups,
       locations: memoryLocations,
+      cautelas: memoryCautelas,
+      pendencias: memoryPendencias,
+      militares: memoryMilitares,
+      relatorio: memoryRelatorio,
+      configTI: memoryConfigTI,
       lastSync: lastSyncTimestamp,
     };
   } catch (err) {
@@ -50,6 +103,11 @@ export const loadLocalDatabase = async (): Promise<{
       groups: memoryGroups,
       subgroups: memorySubgroups,
       locations: memoryLocations,
+      cautelas: memoryCautelas,
+      pendencias: memoryPendencias,
+      militares: memoryMilitares,
+      relatorio: memoryRelatorio,
+      configTI: memoryConfigTI,
       lastSync: lastSyncTimestamp,
     };
   }
@@ -86,6 +144,96 @@ export const persistLocalDatabase = async (
 
   await Promise.all(promises);
 };
+
+export const persistLocalCautelas = async (cautelas: Cautela[]): Promise<void> => {
+  memoryCautelas = cautelas;
+  try {
+    await AsyncStorage.setItem(STORAGE_KEY_CAUTELAS, JSON.stringify(cautelas));
+  } catch (_) {}
+};
+
+export const loadLocalCautelas = async (): Promise<Cautela[]> => {
+  if (memoryCautelas.length > 0) return memoryCautelas;
+  try {
+    const raw = await AsyncStorage.getItem(STORAGE_KEY_CAUTELAS);
+    if (raw) memoryCautelas = JSON.parse(raw);
+  } catch (_) {}
+  return memoryCautelas;
+};
+
+export const getLocalCautelas = (): Cautela[] => memoryCautelas;
+
+export const persistLocalPendencias = async (pendencias: Pendencia[]): Promise<void> => {
+  memoryPendencias = pendencias;
+  try {
+    await AsyncStorage.setItem(STORAGE_KEY_PENDENCIAS, JSON.stringify(pendencias));
+  } catch (_) {}
+};
+
+export const loadLocalPendencias = async (): Promise<Pendencia[]> => {
+  if (memoryPendencias.length > 0) return memoryPendencias;
+  try {
+    const raw = await AsyncStorage.getItem(STORAGE_KEY_PENDENCIAS);
+    if (raw) memoryPendencias = JSON.parse(raw);
+  } catch (_) {}
+  return memoryPendencias;
+};
+
+export const getLocalPendencias = (): Pendencia[] => memoryPendencias;
+
+export const persistLocalMilitares = async (militares: Military[]): Promise<void> => {
+  memoryMilitares = militares;
+  try {
+    await AsyncStorage.setItem(STORAGE_KEY_MILITARES, JSON.stringify(militares));
+  } catch (_) {}
+};
+
+export const loadLocalMilitares = async (): Promise<Military[]> => {
+  if (memoryMilitares.length > 0) return memoryMilitares;
+  try {
+    const raw = await AsyncStorage.getItem(STORAGE_KEY_MILITARES);
+    if (raw) memoryMilitares = JSON.parse(raw);
+  } catch (_) {}
+  return memoryMilitares;
+};
+
+export const getLocalMilitares = (): Military[] => memoryMilitares;
+
+export const persistLocalRelatorio = async (relatorio: RelatorioDiario): Promise<void> => {
+  memoryRelatorio = relatorio;
+  try {
+    await AsyncStorage.setItem(STORAGE_KEY_RELATORIO, JSON.stringify(relatorio));
+  } catch (_) {}
+};
+
+export const loadLocalRelatorio = async (): Promise<RelatorioDiario | null> => {
+  if (memoryRelatorio) return memoryRelatorio;
+  try {
+    const raw = await AsyncStorage.getItem(STORAGE_KEY_RELATORIO);
+    if (raw) memoryRelatorio = JSON.parse(raw);
+  } catch (_) {}
+  return memoryRelatorio;
+};
+
+export const getLocalRelatorio = (): RelatorioDiario | null => memoryRelatorio;
+
+export const persistLocalConfigTI = async (cfg: InformaticaConfig): Promise<void> => {
+  memoryConfigTI = cfg;
+  try {
+    await AsyncStorage.setItem(STORAGE_KEY_CONFIG_TI, JSON.stringify(cfg));
+  } catch (_) {}
+};
+
+export const loadLocalConfigTI = async (): Promise<InformaticaConfig | null> => {
+  if (memoryConfigTI) return memoryConfigTI;
+  try {
+    const raw = await AsyncStorage.getItem(STORAGE_KEY_CONFIG_TI);
+    if (raw) memoryConfigTI = JSON.parse(raw);
+  } catch (_) {}
+  return memoryConfigTI;
+};
+
+export const getLocalConfigTI = (): InformaticaConfig | null => memoryConfigTI;
 
 export const getLocalItems = (): Item[] => memoryItems;
 export const getLocalGroups = (): Group[] => memoryGroups;

@@ -290,3 +290,21 @@ export interface RelatorioDiario {
   criado_em?: string;
 }
 
+// --- CONFIGURAÇÕES TI & NOTIFICAÇÕES (ADMIN) ---
+export interface InformaticaConfig {
+  id?: number;
+  militar_antigo_1_id?: number | null;
+  militar_antigo_1_nome?: string | null;
+  militar_antigo_2_id?: number | null;
+  militar_antigo_2_nome?: string | null;
+  notificar_email_ativo?: boolean;
+  notificar_whatsapp_ativo?: boolean;
+  whatsapp_webhook_url?: string | null;
+  whatsapp_numero_grupo?: string | null;
+  smtp_host?: string | null;
+  smtp_port?: number | null;
+  smtp_user?: string | null;
+  smtp_password?: string | null;
+  smtp_from?: string | null;
+  has_smtp_password?: boolean;
+}

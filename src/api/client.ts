@@ -13,6 +13,7 @@ import {
   Pendencia,
   EscalaMensal,
   RelatorioDiario,
+  InformaticaConfig,
 } from '../types';
 
 export const DEFAULT_API_BASE = 'https://backend-info-binfae.vercel.app';
@@ -185,6 +186,20 @@ const request = async <T>(path: string, options: RequestInit = {}, isRetry = fal
     return await response.json() as T;
   } catch (err: any) {
     clearTimeout(timeoutId);
+    const errStr = (err?.message || err?.toString() || '').toLowerCase();
+    const isNetworkOrTimeout =
+      err.name === 'AbortError' ||
+      errStr.includes('network') ||
+      errStr.includes('failed to fetch') ||
+      errStr.includes('connection') ||
+      errStr.includes('timeout') ||
+      errStr.includes('socket');
+
+    if (!isRetry && isNetworkOrTimeout) {
+      await new Promise((resolve) => setTimeout(resolve, 600));
+      return await request<T>(path, options, true);
+    }
+
     if (err.name === 'AbortError') {
       throw new Error('Tempo de requisição esgotado. Verifique sua conexão com a internet.');
     }
@@ -636,22 +651,99 @@ export const api = {
     return await request<RelatorioDiario>(`/relatorios-diarios/hoje${query}`);
   },
 
-  salvarRascunhoRelatorio: async (id: number, ocorrencias: string): Promise<RelatorioDiario> => {
-    return await request<RelatorioDiario>(`/relatorios-diarios/${id}/rascunho`, {
+  salvarRascunhoRelatorio: async (
+    id: number,
+    ocorrencias?: string,
+    militarServicoId?: number | null
+  ): Promise<RelatorioDiario> => {
+    return await request<RelatorioDiario>(`/relatorios-diarios/${id}/salvar-rascunho`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ocorrencias_militar: ocorrencias }),
+      body: JSON.stringify({
+        ocorrencias_militar: ocorrencias,
+        militar_servico_id: militarServicoId,
+      }),
     });
   },
 
   lancarRelatorioDiario: async (id: number, data: {
     ocorrencias_militar?: string;
     militar_servico_id?: number | null;
+    enviar_email?: boolean;
+    enviar_whatsapp?: boolean;
   }): Promise<RelatorioDiario> => {
     return await request<RelatorioDiario>(`/relatorios-diarios/${id}/lancar`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(data),
+      body: JSON.stringify({
+        enviar_email: true,
+        ...data,
+      }),
+    });
+  },
+
+  // --- CONFIGURAÇÕES DA TI & E-MAIL (ADMIN) ---
+  getConfigTI: async (): Promise<InformaticaConfig> => {
+    return await request<InformaticaConfig>('/admin/config-ti');
+  },
+
+  updateConfigTI: async (data: Partial<InformaticaConfig> & { smtp_password?: string }): Promise<InformaticaConfig> => {
+    const payload = { ...data };
+    if (!payload.smtp_password || payload.smtp_password.trim() === '' || payload.smtp_password.trim() === '••••••••') {
+      delete payload.smtp_password;
+    }
+    return await request<InformaticaConfig>('/admin/config-ti', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+  },
+
+  testarEmail: async (data: {
+    destinatario?: string;
+    smtp_host?: string;
+    smtp_port?: number;
+    smtp_user?: string;
+    smtp_password?: string;
+    smtp_from?: string;
+  }): Promise<{ sucesso: boolean; mensagem: string; destinatario?: string }> => {
+    const payload = { ...data };
+    if (!payload.smtp_password || payload.smtp_password.trim() === '' || payload.smtp_password.trim() === '••••••••') {
+      delete payload.smtp_password;
+    }
+    return await request<any>('/admin/config-ti/testar-email', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+  },
+
+  enviarEmailUsuarios: async (data: {
+    assunto: string;
+    mensagem: string;
+    usuario_ids?: number[];
+    militar_ids?: number[];
+    emails_adicionais?: string[];
+    smtp_host?: string;
+    smtp_port?: number;
+    smtp_user?: string;
+    smtp_password?: string;
+    smtp_from?: string;
+  }): Promise<{
+    sucesso: boolean;
+    total_enviados: number;
+    destinatarios: string[];
+    sem_email?: string[];
+    mensagem: string;
+  }> => {
+    const payload = { ...data };
+    if (!payload.smtp_password || payload.smtp_password.trim() === '' || payload.smtp_password.trim() === '••••••••') {
+      delete payload.smtp_password;
+    }
+    return await request<any>('/admin/config-ti/enviar-email', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
     });
   },
 };

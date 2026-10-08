@@ -20,6 +20,7 @@ import { useStock } from '../context/StockContext';
 import { Header } from '../components/Header';
 import { UserAvatar } from '../components/UserAvatar';
 import { api } from '../api/client';
+import { loadLocalCautelas, persistLocalCautelas, getLocalCautelas } from '../storage/db';
 import { Cautela, CautelaItem, Military, Item } from '../types';
 import {
   Rocket,
@@ -61,6 +62,7 @@ export const CautelasScreen: React.FC<CautelasScreenProps> = () => {
       if (prevCautelasVersionRef.current !== null && cautelasVersion !== prevCautelasVersionRef.current) {
         prevCautelasVersionRef.current = cautelasVersion;
         api.listCautelas().then((list) => {
+          persistLocalCautelas(list);
           setCautelas(list);
         }).catch(() => {});
       } else if (prevCautelasVersionRef.current === null) {
@@ -74,9 +76,9 @@ export const CautelasScreen: React.FC<CautelasScreenProps> = () => {
   const [statusFilter, setStatusFilter] = useState<'ATIVA' | 'CONCLUIDA'>('ATIVA');
   const [searchQuery, setSearchQuery] = useState<string>('');
 
-  // Dados
-  const [cautelas, setCautelas] = useState<Cautela[]>([]);
-  const [isLoading, setIsLoading] = useState<boolean>(true);
+  // 0ms Cache-First: carrega dados locais instantaneamente da memória RAM
+  const [cautelas, setCautelas] = useState<Cautela[]>(() => getLocalCautelas());
+  const [isLoading, setIsLoading] = useState<boolean>(() => getLocalCautelas().length === 0);
   const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
 
   // Modais
@@ -115,8 +117,11 @@ export const CautelasScreen: React.FC<CautelasScreenProps> = () => {
 
   const loadCautelas = useCallback(async () => {
     try {
-      setIsLoading(true);
+      if (getLocalCautelas().length === 0) {
+        setIsLoading(true);
+      }
       const list = await api.listCautelas();
+      persistLocalCautelas(list);
       setCautelas(list);
     } catch (e: any) {
       console.warn('Erro ao carregar cautelas:', e);
@@ -127,6 +132,13 @@ export const CautelasScreen: React.FC<CautelasScreenProps> = () => {
   }, []);
 
   useEffect(() => {
+    // Se o cache de memória ainda não estiver preenchido, busca assincronamente do AsyncStorage
+    loadLocalCautelas().then((cached) => {
+      if (cached && cached.length > 0) {
+        setCautelas(cached);
+        setIsLoading(false);
+      }
+    });
     loadCautelas();
   }, [loadCautelas]);
 
