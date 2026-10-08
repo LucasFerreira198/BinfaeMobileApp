@@ -264,19 +264,29 @@ export interface RelatorioDiario {
   ocorrencias_militar?: string | null;
   dados_automaticos: {
     itens_manutencao?: any[];
+    itens_entrados_manutencao?: any[];
     itens_consertados?: any[];
     itens_baixados?: any[];
     missoes_cautelas?: any[];
+    missoes_em_aberto?: any[];
+    missoes_iniciadas_dia?: any[];
+    missoes_concluidas_dia?: any[];
     cautelas_periodo?: any[];
     devolucoes_periodo?: any[];
+    pendencias_em_aberto?: any[];
     pendencias_criadas?: any[];
     pendencias_resolvidas?: any[];
     total_itens_manutencao?: number;
+    total_itens_entrados_manutencao?: number;
     total_itens_consertados?: number;
     total_itens_baixados?: number;
     total_missoes?: number;
+    total_missoes_em_aberto?: number;
+    total_missoes_iniciadas_dia?: number;
+    total_missoes_concluidas_dia?: number;
     total_cautelas?: number;
     total_devolucoes?: number;
+    total_pendencias_em_aberto?: number;
     total_pendencias_criadas?: number;
     total_pendencias_resolvidas?: number;
     // Compatibilidade com chaves legadas

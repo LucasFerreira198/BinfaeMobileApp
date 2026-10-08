@@ -174,10 +174,15 @@ export const RelatorioDiarioScreen: React.FC = () => {
   const isLancado = relatorio?.status === 'LANCADO';
   const autoData = relatorio?.dados_automaticos || {};
   const itensManutencao = autoData.itens_manutencao || autoData.manutencoes_abertas || [];
+  const itensEntradosManut = autoData.itens_entrados_manutencao || [];
   const itensConsertados = autoData.itens_consertados || [];
+  const missoesEmAberto = autoData.missoes_em_aberto || [];
+  const missoesConcluidas = autoData.missoes_concluidas_dia || [];
   const missoesCautelas = autoData.missoes_cautelas || [];
+  const listaMissoesExibir = missoesEmAberto.length > 0 ? missoesEmAberto : missoesCautelas;
   const cautelasPeriodo = autoData.cautelas_periodo || autoData.cautelas_abertas || [];
   const devolucoesPeriodo = autoData.devolucoes_periodo || autoData.cautelas_devolvidas || [];
+  const pendenciasEmAberto = autoData.pendencias_em_aberto || [];
   const pendenciasCriadas = autoData.pendencias_criadas || [];
   const pendenciasResolvidas = autoData.pendencias_resolvidas || autoData.pendencias_concluidas || [];
   const itensBaixados = autoData.itens_baixados || [];
@@ -336,25 +341,55 @@ export const RelatorioDiarioScreen: React.FC = () => {
             )}
           </View>
 
-          {/* 2. Itens em Manutenção Atualmente */}
+          {/* 2. Oficina & Manutenção de Equipamentos */}
           <View style={[styles.summaryCard, { backgroundColor: theme.surface, borderColor: theme.border }]}>
             <View style={styles.summaryHeader}>
               <View style={[styles.summaryIconWrap, { backgroundColor: 'rgba(234, 179, 8, 0.15)' }]}>
                 <Wrench size={18} color="#EAB308" />
               </View>
               <Text style={[styles.summaryTitle, { color: theme.text }]}>
-                Itens em Manutenção Atualmente ({itensManutencao.length})
+                Oficina & Manutenção ({itensManutencao.length} em bancada)
               </Text>
             </View>
 
+            {/* 2.1 Entradas no Plantão */}
+            {itensEntradosManut.length > 0 && (
+              <View style={{ marginBottom: 10, paddingBottom: 8, borderBottomWidth: 1, borderBottomColor: theme.border }}>
+                <Text style={{ fontSize: 12, fontWeight: '700', color: '#F59E0B', marginBottom: 4 }}>
+                  📥 Entradas para Reparo no Plantão ({itensEntradosManut.length}):
+                </Text>
+                {itensEntradosManut.map((em: any, idx: number) => (
+                  <View key={`ent-${idx}`} style={{ marginBottom: 4 }}>
+                    <Text style={[styles.itemDetailTitle, { color: theme.text }]}>
+                      • {em.nome} (BMP: {em.bmp || 'S/N'}{em.numero_serie ? ` | Série: ${em.numero_serie}` : ''})
+                    </Text>
+                    <Text style={[styles.itemDetailSub, { color: '#F59E0B' }]}>
+                      Defeito: {em.defeito || 'Recolhido para reparo'}
+                    </Text>
+                  </View>
+                ))}
+              </View>
+            )}
+
+            {/* 2.2 Bancada Atual */}
+            <Text style={{ fontSize: 12, fontWeight: '700', color: theme.textSecondary, marginBottom: 4 }}>
+              Equipamentos na Bancada Atualmente ({itensManutencao.length}):
+            </Text>
             {itensManutencao.length === 0 ? (
-              <Text style={[styles.emptyText, { color: theme.textMuted }]}>Nenhum equipamento aguardando manutenção.</Text>
+              <Text style={[styles.emptyText, { color: theme.textMuted }]}>Nenhum equipamento aguardando manutenção na bancada.</Text>
             ) : (
               itensManutencao.map((m: any, idx: number) => (
                 <View key={`man-${idx}`} style={[styles.itemDetailRow, { borderTopColor: theme.border }]}>
-                  <Text style={[styles.itemDetailTitle, { color: theme.text }]}>
-                    • {m.nome} (BMP: {m.bmp || 'S/N'}{m.numero_serie ? ` | Série: ${m.numero_serie}` : ''})
-                  </Text>
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <Text style={[styles.itemDetailTitle, { color: theme.text, flex: 1 }]}>
+                      • {m.nome} (BMP: {m.bmp || 'S/N'}{m.numero_serie ? ` | Série: ${m.numero_serie}` : ''})
+                    </Text>
+                    {m.status_etapa ? (
+                      <View style={{ backgroundColor: 'rgba(234, 179, 8, 0.15)', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 }}>
+                        <Text style={{ color: '#EAB308', fontSize: 10, fontWeight: '700' }}>{m.status_etapa}</Text>
+                      </View>
+                    ) : null}
+                  </View>
                   <Text style={[styles.itemDetailSub, { color: '#F59E0B' }]}>
                     Defeito: {m.defeito || 'Em processo de reparo'}
                   </Text>
@@ -375,44 +410,82 @@ export const RelatorioDiarioScreen: React.FC = () => {
             </View>
 
             <Text style={[styles.subCount, { color: theme.textSecondary }]}>
-              {missoesCautelas.length} Missão/Cautela • {cautelasPeriodo.length} materiais cautelados • {devolucoesPeriodo.length} devoluções
+              {listaMissoesExibir.length} Missão(ões) em aberto • {cautelasPeriodo.length} materiais cautelados • {devolucoesPeriodo.length} devoluções
             </Text>
 
-            {missoesCautelas.length === 0 && cautelasPeriodo.length === 0 ? (
-              <Text style={[styles.emptyText, { color: theme.textMuted }]}>Nenhuma nova missão ou cautela nas últimas 24h.</Text>
+            {/* 3.1 Missões em Aberto / Em Andamento */}
+            <Text style={{ fontSize: 12, fontWeight: '700', color: '#38BDF8', marginTop: 6, marginBottom: 4 }}>
+              🚀 Missões e Cautelas Ativas / Em Andamento ({listaMissoesExibir.length}):
+            </Text>
+
+            {listaMissoesExibir.length === 0 ? (
+              <Text style={[styles.emptyText, { color: theme.textMuted }]}>Nenhuma missão ou cautela de material atualmente em aberto.</Text>
             ) : (
-              missoesCautelas.map((m: any, idx: number) => {
+              listaMissoesExibir.map((m: any, idx: number) => {
                 const isMissao = m.tipo === 'Missão';
                 const materiais = m.materiais || [];
+                const statusTag = m.status_relatorio || m.status || 'ATIVA';
                 return (
                   <View key={`mis-${idx}`} style={[styles.itemDetailRow, { borderTopColor: theme.border }]}>
                     <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
                       <Text style={[styles.itemDetailTitle, { color: theme.text, fontWeight: '700', flex: 1 }]}>
                         {m.missao_nome}
                       </Text>
-                      <View style={{ backgroundColor: isMissao ? 'rgba(56, 189, 248, 0.15)' : 'rgba(168, 85, 247, 0.15)', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 }}>
-                        <Text style={{ color: isMissao ? '#38BDF8' : '#A855F7', fontSize: 10, fontWeight: '700' }}>
-                          {m.tipo || 'Missão'}
-                        </Text>
+                      <View style={{ flexDirection: 'row', gap: 4 }}>
+                        <View style={{ backgroundColor: isMissao ? 'rgba(56, 189, 248, 0.15)' : 'rgba(168, 85, 247, 0.15)', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 }}>
+                          <Text style={{ color: isMissao ? '#38BDF8' : '#A855F7', fontSize: 10, fontWeight: '700' }}>
+                            {m.tipo || 'Missão'}
+                          </Text>
+                        </View>
+                        <View style={{ backgroundColor: 'rgba(16, 185, 129, 0.15)', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 }}>
+                          <Text style={{ color: '#10B981', fontSize: 10, fontWeight: '700' }}>
+                            {statusTag}
+                          </Text>
+                        </View>
                       </View>
                     </View>
                     <Text style={[styles.itemDetailSub, { color: theme.textSecondary, marginTop: 2 }]}>
                       Responsável: {m.militar_responsavel} • Total: {m.total_materiais || materiais.length} material(is)
                     </Text>
                     {materiais.map((mat: any, mIdx: number) => (
-                      <Text key={`mat-${mIdx}`} style={[styles.itemDetailSub, { color: theme.text, paddingLeft: 8, marginTop: 1 }]}>
-                        ↳ {mat.nome} (BMP: {mat.bmp || 'S/N'}{mat.numero_serie ? ` | Série: ${mat.numero_serie}` : ''})
-                      </Text>
+                      <View key={`mat-${mIdx}`} style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingLeft: 8, marginTop: 2 }}>
+                        <Text style={[styles.itemDetailSub, { color: theme.text, flex: 1 }]}>
+                          ↳ {mat.nome} (BMP: {mat.bmp || 'S/N'}{mat.numero_serie ? ` | Série: ${mat.numero_serie}` : ''}) - {mat.condicao_saida || 'Bom estado'}
+                        </Text>
+                        {mat.status === 'DEVOLVIDO' && (
+                          <Text style={{ color: '#10B981', fontSize: 10, fontWeight: '700' }}>[DEVOLVIDO]</Text>
+                        )}
+                      </View>
                     ))}
                   </View>
                 );
               })
             )}
 
+            {/* 3.2 Missões Concluídas no Plantão */}
+            {missoesConcluidas.length > 0 && (
+              <View style={{ marginTop: 10, paddingTop: 8, borderTopWidth: 1, borderTopColor: theme.border }}>
+                <Text style={{ fontSize: 12, fontWeight: '700', color: '#10B981', marginBottom: 4 }}>
+                  🏁 Missões Concluídas no Plantão ({missoesConcluidas.length}):
+                </Text>
+                {missoesConcluidas.map((mc: any, idx: number) => (
+                  <View key={`mconc-${idx}`} style={{ marginBottom: 4 }}>
+                    <Text style={[styles.itemDetailTitle, { color: theme.text, fontWeight: '700' }]}>
+                      ✔ {mc.missao_nome} ({mc.tipo})
+                    </Text>
+                    <Text style={[styles.itemDetailSub, { color: theme.textSecondary }]}>
+                      Responsável: {mc.militar_responsavel} • Total: {mc.total_materiais} materiais devolvidos
+                    </Text>
+                  </View>
+                ))}
+              </View>
+            )}
+
+            {/* 3.3 Devoluções Avulsas */}
             {devolucoesPeriodo.length > 0 && (
               <View style={{ marginTop: 10, paddingTop: 10, borderTopWidth: 1, borderTopColor: theme.border }}>
                 <Text style={{ fontSize: 12, fontWeight: '700', color: '#10B981', marginBottom: 4 }}>
-                  Devoluções Realizadas ({devolucoesPeriodo.length}):
+                  Devoluções Realizadas no Plantão ({devolucoesPeriodo.length}):
                 </Text>
                 {devolucoesPeriodo.map((d: any, idx: number) => (
                   <Text key={`dev-${idx}`} style={[styles.itemDetailSub, { color: theme.text, marginBottom: 2 }]}>
@@ -423,19 +496,52 @@ export const RelatorioDiarioScreen: React.FC = () => {
             )}
           </View>
 
-          {/* 4. Pendências Criadas & Solucionadas */}
+          {/* 4. Pendências do Plantão & Passagem de Serviço */}
           <View style={[styles.summaryCard, { backgroundColor: theme.surface, borderColor: theme.border }]}>
             <View style={styles.summaryHeader}>
               <View style={[styles.summaryIconWrap, { backgroundColor: 'rgba(99, 102, 241, 0.15)' }]}>
                 <ListTodo size={18} color="#6366F1" />
               </View>
               <Text style={[styles.summaryTitle, { color: theme.text }]}>
-                Pendências do Plantão
+                Pendências & Passagem de Serviço
               </Text>
             </View>
 
-            {/* Solucionadas */}
-            <Text style={{ fontSize: 12, fontWeight: '700', color: '#10B981', marginTop: 4 }}>
+            {/* 4.1 Pendências em Aberto para Passagem de Serviço */}
+            <Text style={{ fontSize: 12, fontWeight: '700', color: '#F59E0B', marginTop: 4 }}>
+              📌 Pendências em Aberto para o Próximo Serviço ({pendenciasEmAberto.length}):
+            </Text>
+            {pendenciasEmAberto.length === 0 ? (
+              <Text style={[styles.emptyText, { color: theme.textMuted }]}>Nenhuma pendência em aberto na Seção.</Text>
+            ) : (
+              pendenciasEmAberto.map((p: any, idx: number) => (
+                <View key={`pab-${idx}`} style={[styles.itemDetailRow, { borderTopColor: theme.border }]}>
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <Text style={[styles.itemDetailTitle, { color: theme.text, flex: 1 }]}>
+                      • [{p.tipo || 'GERAL'}] {p.titulo}
+                    </Text>
+                    {p.prioridade ? (
+                      <View style={{ backgroundColor: 'rgba(239, 68, 68, 0.15)', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 }}>
+                        <Text style={{ color: '#EF4444', fontSize: 10, fontWeight: '700' }}>{p.prioridade}</Text>
+                      </View>
+                    ) : null}
+                  </View>
+                  {p.descricao ? (
+                    <Text style={[styles.itemDetailSub, { color: theme.textSecondary, marginTop: 2 }]}>
+                      {p.descricao}
+                    </Text>
+                  ) : null}
+                  {p.responsavel ? (
+                    <Text style={[styles.itemDetailSub, { color: theme.textMuted }]}>
+                      Responsável: {p.responsavel}
+                    </Text>
+                  ) : null}
+                </View>
+              ))
+            )}
+
+            {/* 4.2 Solucionadas */}
+            <Text style={{ fontSize: 12, fontWeight: '700', color: '#10B981', marginTop: 10 }}>
               ✔ Solucionadas no Plantão ({pendenciasResolvidas.length}):
             </Text>
             {pendenciasResolvidas.length === 0 ? (
@@ -458,7 +564,7 @@ export const RelatorioDiarioScreen: React.FC = () => {
               ))
             )}
 
-            {/* Criadas */}
+            {/* 4.3 Novas Criadas */}
             <Text style={{ fontSize: 12, fontWeight: '700', color: '#F59E0B', marginTop: 10 }}>
               ⚠️ Novas Pendências Registradas ({pendenciasCriadas.length}):
             </Text>
