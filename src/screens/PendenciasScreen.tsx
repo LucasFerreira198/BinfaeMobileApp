@@ -203,6 +203,29 @@ export const PendenciasScreen: React.FC = () => {
     }
   };
 
+  const handleDeletePendencia = (p: Pendencia) => {
+    Alert.alert(
+      'Excluir Pendência',
+      `Tem certeza que deseja excluir a pendência "${p.titulo}"?`,
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Excluir',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await api.deletePendencia(p.id);
+              Alert.alert('Sucesso', 'Pendência excluída com sucesso.');
+              loadData();
+            } catch (err: any) {
+              Alert.alert('Erro ao excluir', err.message || 'Falha ao excluir pendência.');
+            }
+          },
+        },
+      ]
+    );
+  };
+
   const getPrioridadeBadge = (prio: PendenciaPrioridade) => {
     switch (prio) {
       case 'URGENTE':
@@ -354,12 +377,22 @@ export const PendenciasScreen: React.FC = () => {
                     )}
                   </View>
 
-                  {item.prazo && (
-                    <View style={styles.prazoRow}>
-                      <Calendar size={13} color={theme.textMuted} />
-                      <Text style={[styles.prazoText, { color: theme.textMuted }]}>{item.prazo}</Text>
-                    </View>
-                  )}
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                    {item.prazo && (
+                      <View style={styles.prazoRow}>
+                        <Calendar size={13} color={theme.textMuted} />
+                        <Text style={[styles.prazoText, { color: theme.textMuted }]}>{item.prazo}</Text>
+                      </View>
+                    )}
+                    <TouchableOpacity
+                      onPress={() => handleDeletePendencia(item)}
+                      hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                      style={{ padding: 4 }}
+                      accessibilityLabel="Excluir Pendência"
+                    >
+                      <Trash2 size={15} color={theme.danger} />
+                    </TouchableOpacity>
+                  </View>
                 </View>
 
                 {/* Título & Descrição */}

@@ -16,6 +16,7 @@ import * as Sharing from 'expo-sharing';
 import { PureQrCode } from './PureQrCode';
 import { Item, ItemMovement } from '../types';
 import { useTheme } from '../context/ThemeContext';
+import { useStock } from '../context/StockContext';
 import { api } from '../api/client';
 import { ErrorBoundary } from './ErrorBoundary';
 import { formatDateTime } from '../utils/date';
@@ -36,6 +37,7 @@ import {
   Wrench,
   CheckCircle2,
   RotateCcw,
+  Trash2,
 } from 'lucide-react-native';
 import { MaintenanceActionModal, MaintenanceActionType } from './MaintenanceActionModal';
 
@@ -125,6 +127,51 @@ const ItemDetailModalContent: React.FC<ItemDetailModalProps> = ({
     } finally {
       setLoadingHistory(false);
     }
+  };
+
+  const { deleteItem } = useStock();
+  const [isDeleting, setIsDeleting] = useState<boolean>(false);
+
+  const handleDeleteItem = () => {
+    if (!item) return;
+    if (item.cautela_ativa || item.status === 'CAUTELADO') {
+      Alert.alert(
+        'Não é possível excluir',
+        'Este material está atualmente cautelado em uso em uma missão. Efetue a devolução antes de excluir.'
+      );
+      return;
+    }
+    if (item.status === 'EM_MANUTENCAO') {
+      Alert.alert(
+        'Não é possível excluir',
+        'Este material está com ordem de manutenção em andamento na bancada. Conclua o reparo ou dê baixa patrimonial na pendência.'
+      );
+      return;
+    }
+
+    Alert.alert(
+      'Excluir Material',
+      `Tem certeza que deseja excluir o material "${item.nome}" (ID #${item.id}) do inventário?\n\nEsta ação excluirá permanentemente o registro e histórico do material.`,
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Excluir Definitivamente',
+          style: 'destructive',
+          onPress: async () => {
+            setIsDeleting(true);
+            try {
+              await deleteItem(item.id);
+              Alert.alert('Sucesso', 'Material excluído do estoque com sucesso.');
+              onClose();
+            } catch (err: any) {
+              Alert.alert('Erro ao excluir material', err.message || 'Falha ao excluir material.');
+            } finally {
+              setIsDeleting(false);
+            }
+          },
+        },
+      ]
+    );
   };
 
   if (!item) return null;
@@ -358,13 +405,29 @@ const ItemDetailModalContent: React.FC<ItemDetailModalProps> = ({
               </Text>
             </View>
 
-            <TouchableOpacity
-              onPress={onClose}
-              style={[styles.closeBtn, { backgroundColor: theme.surfaceVariant }]}
-              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-            >
-              <X size={20} color={theme.text} />
-            </TouchableOpacity>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+              <TouchableOpacity
+                onPress={handleDeleteItem}
+                disabled={isDeleting}
+                style={[styles.closeBtn, { backgroundColor: theme.dangerBg }]}
+                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                accessibilityLabel="Excluir Material"
+              >
+                {isDeleting ? (
+                  <ActivityIndicator size="small" color={theme.danger} />
+                ) : (
+                  <Trash2 size={18} color={theme.danger} />
+                )}
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                onPress={onClose}
+                style={[styles.closeBtn, { backgroundColor: theme.surfaceVariant }]}
+                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              >
+                <X size={20} color={theme.text} />
+              </TouchableOpacity>
+            </View>
           </View>
 
           {item.cautela_ativa ? (
@@ -642,6 +705,19 @@ const ItemDetailModalContent: React.FC<ItemDetailModalProps> = ({
                     </View>
                   </View>
                 ) : null}
+
+                {/* Banner de Exclusão do Item */}
+                <TouchableOpacity
+                  style={[styles.deleteItemBanner, { backgroundColor: theme.dangerBg, borderColor: theme.danger }]}
+                  onPress={handleDeleteItem}
+                  disabled={isDeleting}
+                  activeOpacity={0.7}
+                >
+                  <Trash2 size={16} color={theme.danger} />
+                  <Text style={[styles.deleteItemBannerText, { color: theme.danger }]}>
+                    {isDeleting ? 'Excluindo...' : 'Excluir Este Equipamento do Estoque'}
+                  </Text>
+                </TouchableOpacity>
               </>
             ) : activeTab === 'history' ? (
               /* Aba de Histórico Específico */
@@ -1347,5 +1423,20 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 12,
     fontWeight: '500',
+  },
+  deleteItemBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 14,
+    borderRadius: 14,
+    borderWidth: 1,
+    marginTop: 18,
+    marginBottom: 10,
+  },
+  deleteItemBannerText: {
+    fontSize: 14,
+    fontWeight: '700',
   },
 });

@@ -310,6 +310,12 @@ export const api = {
     });
   },
 
+  deleteLocation: async (id: number): Promise<void> => {
+    return await request<void>(`/stock/locations/${id}`, {
+      method: 'DELETE',
+    });
+  },
+
   fetchMovements: async (itemId?: number): Promise<ItemMovement[]> => {
     const path = itemId ? `/stock/movements?item_id=${itemId}` : '/stock/movements';
     return await request<ItemMovement[]>(path);
@@ -320,6 +326,20 @@ export const api = {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data),
+    });
+  },
+
+  updateItem: async (id: number, data: Partial<ItemCreateInput>): Promise<Item> => {
+    return await request<Item>(`/stock/items/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+  },
+
+  deleteItem: async (id: number): Promise<void> => {
+    return await request<void>(`/stock/items/${id}`, {
+      method: 'DELETE',
     });
   },
 
@@ -398,6 +418,12 @@ export const api = {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data),
+    });
+  },
+
+  deleteMilitary: async (saram: number): Promise<void> => {
+    return await request<void>(`/military/delete/${saram}`, {
+      method: 'DELETE',
     });
   },
 
@@ -505,6 +531,20 @@ export const api = {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data),
+    });
+  },
+
+  updateCautela: async (id: number, data: { nome?: string; observacoes?: string }): Promise<Cautela> => {
+    return await request<Cautela>(`/cautelas/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+  },
+
+  deleteCautela: async (id: number): Promise<void> => {
+    return await request<void>(`/cautelas/${id}`, {
+      method: 'DELETE',
     });
   },
 
@@ -620,6 +660,20 @@ export const api = {
         justificativa_baixa: motivo || 'Baixa por quebra/defeito irrecuperável',
         motivo: motivo || 'Baixa por quebra/defeito irrecuperável',
       }),
+    });
+  },
+
+  updatePendencia: async (id: number, data: any): Promise<Pendencia> => {
+    return await request<Pendencia>(`/pendencias/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+  },
+
+  deletePendencia: async (id: number): Promise<void> => {
+    return await request<void>(`/pendencias/${id}`, {
+      method: 'DELETE',
     });
   },
 

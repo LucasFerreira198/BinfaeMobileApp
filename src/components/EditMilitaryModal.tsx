@@ -17,7 +17,7 @@ import { useTheme } from '../context/ThemeContext';
 import { useKeyboardHeight } from '../hooks/useKeyboardHeight';
 import { api } from '../api/client';
 import { Military } from '../types';
-import { X, Check, Shield, User, Mail, Phone, Award } from 'lucide-react-native';
+import { X, Check, Shield, User, Mail, Phone, Award, Trash2 } from 'lucide-react-native';
 
 interface EditMilitaryModalProps {
   military: Military | null;
@@ -118,6 +118,35 @@ export const EditMilitaryModal: React.FC<EditMilitaryModalProps> = ({
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  const handleDelete = () => {
+    Alert.alert(
+      'Excluir Militar',
+      `Tem certeza que deseja excluir o militar ${military.posto_graduacao} ${military.nome_guerra} (SARAM ${military.saram}) do efetivo?\n\nEsta ação não poderá ser desfeita e exige que não haja conta de usuário ativa vinculada a ele.`,
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Excluir Militar',
+          style: 'destructive',
+          onPress: async () => {
+            setIsDeleting(true);
+            try {
+              await api.deleteMilitary(military.saram);
+              Alert.alert('Sucesso', 'Militar excluído do efetivo com sucesso.');
+              onSuccess();
+              onClose();
+            } catch (err: any) {
+              Alert.alert('Erro ao Excluir', err.message || 'Falha ao excluir militar.');
+            } finally {
+              setIsDeleting(false);
+            }
+          },
+        },
+      ]
+    );
   };
 
   return (
@@ -288,6 +317,19 @@ export const EditMilitaryModal: React.FC<EditMilitaryModalProps> = ({
                 keyboardType="phone-pad"
               />
             </View>
+
+            {/* Botão Excluir Militar */}
+            <TouchableOpacity
+              style={[styles.deleteBtn, { backgroundColor: theme.dangerBg, borderColor: theme.danger }]}
+              onPress={handleDelete}
+              disabled={isDeleting || isSubmitting}
+              activeOpacity={0.7}
+            >
+              <Trash2 size={16} color={theme.danger} />
+              <Text style={[styles.deleteBtnText, { color: theme.danger }]}>
+                {isDeleting ? 'Excluindo...' : 'Excluir Militar do Efetivo'}
+              </Text>
+            </TouchableOpacity>
           </ScrollView>
 
           {/* Rodapé com botão de Salvar */}
@@ -423,6 +465,21 @@ const styles = StyleSheet.create({
   submitText: {
     color: '#FFFFFF',
     fontSize: 15,
+    fontWeight: '700',
+  },
+  deleteBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 14,
+    borderRadius: 14,
+    borderWidth: 1,
+    marginTop: 20,
+    marginBottom: 8,
+  },
+  deleteBtnText: {
+    fontSize: 14,
     fontWeight: '700',
   },
 });

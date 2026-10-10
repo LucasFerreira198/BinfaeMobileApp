@@ -33,6 +33,8 @@ interface StockContextType {
   clearFilters: () => void;
   syncData: (manual?: boolean) => Promise<void>;
   createItem: (data: ItemCreateInput) => Promise<Item>;
+  updateItem: (id: number, data: Partial<ItemCreateInput>) => Promise<Item>;
+  deleteItem: (id: number) => Promise<void>;
   moveItem: (itemId: number, data: { destino_local_id?: number | null; tipo_movimentacao: string; quantidade_movimentada: number; motivo?: string }) => Promise<void>;
   createGroup: (data: { nome: string; descricao?: string }) => Promise<Group>;
   updateGroup: (groupId: number, data: { nome: string; descricao?: string }) => Promise<Group>;
@@ -42,6 +44,7 @@ interface StockContextType {
   deleteSubgroup: (subgroupId: number) => Promise<void>;
   createLocation: (data: { nome: string; tipo?: string; descricao?: string; parent_id?: number | null }) => Promise<Location>;
   updateLocation: (id: number, data: { nome?: string; tipo?: string; descricao?: string; parent_id?: number | null }) => Promise<Location>;
+  deleteLocation: (id: number) => Promise<void>;
 }
 
 const defaultFilters: FilterState = {
@@ -85,6 +88,9 @@ const StockContext = createContext<StockContextType>({
   deleteSubgroup: async () => {},
   createLocation: async () => ({} as Location),
   updateLocation: async () => ({} as Location),
+  deleteLocation: async () => {},
+  updateItem: async () => ({} as Item),
+  deleteItem: async () => {},
 });
 
 export const StockProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -338,6 +344,21 @@ export const StockProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     return created;
   };
 
+  const updateItem = async (id: number, data: Partial<ItemCreateInput>): Promise<Item> => {
+    const updated = await api.updateItem(id, data);
+    const updatedAll = allItems.map((item) => (item.id === id ? updated : item));
+    setAllItems(updatedAll);
+    await persistLocalDatabase(updatedAll);
+    return updated;
+  };
+
+  const deleteItem = async (id: number): Promise<void> => {
+    await api.deleteItem(id);
+    const updatedAll = allItems.filter((item) => item.id !== id);
+    setAllItems(updatedAll);
+    await persistLocalDatabase(updatedAll);
+  };
+
   const moveItem = async (
     itemId: number,
     data: { destino_local_id?: number | null; tipo_movimentacao: string; quantidade_movimentada: number; motivo?: string }
@@ -438,6 +459,13 @@ export const StockProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     return updatedLoc;
   };
 
+  const deleteLocation = async (id: number): Promise<void> => {
+    await api.deleteLocation(id);
+    const updated = locations.filter((l) => l.id !== id);
+    setLocations(updated);
+    await persistLocalDatabase(allItems, groups, updated, subgroups);
+  };
+
   return (
     <StockContext.Provider
       value={{
@@ -463,6 +491,8 @@ export const StockProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         clearFilters,
         syncData,
         createItem,
+        updateItem,
+        deleteItem,
         moveItem,
         createGroup,
         updateGroup,
@@ -472,6 +502,7 @@ export const StockProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         deleteSubgroup,
         createLocation,
         updateLocation,
+        deleteLocation,
       }}
     >
       {children}

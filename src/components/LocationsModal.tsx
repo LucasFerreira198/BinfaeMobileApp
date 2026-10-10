@@ -34,6 +34,7 @@ import {
   Plus,
   Pencil,
   Layers,
+  Trash2,
 } from 'lucide-react-native';
 
 const LOCATION_TYPES = [
@@ -58,7 +59,7 @@ const LocationsModalContent: React.FC<LocationsModalProps> = ({
   onSelectLocation,
 }) => {
   const { theme } = useTheme();
-  const { locations, allItems, filters, setLocationFilter, createLocation, updateLocation } = useStock();
+  const { locations, allItems, filters, setLocationFilter, createLocation, updateLocation, deleteLocation } = useStock();
   const insets = useSafeAreaInsets();
   const { keyboardHeight, isKeyboardVisible } = useKeyboardHeight();
   const { height: screenHeight } = useWindowDimensions();
@@ -188,6 +189,50 @@ const LocationsModalContent: React.FC<LocationsModalProps> = ({
     } finally {
       setIsSaving(false);
     }
+  };
+
+  const handleDeleteLocation = () => {
+    if (!editingLocation) return;
+    const sublocations = locations.filter((l) => l.parent_id === editingLocation.id);
+    if (sublocations.length > 0) {
+      Alert.alert(
+        'Não é possível excluir',
+        'Este local possui ramificações/sublocais cadastrados. Exclua ou mova os sublocais primeiro.'
+      );
+      return;
+    }
+    const directItems = allItems.filter((i) => i.local_id === editingLocation.id).length;
+    if (directItems > 0) {
+      Alert.alert(
+        'Não é possível excluir',
+        `Existem ${directItems} materiais guardados neste local. Mova os materiais para outro local antes de excluir.`
+      );
+      return;
+    }
+
+    Alert.alert(
+      'Excluir Local Físico',
+      `Tem certeza que deseja excluir o local "${editingLocation.nome}"?`,
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Excluir Local',
+          style: 'destructive',
+          onPress: async () => {
+            setIsSaving(true);
+            try {
+              await deleteLocation(editingLocation.id);
+              Alert.alert('Sucesso', 'Local físico excluído com sucesso.');
+              setIsFormOpen(false);
+            } catch (err: any) {
+              Alert.alert('Erro ao excluir local', err.message || 'Falha ao excluir o local.');
+            } finally {
+              setIsSaving(false);
+            }
+          },
+        },
+      ]
+    );
   };
 
   // Contagem de itens no local e em todas as suas ramificações
@@ -799,6 +844,20 @@ const LocationsModalContent: React.FC<LocationsModalProps> = ({
                   multiline
                   numberOfLines={3}
                 />
+
+                {editingLocation && (
+                  <TouchableOpacity
+                    style={[styles.deleteLocationBtn, { backgroundColor: theme.dangerBg, borderColor: theme.danger }]}
+                    onPress={handleDeleteLocation}
+                    disabled={isSaving}
+                    activeOpacity={0.7}
+                  >
+                    <Trash2 size={16} color={theme.danger} />
+                    <Text style={[styles.deleteLocationBtnText, { color: theme.danger }]}>
+                      Excluir Este Local Físico
+                    </Text>
+                  </TouchableOpacity>
+                )}
               </ScrollView>
 
               {/* Rodapé do Formulário */}
@@ -1247,6 +1306,20 @@ const styles = StyleSheet.create({
   },
   saveBtnText: {
     color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  deleteLocationBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 13,
+    borderRadius: 12,
+    borderWidth: 1,
+    marginTop: 14,
+  },
+  deleteLocationBtnText: {
     fontSize: 14,
     fontWeight: '700',
   },

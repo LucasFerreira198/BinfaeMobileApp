@@ -40,6 +40,8 @@ import {
   ShieldCheck,
   Check,
   AlertCircle,
+  Edit3,
+  Trash2,
 } from 'lucide-react-native';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import * as Haptics from 'expo-haptics';
@@ -91,6 +93,10 @@ export const CautelasScreen: React.FC<CautelasScreenProps> = () => {
   const [selectedCautela, setSelectedCautela] = useState<Cautela | null>(null);
   const [detailModalVisible, setDetailModalVisible] = useState<boolean>(false);
   const [isLoadingDetail, setIsLoadingDetail] = useState<boolean>(false);
+  const [editModalVisible, setEditModalVisible] = useState<boolean>(false);
+  const [editNome, setEditNome] = useState<string>('');
+  const [editObs, setEditObs] = useState<string>('');
+  const [isEditing, setIsEditing] = useState<boolean>(false);
 
   // Modal de Adição de Material
   const [addMaterialModalVisible, setAddMaterialModalVisible] = useState<boolean>(false);
@@ -195,6 +201,78 @@ export const CautelasScreen: React.FC<CautelasScreenProps> = () => {
       setSelectedCautela(fresh);
       loadCautelas();
     } catch (_) {}
+  };
+
+  const handleOpenEditModal = () => {
+    if (!selectedCautela) return;
+    setEditNome(selectedCautela.nome || '');
+    setEditObs(selectedCautela.observacoes || '');
+    setEditModalVisible(true);
+  };
+
+  const handleSaveEditCautela = async () => {
+    if (!selectedCautela) return;
+    if (!editNome.trim()) {
+      Alert.alert('Atenção', 'O nome da cautela/missão não pode ficar em branco.');
+      return;
+    }
+    try {
+      setIsEditing(true);
+      const updated = await api.updateCautela(selectedCautela.id, {
+        nome: editNome.trim(),
+        observacoes: editObs.trim(),
+      });
+      setSelectedCautela(updated);
+      setEditModalVisible(false);
+      await loadCautelas();
+      invalidateLocalRelatorio();
+      Alert.alert('Sucesso', 'Cautela/Missão atualizada com sucesso.');
+    } catch (err: any) {
+      Alert.alert('Erro ao atualizar', err.message || 'Falha ao atualizar cautela.');
+    } finally {
+      setIsEditing(false);
+    }
+  };
+
+  const handleDeleteCautela = (cautela: Cautela) => {
+    const itensAtivos = cautela.itens?.filter(
+      (i) => i.status === 'CAUTELADO' || i.status === 'EM_USO'
+    );
+    if (itensAtivos && itensAtivos.length > 0) {
+      Alert.alert(
+        'Exclusão Bloqueada',
+        `Esta ${cautela.tipo === 'MISSAO' ? 'missão' : 'cautela'} possui ${itensAtivos.length} material(is) ainda cautelado(s). Devolva todos os materiais antes de excluir.`
+      );
+      return;
+    }
+
+    Alert.alert(
+      'Excluir Cautela / Missão',
+      `Tem certeza que deseja excluir permanentemente "${cautela.nome}"? Esta ação não pode ser desfeita.`,
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Excluir',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              setIsLoading(true);
+              await api.deleteCautela(cautela.id);
+              invalidateLocalRelatorio();
+              setDetailModalVisible(false);
+              setSelectedCautela(null);
+              await loadCautelas();
+              syncData();
+              Alert.alert('Sucesso', 'Cautela/Missão excluída com sucesso.');
+            } catch (err: any) {
+              Alert.alert('Erro ao excluir', err.message || 'Falha ao excluir cautela.');
+            } finally {
+              setIsLoading(false);
+            }
+          },
+        },
+      ]
+    );
   };
 
   // Abrir Modal de Cautelar Materiais
@@ -840,6 +918,65 @@ export const CautelasScreen: React.FC<CautelasScreenProps> = () => {
         </KeyboardAvoidingView>
       </Modal>
 
+      {/* Modal: Editar Nome/Observações da Cautela */}
+      <Modal visible={editModalVisible} animationType="fade" transparent>
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          style={styles.modalOverlay}
+        >
+          <View style={[styles.modalContent, { backgroundColor: theme.card, borderColor: theme.border }]}>
+            <View style={styles.modalHeader}>
+              <Text style={[styles.modalTitle, { color: theme.text }]}>
+                Editar {selectedCautela?.tipo === 'MISSAO' ? 'Missão' : 'Cautela'}
+              </Text>
+              <TouchableOpacity onPress={() => setEditModalVisible(false)}>
+                <X size={20} color={theme.text} />
+              </TouchableOpacity>
+            </View>
+
+            <Text style={[styles.inputLabel, { color: theme.text }]}>Nome / Identificação:</Text>
+            <TextInput
+              style={[styles.inputField, { backgroundColor: theme.surfaceVariant, color: theme.text }]}
+              placeholder="Nome da cautela..."
+              placeholderTextColor={theme.textMuted}
+              value={editNome}
+              onChangeText={setEditNome}
+            />
+
+            <Text style={[styles.inputLabel, { color: theme.text }]}>Observações:</Text>
+            <TextInput
+              style={[styles.inputField, { backgroundColor: theme.surfaceVariant, color: theme.text, height: 70 }]}
+              placeholder="Instruções ou detalhes operacionais..."
+              placeholderTextColor={theme.textMuted}
+              value={editObs}
+              onChangeText={setEditObs}
+              multiline
+            />
+
+            <View style={styles.modalButtons}>
+              <TouchableOpacity
+                style={[styles.modalCancelBtn, { backgroundColor: theme.surfaceVariant }]}
+                onPress={() => setEditModalVisible(false)}
+              >
+                <Text style={[styles.modalCancelText, { color: theme.text }]}>Cancelar</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.modalConfirmBtn, { backgroundColor: theme.primary }]}
+                onPress={handleSaveEditCautela}
+                disabled={isEditing}
+              >
+                {isEditing ? (
+                  <ActivityIndicator size="small" color="#FFFFFF" />
+                ) : (
+                  <Text style={styles.modalConfirmText}>Salvar Alterações</Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
+
       {/* Modal: Detalhes da Cautela Selecionada */}
       <Modal visible={detailModalVisible} animationType="slide" transparent>
         <View style={styles.modalOverlay}>
@@ -884,9 +1021,26 @@ export const CautelasScreen: React.FC<CautelasScreenProps> = () => {
                       Aberta em {formatDateTime(selectedCautela.data_inicio)}
                     </Text>
                   </View>
-                  <TouchableOpacity onPress={() => setDetailModalVisible(false)}>
-                    <X size={22} color={theme.text} />
-                  </TouchableOpacity>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                    <TouchableOpacity
+                      onPress={handleOpenEditModal}
+                      hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                    >
+                      <Edit3 size={20} color={theme.primary} />
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      onPress={() => handleDeleteCautela(selectedCautela)}
+                      hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                    >
+                      <Trash2 size={20} color={theme.danger} />
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      onPress={() => setDetailModalVisible(false)}
+                      hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                    >
+                      <X size={22} color={theme.text} />
+                    </TouchableOpacity>
+                  </View>
                 </View>
 
                 {/* Barra de Ações Rápidas dentro da Missão */}
