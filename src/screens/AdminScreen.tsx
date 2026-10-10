@@ -181,7 +181,7 @@ export const AdminScreen: React.FC = () => {
         smtp_host: smtpHost.trim(),
         smtp_port: parseInt(smtpPort, 10) || 587,
         smtp_user: smtpUser.trim(),
-        smtp_password: smtpPass.trim() !== '••••••••' ? smtpPass.trim() : undefined,
+        smtp_password: (smtpPass.trim() !== '••••••••' && smtpPass.trim() !== '********') ? smtpPass.trim() : undefined,
         smtp_from: smtpFrom.trim(),
       });
       setTestModalVisible(false);
@@ -209,7 +209,7 @@ export const AdminScreen: React.FC = () => {
         smtp_host: smtpHost.trim(),
         smtp_port: parseInt(smtpPort, 10) || 587,
         smtp_user: smtpUser.trim(),
-        smtp_password: smtpPass.trim() !== '••••••••' ? smtpPass.trim() : undefined,
+        smtp_password: (smtpPass.trim() !== '••••••••' && smtpPass.trim() !== '********') ? smtpPass.trim() : undefined,
         smtp_from: smtpFrom.trim(),
       });
       setSendEmailModalVisible(false);
@@ -505,6 +505,12 @@ export const AdminScreen: React.FC = () => {
             <View style={styles.configCardHeader}>
               <Mail size={18} color={theme.primary} />
               <Text style={[styles.configCardTitle, { color: theme.text }]}>Servidor de E-mail (SMTP)</Text>
+            </View>
+
+            <View style={{ backgroundColor: theme.primary + '15', padding: 10, borderRadius: 8, marginBottom: 14 }}>
+              <Text style={{ fontSize: 11, color: theme.text, lineHeight: 16 }}>
+                Configuração Universal: os dados salvos aqui são aplicados centralmente para todas as plataformas (Relatórios Diários 24h, Desktop e Mobile). Para Gmail, utilize uma Senha de Aplicativo de 16 letras gerada na Conta Google.
+              </Text>
             </View>
 
             <View style={styles.formGroup}>
