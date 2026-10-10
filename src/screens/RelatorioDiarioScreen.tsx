@@ -10,6 +10,7 @@ import {
   Alert,
   Modal,
   FlatList,
+  RefreshControl,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../context/ThemeContext';
@@ -44,6 +45,7 @@ import {
   ChevronRight,
   ShieldCheck,
   ArrowLeft,
+  RefreshCw,
 } from 'lucide-react-native';
 
 export const RelatorioDiarioScreen: React.FC = () => {
@@ -57,6 +59,7 @@ export const RelatorioDiarioScreen: React.FC = () => {
   const [relatorio, setRelatorio] = useState<RelatorioDiario | null>(() => getLocalRelatorio());
   const [ocorrencias, setOcorrencias] = useState<string>(() => getLocalRelatorio()?.ocorrencias_militar || '');
   const [loading, setLoading] = useState<boolean>(() => !getLocalRelatorio());
+  const [refreshing, setRefreshing] = useState<boolean>(false);
   const [savingDraft, setSavingDraft] = useState<boolean>(false);
   const [submittingLancar, setSubmittingLancar] = useState<boolean>(false);
   const [militaresInfo, setMilitaresInfo] = useState<Military[]>(() => getLocalMilitares());
@@ -69,7 +72,7 @@ export const RelatorioDiarioScreen: React.FC = () => {
     return `${y}-${m}-${day}`;
   };
 
-  const loadRelatorio = useCallback(async () => {
+  const loadRelatorio = useCallback(async (isManual = false) => {
     if (!relatorio && militaresInfo.length === 0) {
       setLoading(true);
     }
@@ -84,15 +87,22 @@ export const RelatorioDiarioScreen: React.FC = () => {
       setRelatorio(rel);
       setOcorrencias(rel.ocorrencias_militar || '');
       setMilitaresInfo(mils);
+      if (isManual) {
+        Alert.alert('Sucesso', 'Relatório de serviço sincronizado com sucesso!');
+      }
     } catch (err: any) {
       console.warn('Erro ao carregar relatório diário:', err);
-      if (!relatorio) {
-        Alert.alert('Erro', err.message || 'Falha ao buscar relatório diário.');
-      }
+      Alert.alert('Erro', err.message || 'Falha ao buscar relatório diário.');
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
   }, [dataRef, relatorio, militaresInfo.length]);
+
+  const onRefresh = useCallback(() => {
+    setRefreshing(true);
+    loadRelatorio();
+  }, [loadRelatorio]);
 
   useEffect(() => {
     // Busca do cache persistente em disco se a memória ainda não estava preenchida
@@ -208,23 +218,36 @@ export const RelatorioDiarioScreen: React.FC = () => {
           </View>
         </View>
 
-        {/* Status Badge */}
-        <View
-          style={[
-            styles.statusBadge,
-            {
-              backgroundColor: isLancado ? 'rgba(16, 185, 129, 0.2)' : 'rgba(234, 179, 8, 0.2)',
-            },
-          ]}
-        >
-          {isLancado ? (
-            <ShieldCheck size={14} color="#10B981" style={{ marginRight: 4 }} />
-          ) : (
-            <Clock size={14} color="#EAB308" style={{ marginRight: 4 }} />
-          )}
-          <Text style={[styles.statusBadgeText, { color: isLancado ? '#10B981' : '#EAB308' }]}>
-            {isLancado ? 'LANÇADO' : 'RASCUNHO'}
-          </Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+          <TouchableOpacity
+            style={{ padding: 6, borderRadius: 8, backgroundColor: theme.surfaceVariant }}
+            onPress={() => {
+              setRefreshing(true);
+              loadRelatorio(true);
+            }}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          >
+            <RefreshCw size={16} color={theme.text} />
+          </TouchableOpacity>
+
+          {/* Status Badge */}
+          <View
+            style={[
+              styles.statusBadge,
+              {
+                backgroundColor: isLancado ? 'rgba(16, 185, 129, 0.2)' : 'rgba(234, 179, 8, 0.2)',
+              },
+            ]}
+          >
+            {isLancado ? (
+              <ShieldCheck size={14} color="#10B981" style={{ marginRight: 4 }} />
+            ) : (
+              <Clock size={14} color="#EAB308" style={{ marginRight: 4 }} />
+            )}
+            <Text style={[styles.statusBadgeText, { color: isLancado ? '#10B981' : '#EAB308' }]}>
+              {isLancado ? 'LANÇADO' : 'RASCUNHO'}
+            </Text>
+          </View>
         </View>
       </View>
 
@@ -260,6 +283,14 @@ export const RelatorioDiarioScreen: React.FC = () => {
           style={styles.scrollArea}
           contentContainerStyle={[styles.scrollContent, { paddingBottom: Math.max(insets.bottom, 20) + 70 }]}
           showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              colors={[theme.primary]}
+              tintColor={theme.primary}
+            />
+          }
         >
           {/* Card Militar de Serviço */}
           <View style={[styles.militarCard, { backgroundColor: theme.surface, borderColor: theme.border }]}>

@@ -20,7 +20,7 @@ import { useStock } from '../context/StockContext';
 import { Header } from '../components/Header';
 import { UserAvatar } from '../components/UserAvatar';
 import { api } from '../api/client';
-import { loadLocalCautelas, persistLocalCautelas, getLocalCautelas } from '../storage/db';
+import { loadLocalCautelas, persistLocalCautelas, getLocalCautelas, invalidateLocalRelatorio } from '../storage/db';
 import { Cautela, CautelaItem, Military, Item } from '../types';
 import {
   Rocket,
@@ -230,6 +230,7 @@ export const CautelasScreen: React.FC<CautelasScreenProps> = () => {
             try {
               await api.devolverItemCautela(selectedCautela.id, item.item_id);
               await syncData();
+              await invalidateLocalRelatorio();
               await refreshSelectedCautela(selectedCautela.id);
               try {
                 await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
@@ -331,6 +332,7 @@ export const CautelasScreen: React.FC<CautelasScreenProps> = () => {
                     await loadCautelas();
                   }
                   await syncData();
+                  await invalidateLocalRelatorio();
                   setCameraModalVisible(false);
                   setTargetedItemForReturn(null);
                   setScannedLock(false);
@@ -488,6 +490,7 @@ export const CautelasScreen: React.FC<CautelasScreenProps> = () => {
       }
 
       await syncData();
+      await invalidateLocalRelatorio();
       await refreshSelectedCautela(selectedCautela.id);
       setAddMaterialModalVisible(false);
       try {

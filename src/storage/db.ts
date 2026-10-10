@@ -206,6 +206,13 @@ export const persistLocalRelatorio = async (relatorio: RelatorioDiario): Promise
   } catch (_) {}
 };
 
+export const invalidateLocalRelatorio = async (): Promise<void> => {
+  memoryRelatorio = null;
+  try {
+    await AsyncStorage.removeItem(STORAGE_KEY_RELATORIO);
+  } catch (_) {}
+};
+
 export const loadLocalRelatorio = async (): Promise<RelatorioDiario | null> => {
   if (memoryRelatorio) return memoryRelatorio;
   try {
