@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   View,
   Text,
@@ -21,6 +21,12 @@ import {
   loadLocalRelatorio,
   persistLocalRelatorio,
   getLocalRelatorio,
+  loadLocalRelatorioByDate,
+  getLocalRelatorioByDate,
+  saveLocalDraftOcorrencias,
+  getLocalDraftOcorrencias,
+  loadLocalDraftOcorrencias,
+  clearLocalDraftOcorrencias,
   loadLocalMilitares,
   persistLocalMilitares,
   getLocalMilitares,
@@ -48,100 +54,209 @@ import {
   RefreshCw,
 } from 'lucide-react-native';
 
+const getActiveServiceDate = (): Date => {
+  const now = new Date();
+  // Plantão militar oficial de 24h troca às 07:30 BRT.
+  // Se for antes das 07:30, o plantão em vigor iniciou ontem às 07:30.
+  if (now.getHours() < 7 || (now.getHours() === 7 && now.getMinutes() < 30)) {
+    const yesterday = new Date(now);
+    yesterday.setDate(yesterday.getDate() - 1);
+    return yesterday;
+  }
+  return now;
+};
+
+const formatDateYMD = (d: Date): string => {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+};
+
 export const RelatorioDiarioScreen: React.FC = () => {
   const { theme, isDark } = useTheme();
   const { user } = useAuth();
   const { navigateTo } = useDrawer();
   const insets = useSafeAreaInsets();
 
-  const [dataRef, setDataRef] = useState<Date>(new Date());
-  // 0ms Cache-First: renderiza instantaneamente o último relatório e militares em memória
-  const [relatorio, setRelatorio] = useState<RelatorioDiario | null>(() => getLocalRelatorio());
-  const [ocorrencias, setOcorrencias] = useState<string>(() => getLocalRelatorio()?.ocorrencias_militar || '');
-  const [loading, setLoading] = useState<boolean>(() => !getLocalRelatorio());
+  const [dataRef, setDataRef] = useState<Date>(() => getActiveServiceDate());
+  const activeDateStr = formatDateYMD(dataRef);
+  const activeDateRef = useRef<string>(activeDateStr);
+  activeDateRef.current = activeDateStr;
+
+  // 0ms Cache-First por data específica
+  const [relatorio, setRelatorio] = useState<RelatorioDiario | null>(() => {
+    return getLocalRelatorioByDate(activeDateStr) || getLocalRelatorio();
+  });
+  const [ocorrencias, setOcorrencias] = useState<string>(() => {
+    const draft = getLocalDraftOcorrencias(activeDateStr);
+    if (draft !== null) return draft;
+    const cachedRel = getLocalRelatorioByDate(activeDateStr) || getLocalRelatorio();
+    return cachedRel?.ocorrencias_militar || '';
+  });
+  const [loading, setLoading] = useState<boolean>(() => {
+    return !getLocalRelatorioByDate(activeDateStr) && !getLocalRelatorio();
+  });
   const [refreshing, setRefreshing] = useState<boolean>(false);
   const [savingDraft, setSavingDraft] = useState<boolean>(false);
   const [submittingLancar, setSubmittingLancar] = useState<boolean>(false);
   const [militaresInfo, setMilitaresInfo] = useState<Military[]>(() => getLocalMilitares());
   const [militarSvModal, setMilitarSvModal] = useState<boolean>(false);
 
-  const formatDateYMD = (d: Date) => {
-    const y = d.getFullYear();
-    const m = String(d.getMonth() + 1).padStart(2, '0');
-    const day = String(d.getDate()).padStart(2, '0');
-    return `${y}-${m}-${day}`;
-  };
+  // Proteção contra sobrescrita de texto digitado pelo militar
+  const hasUserEditedRef = useRef<boolean>(false);
+  const ocorrenciasTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const currentOcorrenciasRef = useRef<string>(ocorrencias);
+  currentOcorrenciasRef.current = ocorrencias;
 
-  const loadRelatorio = useCallback(async (isManual = false) => {
-    if (!relatorio && militaresInfo.length === 0) {
-      setLoading(true);
-    }
+  const loadRelatorio = useCallback(async (targetDateStr: string, isManual = false) => {
     try {
-      const dataStr = formatDateYMD(dataRef);
       const [rel, mils] = await Promise.all([
-        api.getRelatorioDiario(dataStr),
+        api.getRelatorioDiario(targetDateStr),
         api.getMilitaresInformatica(),
       ]);
-      persistLocalRelatorio(rel);
-      persistLocalMilitares(mils);
+
+      // Se o usuário mudou de data enquanto a requisição estava em vôo, descarta resposta
+      if (activeDateRef.current !== targetDateStr) {
+        return;
+      }
+
+      await persistLocalRelatorio(rel, targetDateStr);
+      await persistLocalMilitares(mils);
+
       setRelatorio(rel);
-      setOcorrencias(rel.ocorrencias_militar || '');
       setMilitaresInfo(mils);
+
+      // Só atualiza o campo de ocorrências se o militar NÃO estiver digitando ativamente
+      if (!hasUserEditedRef.current) {
+        const localDraft = await loadLocalDraftOcorrencias(targetDateStr);
+        if (localDraft !== null && localDraft.trim() !== '') {
+          setOcorrencias(localDraft);
+        } else {
+          setOcorrencias(rel.ocorrencias_militar || '');
+        }
+      }
+
       if (isManual) {
         Alert.alert('Sucesso', 'Relatório de serviço sincronizado com sucesso!');
       }
     } catch (err: any) {
       console.warn('Erro ao carregar relatório diário:', err);
-      Alert.alert('Erro', err.message || 'Falha ao buscar relatório diário.');
+      if (isManual) {
+        Alert.alert('Erro', err.message || 'Falha ao buscar relatório diário.');
+      }
     } finally {
-      setLoading(false);
-      setRefreshing(false);
+      if (activeDateRef.current === targetDateStr) {
+        setLoading(false);
+        setRefreshing(false);
+      }
     }
-  }, [dataRef, relatorio, militaresInfo.length]);
+  }, []);
 
   const onRefresh = useCallback(() => {
     setRefreshing(true);
-    loadRelatorio();
+    loadRelatorio(activeDateRef.current, false);
   }, [loadRelatorio]);
 
   useEffect(() => {
-    // Busca do cache persistente em disco se a memória ainda não estava preenchida
-    Promise.all([loadLocalRelatorio(), loadLocalMilitares()]).then(([cachedRel, cachedMils]) => {
-      if (cachedRel) {
-        setRelatorio(cachedRel);
-        setOcorrencias(cachedRel.ocorrencias_militar || '');
-      }
-      if (cachedMils && cachedMils.length > 0) {
-        setMilitaresInfo(cachedMils);
-      }
-      if (cachedRel || (cachedMils && cachedMils.length > 0)) {
-        setLoading(false);
-      }
-    });
-    loadRelatorio();
-  }, [loadRelatorio]);
+    const targetDateStr = formatDateYMD(dataRef);
+    activeDateRef.current = targetDateStr;
+    hasUserEditedRef.current = false;
+
+    // 1. Imediato (0ms): carrega do cache local específico daquela data
+    const cachedRel = getLocalRelatorioByDate(targetDateStr);
+    const localDraft = getLocalDraftOcorrencias(targetDateStr);
+
+    if (cachedRel) {
+      setRelatorio(cachedRel);
+      setLoading(false);
+    } else {
+      loadLocalRelatorioByDate(targetDateStr).then((diskRel) => {
+        if (diskRel && activeDateRef.current === targetDateStr) {
+          setRelatorio(diskRel);
+          setLoading(false);
+        }
+      });
+    }
+
+    if (localDraft !== null) {
+      setOcorrencias(localDraft);
+    } else if (cachedRel?.ocorrencias_militar) {
+      setOcorrencias(cachedRel.ocorrencias_militar);
+    } else {
+      setOcorrencias('');
+      loadLocalDraftOcorrencias(targetDateStr).then((diskDraft) => {
+        if (diskDraft !== null && activeDateRef.current === targetDateStr && !hasUserEditedRef.current) {
+          setOcorrencias(diskDraft);
+        }
+      });
+    }
+
+    // 2. Consulta dados mais recentes das 24h no backend
+    loadRelatorio(targetDateStr, false);
+  }, [dataRef, loadRelatorio]);
 
   const handlePrevDay = () => {
+    if (ocorrenciasTimerRef.current) {
+      clearTimeout(ocorrenciasTimerRef.current);
+    }
+    // Salva rascunho do dia atual imediatamente antes de sair
+    saveLocalDraftOcorrencias(activeDateRef.current, currentOcorrenciasRef.current);
+
     const prev = new Date(dataRef);
     prev.setDate(prev.getDate() - 1);
     setDataRef(prev);
   };
 
   const handleNextDay = () => {
+    if (ocorrenciasTimerRef.current) {
+      clearTimeout(ocorrenciasTimerRef.current);
+    }
+    saveLocalDraftOcorrencias(activeDateRef.current, currentOcorrenciasRef.current);
+
     const next = new Date(dataRef);
     next.setDate(next.getDate() + 1);
     setDataRef(next);
   };
 
+  const handleOcorrenciasChange = (text: string) => {
+    hasUserEditedRef.current = true;
+    setOcorrencias(text);
+    currentOcorrenciasRef.current = text;
+
+    // Debounce de 400ms para salvar rascunho em disco sem travar digitação
+    if (ocorrenciasTimerRef.current) {
+      clearTimeout(ocorrenciasTimerRef.current);
+    }
+    const currentDay = activeDateRef.current;
+    ocorrenciasTimerRef.current = setTimeout(() => {
+      saveLocalDraftOcorrencias(currentDay, text);
+    }, 400);
+  };
+
   const handleSalvarRascunho = async () => {
     if (!relatorio?.id) return;
     setSavingDraft(true);
+    const currentDay = activeDateRef.current;
     try {
-      const updated = await api.salvarRascunhoRelatorio(relatorio.id, ocorrencias);
+      const updated = await api.salvarRascunhoRelatorio(
+        relatorio.id,
+        ocorrencias,
+        relatorio.militar_servico_id
+      );
       setRelatorio(updated);
-      Alert.alert('Rascunho Salvo', 'Ocorrências do plantão salvas com sucesso!');
+      await persistLocalRelatorio(updated, currentDay);
+      await saveLocalDraftOcorrencias(currentDay, ocorrencias);
+      hasUserEditedRef.current = false;
+      Alert.alert('Rascunho Salvo', 'Ocorrências do plantão salvas com sucesso no servidor e no celular!');
     } catch (err: any) {
-      Alert.alert('Erro', err.message || 'Falha ao salvar rascunho.');
+      // Salva no storage local do celular mesmo se a rede falhar
+      await saveLocalDraftOcorrencias(currentDay, ocorrencias);
+      Alert.alert(
+        'Salvo no Celular (Offline)',
+        (err.message || 'Falha na conexão com o servidor.') +
+          '\n\nSuas ocorrências foram guardadas localmente no celular e não serão perdidas. Tente reenviar quando a conexão restabelecer.'
+      );
     } finally {
       setSavingDraft(false);
     }
@@ -160,12 +275,16 @@ export const RelatorioDiarioScreen: React.FC = () => {
           style: 'default',
           onPress: async () => {
             setSubmittingLancar(true);
+            const currentDay = activeDateRef.current;
             try {
               const lancado = await api.lancarRelatorioDiario(relatorio.id!, {
                 ocorrencias_militar: ocorrencias,
                 militar_servico_id: relatorio.militar_servico_id,
               });
               setRelatorio(lancado);
+              await persistLocalRelatorio(lancado, currentDay);
+              await clearLocalDraftOcorrencias(currentDay);
+              hasUserEditedRef.current = false;
               Alert.alert(
                 'Relatório Lançado!',
                 'O relatório das 24h foi oficialmente registrado e os e-mails de notificação foram disparados com sucesso!'
@@ -223,7 +342,7 @@ export const RelatorioDiarioScreen: React.FC = () => {
             style={{ padding: 6, borderRadius: 8, backgroundColor: theme.surfaceVariant }}
             onPress={() => {
               setRefreshing(true);
-              loadRelatorio(true);
+              loadRelatorio(activeDateRef.current, true);
             }}
             hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
           >
@@ -657,7 +776,7 @@ export const RelatorioDiarioScreen: React.FC = () => {
               multiline
               editable={!isLancado}
               value={ocorrencias}
-              onChangeText={setOcorrencias}
+              onChangeText={handleOcorrenciasChange}
             />
           </View>
 

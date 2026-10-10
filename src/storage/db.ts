@@ -21,6 +21,8 @@ const STORAGE_KEY_CAUTELAS = '@binfae_db_cautelas';
 const STORAGE_KEY_PENDENCIAS = '@binfae_db_pendencias';
 const STORAGE_KEY_MILITARES = '@binfae_db_militares';
 const STORAGE_KEY_RELATORIO = '@binfae_db_relatorio_diario';
+const STORAGE_KEY_RELATORIO_PREFIX = '@binfae_db_relatorio_';
+const STORAGE_KEY_DRAFT_PREFIX = '@binfae_draft_ocorrencias_';
 const STORAGE_KEY_CONFIG_TI = '@binfae_db_config_ti';
 const STORAGE_KEY_LAST_SYNC = '@binfae_db_last_sync';
 
@@ -33,6 +35,8 @@ let memoryCautelas: Cautela[] = [];
 let memoryPendencias: Pendencia[] = [];
 let memoryMilitares: Military[] = [];
 let memoryRelatorio: RelatorioDiario | null = null;
+const memoryRelatoriosPorData: Record<string, RelatorioDiario> = {};
+const memoryDraftOcorrencias: Record<string, string> = {};
 let memoryConfigTI: InformaticaConfig | null = null;
 let lastSyncTimestamp: number | null = null;
 
@@ -199,18 +203,71 @@ export const loadLocalMilitares = async (): Promise<Military[]> => {
 
 export const getLocalMilitares = (): Military[] => memoryMilitares;
 
-export const persistLocalRelatorio = async (relatorio: RelatorioDiario): Promise<void> => {
+export const persistLocalRelatorio = async (relatorio: RelatorioDiario, dataStr?: string): Promise<void> => {
   memoryRelatorio = relatorio;
+  const promises: Promise<any>[] = [];
   try {
-    await AsyncStorage.setItem(STORAGE_KEY_RELATORIO, JSON.stringify(relatorio));
+    promises.push(AsyncStorage.setItem(STORAGE_KEY_RELATORIO, JSON.stringify(relatorio)));
   } catch (_) {}
+
+  const keyDate = dataStr || (relatorio?.data_referencia ? relatorio.data_referencia.substring(0, 10) : undefined);
+  if (keyDate) {
+    memoryRelatoriosPorData[keyDate] = relatorio;
+    try {
+      promises.push(AsyncStorage.setItem(STORAGE_KEY_RELATORIO_PREFIX + keyDate, JSON.stringify(relatorio)));
+    } catch (_) {}
+  }
+  await Promise.all(promises);
 };
 
-export const invalidateLocalRelatorio = async (): Promise<void> => {
-  memoryRelatorio = null;
+export const persistLocalRelatorioByDate = async (dataStr: string, relatorio: RelatorioDiario): Promise<void> => {
+  return persistLocalRelatorio(relatorio, dataStr);
+};
+
+export const getLocalRelatorioByDate = (dataStr: string): RelatorioDiario | null => {
+  if (memoryRelatoriosPorData[dataStr]) {
+    return memoryRelatoriosPorData[dataStr];
+  }
+  if (memoryRelatorio && memoryRelatorio.data_referencia && memoryRelatorio.data_referencia.startsWith(dataStr)) {
+    return memoryRelatorio;
+  }
+  return null;
+};
+
+export const loadLocalRelatorioByDate = async (dataStr: string): Promise<RelatorioDiario | null> => {
+  if (memoryRelatoriosPorData[dataStr]) {
+    return memoryRelatoriosPorData[dataStr];
+  }
   try {
-    await AsyncStorage.removeItem(STORAGE_KEY_RELATORIO);
+    const raw = await AsyncStorage.getItem(STORAGE_KEY_RELATORIO_PREFIX + dataStr);
+    if (raw) {
+      const parsed: RelatorioDiario = JSON.parse(raw);
+      memoryRelatoriosPorData[dataStr] = parsed;
+      return parsed;
+    }
   } catch (_) {}
+
+  if (memoryRelatorio && memoryRelatorio.data_referencia && memoryRelatorio.data_referencia.startsWith(dataStr)) {
+    return memoryRelatorio;
+  }
+  return null;
+};
+
+export const invalidateLocalRelatorio = async (dataStr?: string): Promise<void> => {
+  if (dataStr) {
+    delete memoryRelatoriosPorData[dataStr];
+    try {
+      await AsyncStorage.removeItem(STORAGE_KEY_RELATORIO_PREFIX + dataStr);
+    } catch (_) {}
+  } else {
+    for (const k in memoryRelatoriosPorData) {
+      delete memoryRelatoriosPorData[k];
+    }
+    memoryRelatorio = null;
+    try {
+      await AsyncStorage.removeItem(STORAGE_KEY_RELATORIO);
+    } catch (_) {}
+  }
 };
 
 export const loadLocalRelatorio = async (): Promise<RelatorioDiario | null> => {
@@ -223,6 +280,39 @@ export const loadLocalRelatorio = async (): Promise<RelatorioDiario | null> => {
 };
 
 export const getLocalRelatorio = (): RelatorioDiario | null => memoryRelatorio;
+
+// --- PERSISTÊNCIA DE RASCUNHO DE OCORRÊNCIAS (DIGITAÇÃO DO MILITAR) ---
+export const saveLocalDraftOcorrencias = async (dataStr: string, ocorrencias: string): Promise<void> => {
+  memoryDraftOcorrencias[dataStr] = ocorrencias;
+  try {
+    await AsyncStorage.setItem(STORAGE_KEY_DRAFT_PREFIX + dataStr, ocorrencias);
+  } catch (_) {}
+};
+
+export const getLocalDraftOcorrencias = (dataStr: string): string | null => {
+  return memoryDraftOcorrencias[dataStr] !== undefined ? memoryDraftOcorrencias[dataStr] : null;
+};
+
+export const loadLocalDraftOcorrencias = async (dataStr: string): Promise<string | null> => {
+  if (memoryDraftOcorrencias[dataStr] !== undefined) {
+    return memoryDraftOcorrencias[dataStr];
+  }
+  try {
+    const raw = await AsyncStorage.getItem(STORAGE_KEY_DRAFT_PREFIX + dataStr);
+    if (raw !== null) {
+      memoryDraftOcorrencias[dataStr] = raw;
+      return raw;
+    }
+  } catch (_) {}
+  return null;
+};
+
+export const clearLocalDraftOcorrencias = async (dataStr: string): Promise<void> => {
+  delete memoryDraftOcorrencias[dataStr];
+  try {
+    await AsyncStorage.removeItem(STORAGE_KEY_DRAFT_PREFIX + dataStr);
+  } catch (_) {}
+};
 
 export const persistLocalConfigTI = async (cfg: InformaticaConfig): Promise<void> => {
   memoryConfigTI = cfg;
