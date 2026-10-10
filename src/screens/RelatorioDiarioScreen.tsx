@@ -73,6 +73,74 @@ const formatDateYMD = (d: Date): string => {
   return `${y}-${m}-${day}`;
 };
 
+interface OcorrenciasEditorProps {
+  initialValue: string;
+  editable: boolean;
+  isLancado: boolean;
+  theme: any;
+  dateKey: string;
+  onTextChange: (text: string) => void;
+  isFocusedRef: React.MutableRefObject<boolean>;
+  hasUserEditedRef: React.MutableRefObject<boolean>;
+}
+
+const OcorrenciasEditor: React.FC<OcorrenciasEditorProps> = React.memo(({
+  initialValue,
+  editable,
+  isLancado,
+  theme,
+  dateKey,
+  onTextChange,
+  isFocusedRef,
+  hasUserEditedRef,
+}) => {
+  const [localText, setLocalText] = useState<string>(initialValue);
+  const localTextRef = useRef<string>(initialValue);
+  localTextRef.current = localText;
+
+  // Sincroniza valor inicial apenas se o militar NÃO estiver com o campo em foco nem digitando
+  useEffect(() => {
+    if (!isFocusedRef.current && !hasUserEditedRef.current && initialValue !== localTextRef.current) {
+      setLocalText(initialValue);
+      localTextRef.current = initialValue;
+    }
+  }, [initialValue, isFocusedRef, hasUserEditedRef]);
+
+  const handleChange = (val: string) => {
+    hasUserEditedRef.current = true;
+    setLocalText(val);
+    localTextRef.current = val;
+    onTextChange(val);
+  };
+
+  return (
+    <View style={[styles.ocorrenciasBox, { backgroundColor: theme.surface, borderColor: theme.border }]}>
+      <TextInput
+        key={`input-${dateKey}`}
+        style={[styles.ocorrenciasInput, { color: theme.text }]}
+        placeholder={
+          isLancado
+            ? 'Sem ocorrências adicionais registradas.'
+            : 'Digite aqui as ocorrências do quarto de serviço, vistorias, chamados atendidos ou observações da Seção...'
+        }
+        placeholderTextColor={theme.textMuted}
+        multiline
+        editable={editable}
+        value={localText}
+        onChangeText={handleChange}
+        onFocus={() => {
+          isFocusedRef.current = true;
+          hasUserEditedRef.current = true;
+        }}
+        onBlur={() => {
+          isFocusedRef.current = false;
+          onTextChange(localTextRef.current);
+        }}
+      />
+    </View>
+  );
+});
+
 export const RelatorioDiarioScreen: React.FC = () => {
   const { theme, isDark } = useTheme();
   const { user } = useAuth();
@@ -86,16 +154,16 @@ export const RelatorioDiarioScreen: React.FC = () => {
 
   // 0ms Cache-First por data específica
   const [relatorio, setRelatorio] = useState<RelatorioDiario | null>(() => {
-    return getLocalRelatorioByDate(activeDateStr) || getLocalRelatorio();
+    return getLocalRelatorioByDate(activeDateStr);
   });
   const [ocorrencias, setOcorrencias] = useState<string>(() => {
     const draft = getLocalDraftOcorrencias(activeDateStr);
     if (draft !== null) return draft;
-    const cachedRel = getLocalRelatorioByDate(activeDateStr) || getLocalRelatorio();
+    const cachedRel = getLocalRelatorioByDate(activeDateStr);
     return cachedRel?.ocorrencias_militar || '';
   });
   const [loading, setLoading] = useState<boolean>(() => {
-    return !getLocalRelatorioByDate(activeDateStr) && !getLocalRelatorio();
+    return !getLocalRelatorioByDate(activeDateStr);
   });
   const [refreshing, setRefreshing] = useState<boolean>(false);
   const [savingDraft, setSavingDraft] = useState<boolean>(false);
@@ -103,7 +171,8 @@ export const RelatorioDiarioScreen: React.FC = () => {
   const [militaresInfo, setMilitaresInfo] = useState<Military[]>(() => getLocalMilitares());
   const [militarSvModal, setMilitarSvModal] = useState<boolean>(false);
 
-  // Proteção contra sobrescrita de texto digitado pelo militar
+  // Proteção absoluta contra sobrescrita e perda de digitação
+  const isFocusedRef = useRef<boolean>(false);
   const hasUserEditedRef = useRef<boolean>(false);
   const ocorrenciasTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const currentOcorrenciasRef = useRef<string>(ocorrencias);
@@ -127,13 +196,15 @@ export const RelatorioDiarioScreen: React.FC = () => {
       setRelatorio(rel);
       setMilitaresInfo(mils);
 
-      // Só atualiza o campo de ocorrências se o militar NÃO estiver digitando ativamente
-      if (!hasUserEditedRef.current) {
+      // Só atualiza o campo de ocorrências se o militar NÃO estiver focado nem digitando
+      if (!hasUserEditedRef.current && !isFocusedRef.current) {
         const localDraft = await loadLocalDraftOcorrencias(targetDateStr);
         if (localDraft !== null && localDraft.trim() !== '') {
           setOcorrencias(localDraft);
-        } else {
-          setOcorrencias(rel.ocorrencias_militar || '');
+          currentOcorrenciasRef.current = localDraft;
+        } else if (rel.ocorrencias_militar) {
+          setOcorrencias(rel.ocorrencias_militar);
+          currentOcorrenciasRef.current = rel.ocorrencias_militar;
         }
       }
 
@@ -161,7 +232,10 @@ export const RelatorioDiarioScreen: React.FC = () => {
   useEffect(() => {
     const targetDateStr = formatDateYMD(dataRef);
     activeDateRef.current = targetDateStr;
+
+    // Reseta flags de edição ao mudar de data
     hasUserEditedRef.current = false;
+    isFocusedRef.current = false;
 
     // 1. Imediato (0ms): carrega do cache local específico daquela data
     const cachedRel = getLocalRelatorioByDate(targetDateStr);
@@ -181,13 +255,21 @@ export const RelatorioDiarioScreen: React.FC = () => {
 
     if (localDraft !== null) {
       setOcorrencias(localDraft);
+      currentOcorrenciasRef.current = localDraft;
     } else if (cachedRel?.ocorrencias_militar) {
       setOcorrencias(cachedRel.ocorrencias_militar);
+      currentOcorrenciasRef.current = cachedRel.ocorrencias_militar;
     } else {
-      setOcorrencias('');
+      // NÃO limpa com setOcorrencias('') aqui! Busca do disco em background
       loadLocalDraftOcorrencias(targetDateStr).then((diskDraft) => {
-        if (diskDraft !== null && activeDateRef.current === targetDateStr && !hasUserEditedRef.current) {
+        if (
+          diskDraft !== null &&
+          activeDateRef.current === targetDateStr &&
+          !hasUserEditedRef.current &&
+          !isFocusedRef.current
+        ) {
           setOcorrencias(diskDraft);
+          currentOcorrenciasRef.current = diskDraft;
         }
       });
     }
@@ -202,6 +284,8 @@ export const RelatorioDiarioScreen: React.FC = () => {
     }
     // Salva rascunho do dia atual imediatamente antes de sair
     saveLocalDraftOcorrencias(activeDateRef.current, currentOcorrenciasRef.current);
+    hasUserEditedRef.current = false;
+    isFocusedRef.current = false;
 
     const prev = new Date(dataRef);
     prev.setDate(prev.getDate() - 1);
@@ -213,16 +297,18 @@ export const RelatorioDiarioScreen: React.FC = () => {
       clearTimeout(ocorrenciasTimerRef.current);
     }
     saveLocalDraftOcorrencias(activeDateRef.current, currentOcorrenciasRef.current);
+    hasUserEditedRef.current = false;
+    isFocusedRef.current = false;
 
     const next = new Date(dataRef);
     next.setDate(next.getDate() + 1);
     setDataRef(next);
   };
 
-  const handleOcorrenciasChange = (text: string) => {
+  const handleOcorrenciasChange = useCallback((text: string) => {
     hasUserEditedRef.current = true;
-    setOcorrencias(text);
     currentOcorrenciasRef.current = text;
+    setOcorrencias(text);
 
     // Debounce de 400ms para salvar rascunho em disco sem travar digitação
     if (ocorrenciasTimerRef.current) {
@@ -232,26 +318,27 @@ export const RelatorioDiarioScreen: React.FC = () => {
     ocorrenciasTimerRef.current = setTimeout(() => {
       saveLocalDraftOcorrencias(currentDay, text);
     }, 400);
-  };
+  }, []);
 
   const handleSalvarRascunho = async () => {
     if (!relatorio?.id) return;
     setSavingDraft(true);
     const currentDay = activeDateRef.current;
+    const textToSave = currentOcorrenciasRef.current;
     try {
       const updated = await api.salvarRascunhoRelatorio(
         relatorio.id,
-        ocorrencias,
+        textToSave,
         relatorio.militar_servico_id
       );
       setRelatorio(updated);
       await persistLocalRelatorio(updated, currentDay);
-      await saveLocalDraftOcorrencias(currentDay, ocorrencias);
+      await saveLocalDraftOcorrencias(currentDay, textToSave);
       hasUserEditedRef.current = false;
       Alert.alert('Rascunho Salvo', 'Ocorrências do plantão salvas com sucesso no servidor e no celular!');
     } catch (err: any) {
       // Salva no storage local do celular mesmo se a rede falhar
-      await saveLocalDraftOcorrencias(currentDay, ocorrencias);
+      await saveLocalDraftOcorrencias(currentDay, textToSave);
       Alert.alert(
         'Salvo no Celular (Offline)',
         (err.message || 'Falha na conexão com o servidor.') +
@@ -276,9 +363,10 @@ export const RelatorioDiarioScreen: React.FC = () => {
           onPress: async () => {
             setSubmittingLancar(true);
             const currentDay = activeDateRef.current;
+            const textToLancar = currentOcorrenciasRef.current;
             try {
               const lancado = await api.lancarRelatorioDiario(relatorio.id!, {
-                ocorrencias_militar: ocorrencias,
+                ocorrencias_militar: textToLancar,
                 militar_servico_id: relatorio.militar_servico_id,
               });
               setRelatorio(lancado);
@@ -768,17 +856,17 @@ export const RelatorioDiarioScreen: React.FC = () => {
             OCORRÊNCIAS REGISTRADAS PELO MILITAR DE SERVIÇO
           </Text>
 
-          <View style={[styles.ocorrenciasBox, { backgroundColor: theme.surface, borderColor: theme.border }]}>
-            <TextInput
-              style={[styles.ocorrenciasInput, { color: theme.text }]}
-              placeholder={isLancado ? 'Sem ocorrências adicionais registradas.' : 'Digite aqui as ocorrências do quarto de serviço, vistorias, chamados atendidos ou observações da Seção...'}
-              placeholderTextColor={theme.textMuted}
-              multiline
-              editable={!isLancado}
-              value={ocorrencias}
-              onChangeText={handleOcorrenciasChange}
-            />
-          </View>
+          <OcorrenciasEditor
+            key={`editor-${activeDateStr}`}
+            initialValue={ocorrencias}
+            editable={!isLancado}
+            isLancado={isLancado}
+            theme={theme}
+            dateKey={activeDateStr}
+            onTextChange={handleOcorrenciasChange}
+            isFocusedRef={isFocusedRef}
+            hasUserEditedRef={hasUserEditedRef}
+          />
 
           {/* Botões de Ação */}
           {!isLancado ? (
