@@ -147,13 +147,23 @@ export const AdminScreen: React.FC = () => {
   };
 
   const handleSaveConfig = async () => {
+    const cleanPass = smtpPass.trim().replace(/\s+/g, '');
+    const isMasked = cleanPass === '••••••••' || cleanPass === '********';
+    if (!isMasked && cleanPass.length > 0 && smtpHost.toLowerCase().includes('gmail') && cleanPass.length !== 16) {
+      Alert.alert(
+        'Atenção (Gmail)',
+        `A Senha de Aplicativo do Gmail deve ter exatamente 16 letras (você digitou ${cleanPass.length}). Gere em https://myaccount.google.com/apppasswords e cole aqui.`
+      );
+      return;
+    }
+
     setSavingConfig(true);
     try {
       const updated = await api.updateConfigTI({
         smtp_host: smtpHost.trim(),
         smtp_port: parseInt(smtpPort, 10) || 587,
         smtp_user: smtpUser.trim(),
-        smtp_password: smtpPass.trim() !== '••••••••' ? smtpPass.trim() : undefined,
+        smtp_password: !isMasked && cleanPass.length > 0 ? cleanPass : undefined,
         smtp_from: smtpFrom.trim(),
         notificar_email_ativo: notificarEmail,
         notificar_whatsapp_ativo: notificarWhatsapp,
@@ -174,6 +184,17 @@ export const AdminScreen: React.FC = () => {
       Alert.alert('Atenção', 'Informe um e-mail de destino para o teste.');
       return;
     }
+
+    const cleanPass = smtpPass.trim().replace(/\s+/g, '');
+    const isMasked = cleanPass === '••••••••' || cleanPass === '********';
+    if (!isMasked && cleanPass.length > 0 && smtpHost.toLowerCase().includes('gmail') && cleanPass.length !== 16) {
+      Alert.alert(
+        'Atenção (Gmail)',
+        `A Senha de Aplicativo do Gmail deve ter exatamente 16 letras (você digitou ${cleanPass.length}). Gere em https://myaccount.google.com/apppasswords e salve antes de testar.`
+      );
+      return;
+    }
+
     setTestingEmail(true);
     try {
       const res = await api.testarEmail({
@@ -181,7 +202,7 @@ export const AdminScreen: React.FC = () => {
         smtp_host: smtpHost.trim(),
         smtp_port: parseInt(smtpPort, 10) || 587,
         smtp_user: smtpUser.trim(),
-        smtp_password: (smtpPass.trim() !== '••••••••' && smtpPass.trim() !== '********') ? smtpPass.trim() : undefined,
+        smtp_password: !isMasked && cleanPass.length > 0 ? cleanPass : undefined,
         smtp_from: smtpFrom.trim(),
       });
       setTestModalVisible(false);
@@ -593,11 +614,11 @@ export const AdminScreen: React.FC = () => {
                   {showPass ? <EyeOff size={16} color={theme.textMuted} /> : <Eye size={16} color={theme.textMuted} />}
                 </TouchableOpacity>
               </View>
-              {configTI?.has_smtp_password && (
-                <Text style={[styles.helperNote, { color: theme.textMuted }]}>
-                  Mantenha os pontos para preservar a senha atual cadastrada.
-                </Text>
-              )}
+              <Text style={[styles.helperNote, { color: theme.textMuted }]}>
+                {configTI?.has_smtp_password
+                  ? 'Mantenha os pontos para preservar a senha atual. (No Gmail, senhas de app possuem 16 letras).'
+                  : 'Para Gmail (@gmail.com), use a Senha de Aplicativo de 16 letras gerada em myaccount.google.com/apppasswords.'}
+              </Text>
             </View>
 
             <View style={styles.emailActionsRow}>
