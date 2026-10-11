@@ -214,20 +214,32 @@ export interface Pendencia {
 // --- MÓDULO ESCALA DE SERVIÇO ---
 export interface EscalaDia {
   id?: number;
-  dia: number;
+  data?: string;
+  dia?: number;
+  dia_mes?: number;
   dia_semana: string;
-  is_weekend: boolean;
-  is_feriado: boolean;
+  semana_do_mes?: number;
+  is_weekend?: boolean;
+  is_fim_de_semana?: boolean;
+  is_feriado?: boolean;
   is_feriado_especial?: boolean;
   feriado_nome?: string | null;
+  descricao_feriado?: string | null;
   militar_sv_id?: number | null;
   militar_sv_saram?: number | null;
   militar_sv_nome?: string | null;
   militar_sv_posto?: string | null;
+  militar_sv_guerra?: string | null;
   militar_expd_1_id?: number | null;
+  militar_expd1_id?: number | null;
   militar_expd_1_nome?: string | null;
+  militar_expd1_nome?: string | null;
+  militar_expd1_guerra?: string | null;
   militar_expd_2_id?: number | null;
+  militar_expd2_id?: number | null;
   militar_expd_2_nome?: string | null;
+  militar_expd2_nome?: string | null;
+  militar_expd2_guerra?: string | null;
 }
 
 export interface EstatisticaMilitar {
@@ -237,11 +249,16 @@ export interface EstatisticaMilitar {
   posto_graduacao: string;
   total_sv: number;
   total_expd: number;
-  semana_1_sv: number;
-  semana_2_sv: number;
-  semana_3_sv: number;
-  semana_4_sv: number;
-  semana_5_sv: number;
+  semana_1?: number;
+  semana_2?: number;
+  semana_3?: number;
+  semana_4?: number;
+  semana_5?: number;
+  semana_1_sv?: number;
+  semana_2_sv?: number;
+  semana_3_sv?: number;
+  semana_4_sv?: number;
+  semana_5_sv?: number;
 }
 
 export interface EscalaMensal {

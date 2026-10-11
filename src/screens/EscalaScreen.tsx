@@ -76,6 +76,31 @@ export const EscalaScreen: React.FC = () => {
   const [listaMilitaresOrdem, setListaMilitaresOrdem] = useState<Military[]>([]);
   const [savingOrdem, setSavingOrdem] = useState<boolean>(false);
 
+  // Helper para normalizar dia garantindo dia_mes, dia, fds e campos de expedientes
+  const normalizeDia = (d: any): EscalaDia => {
+    const diaNum = Number(d.dia_mes ?? d.dia ?? 0);
+    const isFds = Boolean(d.is_fim_de_semana ?? d.is_weekend);
+    const expd1Id = d.militar_expd1_id ?? d.militar_expd_1_id ?? null;
+    const expd1Nome = d.militar_expd1_nome ?? d.militar_expd_1_nome ?? null;
+    const expd2Id = d.militar_expd2_id ?? d.militar_expd_2_id ?? null;
+    const expd2Nome = d.militar_expd2_nome ?? d.militar_expd_2_nome ?? null;
+    return {
+      ...d,
+      dia: diaNum,
+      dia_mes: diaNum,
+      is_weekend: isFds,
+      is_fim_de_semana: isFds,
+      militar_expd1_id: expd1Id,
+      militar_expd_1_id: expd1Id,
+      militar_expd1_nome: expd1Nome,
+      militar_expd_1_nome: expd1Nome,
+      militar_expd2_id: expd2Id,
+      militar_expd_2_id: expd2Id,
+      militar_expd2_nome: expd2Nome,
+      militar_expd_2_nome: expd2Nome,
+    };
+  };
+
   const loadEscala = useCallback(async () => {
     setLoading(true);
     try {
@@ -83,6 +108,9 @@ export const EscalaScreen: React.FC = () => {
         api.getEscalaMensal(mes, ano),
         api.getMilitaresInformatica(),
       ]);
+      if (data && Array.isArray(data.dias)) {
+        data.dias = data.dias.map(normalizeDia);
+      }
       setEscala(data);
       setMilitaresInfo(mils);
     } catch (err: any) {
@@ -124,17 +152,26 @@ export const EscalaScreen: React.FC = () => {
         ano: escala.ano,
         titulo: escala.titulo,
         dias: escala.dias.map((d) => ({
-          dia: d.dia,
+          dia: d.dia ?? d.dia_mes,
+          dia_mes: d.dia_mes ?? d.dia,
           dia_semana: d.dia_semana,
-          is_weekend: d.is_weekend,
-          is_feriado: d.is_feriado,
-          feriado_nome: d.feriado_nome,
+          is_weekend: Boolean(d.is_weekend ?? d.is_fim_de_semana),
+          is_fim_de_semana: Boolean(d.is_fim_de_semana ?? d.is_weekend),
+          is_feriado: Boolean(d.is_feriado),
+          is_feriado_especial: Boolean(d.is_feriado_especial),
+          feriado_nome: d.feriado_nome || d.descricao_feriado || null,
+          descricao_feriado: d.descricao_feriado || d.feriado_nome || null,
           militar_sv_id: d.militar_sv_id,
-          militar_expd_1_id: d.militar_expd_1_id,
-          militar_expd_2_id: d.militar_expd_2_id,
+          militar_expd_1_id: d.militar_expd_1_id ?? d.militar_expd1_id ?? null,
+          militar_expd1_id: d.militar_expd1_id ?? d.militar_expd_1_id ?? null,
+          militar_expd_2_id: d.militar_expd_2_id ?? d.militar_expd2_id ?? null,
+          militar_expd2_id: d.militar_expd2_id ?? d.militar_expd_2_id ?? null,
         })),
       };
       const saved = await api.salvarEscalaMensal(payload);
+      if (saved && Array.isArray(saved.dias)) {
+        saved.dias = saved.dias.map(normalizeDia);
+      }
       setEscala(saved);
       Alert.alert('Sucesso', 'Escala de serviço do mês salva com sucesso!');
     } catch (err: any) {
@@ -148,8 +185,11 @@ export const EscalaScreen: React.FC = () => {
   const handleSelectMilitar = (mil: Military | null) => {
     if (!selectedDia || !escala || !selectorTarget) return;
 
+    const targetDiaNum = selectedDia.dia_mes ?? selectedDia.dia;
+
     const updatedDias = escala.dias.map((d) => {
-      if (d.dia === selectedDia.dia) {
+      const currentDiaNum = d.dia_mes ?? d.dia;
+      if (currentDiaNum === targetDiaNum) {
         if (selectorTarget === 'SV') {
           return {
             ...d,
@@ -159,23 +199,31 @@ export const EscalaScreen: React.FC = () => {
             militar_sv_posto: mil ? mil.posto_graduacao : null,
           };
         } else if (selectorTarget === 'EXPD1') {
+          const nomeFormatado = mil ? `${mil.posto_graduacao} ${mil.nome_guerra}` : null;
+          const milId = mil ? (mil as any).id : null;
           return {
             ...d,
-            militar_expd_1_id: mil ? (mil as any).id : null,
-            militar_expd_1_nome: mil ? `${mil.posto_graduacao} ${mil.nome_guerra}` : null,
+            militar_expd_1_id: milId,
+            militar_expd1_id: milId,
+            militar_expd_1_nome: nomeFormatado,
+            militar_expd1_nome: nomeFormatado,
           };
         } else if (selectorTarget === 'EXPD2') {
+          const nomeFormatado = mil ? `${mil.posto_graduacao} ${mil.nome_guerra}` : null;
+          const milId = mil ? (mil as any).id : null;
           return {
             ...d,
-            militar_expd_2_id: mil ? (mil as any).id : null,
-            militar_expd_2_nome: mil ? `${mil.posto_graduacao} ${mil.nome_guerra}` : null,
+            militar_expd_2_id: milId,
+            militar_expd2_id: milId,
+            militar_expd_2_nome: nomeFormatado,
+            militar_expd2_nome: nomeFormatado,
           };
         }
       }
       return d;
     });
 
-    const updatedSelected = updatedDias.find((d) => d.dia === selectedDia.dia) || null;
+    const updatedSelected = updatedDias.find((d) => (d.dia_mes ?? d.dia) === targetDiaNum) || null;
     setSelectedDia(updatedSelected);
     setEscala({ ...escala, dias: updatedDias });
     setSelectorModalVisible(false);
@@ -257,14 +305,16 @@ export const EscalaScreen: React.FC = () => {
               <tbody>
                 ${escala.dias.map(d => {
                   const isEsp = Boolean(d.is_feriado_especial);
-                  const isRed = Boolean(d.is_weekend || d.is_feriado);
-                  const rowClass = isEsp ? 'holiday-special' : (isRed ? 'weekend' : '');
+                  const isFds = Boolean(d.is_weekend || d.is_fim_de_semana);
+                  const rowClass = isEsp ? 'holiday-special' : (isFds ? 'weekend' : '');
                   const svDisplay = d.militar_sv_nome ? `${d.militar_sv_posto || ''} ${d.militar_sv_nome}` : '-';
-                  const exp1Display = isRed ? '-' : (d.militar_expd_1_nome || '-');
-                  const exp2Display = isRed ? '-' : (d.militar_expd_2_nome || '-');
+                  const exp1 = d.militar_expd_1_nome || d.militar_expd1_nome || '-';
+                  const exp2 = d.militar_expd_2_nome || d.militar_expd2_nome || '-';
+                  const exp1Display = isFds ? '-' : exp1;
+                  const exp2Display = isFds ? '-' : exp2;
                   return `
                     <tr class="${rowClass}">
-                      <td>${d.dia}</td>
+                      <td>${d.dia_mes ?? d.dia}</td>
                       <td>${d.dia_semana}</td>
                       <td class="name-cell">${svDisplay}</td>
                       <td class="name-cell">${exp1Display}</td>
@@ -294,18 +344,18 @@ export const EscalaScreen: React.FC = () => {
                     <td class="name-cell">${st.posto_graduacao} ${st.nome_guerra}</td>
                     <td><b>${st.total_sv}</b></td>
                     <td>${st.total_expd}</td>
-                    <td>${st.semana_1_sv}</td>
-                    <td>${st.semana_2_sv}</td>
-                    <td>${st.semana_3_sv}</td>
-                    <td>${st.semana_4_sv}</td>
-                    <td>${st.semana_5_sv}</td>
+                    <td>${st.semana_1_sv ?? st.semana_1 ?? 0}</td>
+                    <td>${st.semana_2_sv ?? st.semana_2 ?? 0}</td>
+                    <td>${st.semana_3_sv ?? st.semana_3 ?? 0}</td>
+                    <td>${st.semana_4_sv ?? st.semana_4 ?? 0}</td>
+                    <td>${st.semana_5_sv ?? st.semana_5 ?? 0}</td>
                   </tr>
                 `).join('')}
               </tbody>
             </table>
           </div>
           <div class="legend">
-            <b>Legenda:</b> [Vermelho] Final de Semana / Feriado Comum | [Roxo] Natal, Ano Novo e Carnaval
+            <b>Legenda:</b> [Vermelho] Final de Semana (FDS) | [Roxo] Natal, Ano Novo e Carnaval
           </div>
           <div class="footer">
             <div>
@@ -445,27 +495,38 @@ export const EscalaScreen: React.FC = () => {
           showsVerticalScrollIndicator={false}
         >
           {escala?.dias.map((d) => {
-            const isFds = d.is_weekend;
-            const isFer = d.is_feriado;
+            const isFds = Boolean(d.is_weekend || d.is_fim_de_semana);
             const isFerEsp = Boolean(d.is_feriado_especial);
+            const ferNome = d.feriado_nome || d.descricao_feriado;
+            const diaNum = d.dia_mes ?? d.dia ?? '';
 
-            let badgeBg = 'rgba(56, 189, 248, 0.15)';
-            let badgeText = '#38BDF8';
+            // STRICT COLOR RULE:
+            // - Special holidays: Purple
+            // - Weekends (Saturday and Sunday): Red
+            // - Weekdays (Monday through Friday): Normal / Black (independent of holiday or not!)
+            let badgeBg = theme.surfaceVariant;
+            let badgeText = theme.text;
             let cardBorder = theme.border;
 
             if (isFerEsp) {
-              badgeBg = 'rgba(126, 34, 206, 0.2)';
-              badgeText = '#C084FC';
-              cardBorder = '#7E22CE';
-            } else if (isFds || isFer) {
-              badgeBg = 'rgba(239, 68, 68, 0.2)';
-              badgeText = '#F87171';
-              cardBorder = '#EF4444';
+              badgeBg = isDark ? 'rgba(126, 34, 206, 0.25)' : '#F3E8FF';
+              badgeText = isDark ? '#C084FC' : '#7E22CE';
+              cardBorder = isDark ? 'rgba(126, 34, 206, 0.5)' : '#C084FC';
+            } else if (isFds) {
+              badgeBg = isDark ? 'rgba(239, 68, 68, 0.2)' : '#FEE2E2';
+              badgeText = isDark ? '#F87171' : '#DC2626';
+              cardBorder = isDark ? 'rgba(239, 68, 68, 0.4)' : '#FCA5A5';
             }
+
+            const expd1Nome = d.militar_expd_1_nome || d.militar_expd1_nome;
+            const expd2Nome = d.militar_expd_2_nome || d.militar_expd2_nome;
+            const svNomeCompleto = d.militar_sv_nome
+              ? `${d.militar_sv_posto ? d.militar_sv_posto + ' ' : ''}${d.militar_sv_nome}`
+              : null;
 
             return (
               <TouchableOpacity
-                key={d.dia}
+                key={`dia-${diaNum}-${d.dia_semana}`}
                 style={[
                   styles.diaCard,
                   {
@@ -481,48 +542,93 @@ export const EscalaScreen: React.FC = () => {
                 }}
                 activeOpacity={isAdmin ? 0.7 : 1}
               >
-                {/* Coluna do Dia */}
-                <View style={[styles.diaIndicator, { backgroundColor: badgeBg }]}>
-                  <Text style={[styles.diaNumero, { color: badgeText }]}>{d.dia}</Text>
-                  <Text style={[styles.diaSemana, { color: badgeText }]}>{d.dia_semana}</Text>
-                </View>
-
-                {/* Conteúdo das Escalações */}
-                <View style={styles.diaContent}>
-                  {isFer && d.feriado_nome ? (
-                    <Text
-                      style={[
-                        styles.feriadoLabel,
-                        { color: isFerEsp ? '#C084FC' : '#F87171' }
-                      ]}
-                      numberOfLines={1}
-                    >
-                      ★ {d.feriado_nome}
-                    </Text>
-                  ) : null}
-
-                  {/* Militar SV */}
-                  <View style={styles.escalacaoRow}>
-                    <Text style={[styles.cargoLabel, { color: theme.primary }]}>SV:</Text>
-                    <Text style={[styles.militarNome, { color: theme.text }]} numberOfLines={1}>
-                      {d.militar_sv_nome ? `${d.militar_sv_posto || ''} ${d.militar_sv_nome}` : '(Não escalado)'}
+                {/* Header do Card: Badge do Dia + SV */}
+                <View style={styles.cardHeaderRow}>
+                  {/* Badge do Dia */}
+                  <View style={[styles.diaIndicator, { backgroundColor: badgeBg }]}>
+                    <Text style={[styles.diaNumero, { color: badgeText }]}>{diaNum}</Text>
+                    <Text style={[styles.diaSemana, { color: badgeText }]}>
+                      {d.dia_semana ? d.dia_semana.substring(0, 3).toUpperCase() : ''}
                     </Text>
                   </View>
 
-                  {/* Expedientes (se dia útil) */}
-                  {!isFds && !isFer && (
-                    <View style={styles.expdContainer}>
-                      <Text style={[styles.expdText, { color: theme.textSecondary }]} numberOfLines={1}>
-                        EXPD 1: {d.militar_expd_1_nome || '-'}
-                      </Text>
-                      <Text style={[styles.expdText, { color: theme.textSecondary }]} numberOfLines={1}>
-                        EXPD 2: {d.militar_expd_2_nome || '-'}
-                      </Text>
+                  {/* Informação do Serviço (SV) */}
+                  <View style={styles.svInfoContainer}>
+                    <View style={styles.svHeaderLine}>
+                      <View style={[styles.svTag, { backgroundColor: isDark ? 'rgba(0, 210, 180, 0.15)' : '#E0F2FE' }]}>
+                        <Text style={[styles.svTagText, { color: theme.primary }]}>SERVIÇO (SV)</Text>
+                      </View>
+                      {ferNome ? (
+                        <View style={[styles.feriadoPill, isFerEsp && { backgroundColor: isDark ? 'rgba(126, 34, 206, 0.2)' : '#F3E8FF' }]}>
+                          <Text
+                            style={[
+                              styles.feriadoPillText,
+                              { color: isFerEsp ? (isDark ? '#C084FC' : '#7E22CE') : theme.textMuted },
+                            ]}
+                            numberOfLines={1}
+                          >
+                            ★ {ferNome}
+                          </Text>
+                        </View>
+                      ) : null}
+                    </View>
+
+                    <Text
+                      style={[
+                        styles.militarSvNome,
+                        { color: svNomeCompleto ? theme.text : theme.textMuted },
+                      ]}
+                      numberOfLines={1}
+                    >
+                      {svNomeCompleto || 'Não escalado'}
+                    </Text>
+                  </View>
+
+                  {isAdmin && (
+                    <View style={styles.chevronBox}>
+                      <ChevronRight size={18} color={theme.textMuted} />
                     </View>
                   )}
                 </View>
 
-                {isAdmin && <ChevronRight size={18} color={theme.textMuted} />}
+                {/* Seção de Expedientes (Dias úteis) ou Aviso (Fim de semana) */}
+                {!isFds ? (
+                  <View style={[styles.expdSection, { borderTopColor: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)' }]}>
+                    <View style={styles.expdGrid}>
+                      <View style={[styles.expdCard, { backgroundColor: theme.surfaceVariant }]}>
+                        <Text style={[styles.expdLabel, { color: theme.textSecondary }]}>EXPD 1</Text>
+                        <Text
+                          style={[
+                            styles.expdValue,
+                            { color: expd1Nome ? theme.text : theme.textMuted },
+                          ]}
+                          numberOfLines={1}
+                        >
+                          {expd1Nome || 'Vago'}
+                        </Text>
+                      </View>
+
+                      <View style={[styles.expdCard, { backgroundColor: theme.surfaceVariant }]}>
+                        <Text style={[styles.expdLabel, { color: theme.textSecondary }]}>EXPD 2</Text>
+                        <Text
+                          style={[
+                            styles.expdValue,
+                            { color: expd2Nome ? theme.text : theme.textMuted },
+                          ]}
+                          numberOfLines={1}
+                        >
+                          {expd2Nome || 'Vago'}
+                        </Text>
+                      </View>
+                    </View>
+                  </View>
+                ) : (
+                  <View style={[styles.weekendNoticeRow, { borderTopColor: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)' }]}>
+                    <Text style={[styles.weekendNoticeText, { color: isDark ? '#F87171' : '#DC2626' }]}>
+                      Fim de semana • Sem expediente
+                    </Text>
+                  </View>
+                )}
               </TouchableOpacity>
             );
           })}
@@ -565,7 +671,7 @@ export const EscalaScreen: React.FC = () => {
                 {/* Semanas */}
                 <View style={styles.semanasPills}>
                   <Text style={[styles.semanaText, { color: theme.textMuted }]}>
-                    S1:{st.semana_1_sv} S2:{st.semana_2_sv} S3:{st.semana_3_sv} S4:{st.semana_4_sv} S5:{st.semana_5_sv}
+                    S1:{st.semana_1_sv ?? st.semana_1 ?? 0} S2:{st.semana_2_sv ?? st.semana_2 ?? 0} S3:{st.semana_3_sv ?? st.semana_3 ?? 0} S4:{st.semana_4_sv ?? st.semana_4 ?? 0} S5:{st.semana_5_sv ?? st.semana_5 ?? 0}
                   </Text>
                 </View>
               </View>
@@ -580,7 +686,7 @@ export const EscalaScreen: React.FC = () => {
           <View style={[styles.modalCard, { backgroundColor: theme.surface, borderColor: theme.border }]}>
             <View style={[styles.modalHeader, { borderBottomColor: theme.border }]}>
               <Text style={[styles.modalTitle, { color: theme.text }]}>
-                Escalar Dia {selectedDia?.dia} ({selectedDia?.dia_semana})
+                Dia {selectedDia?.dia_mes ?? selectedDia?.dia} • {(selectedDia?.dia_semana || '').toUpperCase()}
               </Text>
               <TouchableOpacity onPress={() => setModalDiaVisible(false)}>
                 <X size={20} color={theme.text} />
@@ -600,40 +706,51 @@ export const EscalaScreen: React.FC = () => {
                 <User size={16} color={theme.primary} />
                 <Text style={[styles.selectBtnText, { color: theme.text }]}>
                   {selectedDia?.militar_sv_nome
-                    ? `${selectedDia.militar_sv_posto || ''} ${selectedDia.militar_sv_nome}`
+                    ? `${selectedDia.militar_sv_posto ? selectedDia.militar_sv_posto + ' ' : ''}${selectedDia.militar_sv_nome}`
                     : 'Selecionar Militar de SV...'}
                 </Text>
               </TouchableOpacity>
 
-              {/* Seletor Expediente 1 */}
-              <Text style={[styles.fieldLabel, { color: theme.textSecondary, marginTop: 12 }]}>Expediente 1 (Opcional)</Text>
-              <TouchableOpacity
-                style={[styles.selectBtn, { backgroundColor: theme.surfaceVariant, borderColor: theme.border }]}
-                onPress={() => {
-                  setSelectorTarget('EXPD1');
-                  setSelectorModalVisible(true);
-                }}
-              >
-                <Users size={16} color={theme.textMuted} />
-                <Text style={[styles.selectBtnText, { color: theme.text }]}>
-                  {selectedDia?.militar_expd_1_nome || 'Selecionar Expediente 1...'}
-                </Text>
-              </TouchableOpacity>
+              {/* Se for fim de semana, avisa que não há expediente previsto */}
+              {Boolean(selectedDia?.is_weekend || selectedDia?.is_fim_de_semana) ? (
+                <View style={[styles.modalWeekendBox, { backgroundColor: isDark ? 'rgba(239, 68, 68, 0.1)' : '#FEE2E2', borderColor: isDark ? 'rgba(239, 68, 68, 0.3)' : '#FCA5A5' }]}>
+                  <Text style={[styles.modalWeekendBoxText, { color: isDark ? '#F87171' : '#DC2626' }]}>
+                    Fim de semana • Não há expedientes aos sábados e domingos.
+                  </Text>
+                </View>
+              ) : (
+                <>
+                  {/* Seletor Expediente 1 */}
+                  <Text style={[styles.fieldLabel, { color: theme.textSecondary, marginTop: 12 }]}>Expediente 1 (EXPD 1)</Text>
+                  <TouchableOpacity
+                    style={[styles.selectBtn, { backgroundColor: theme.surfaceVariant, borderColor: theme.border }]}
+                    onPress={() => {
+                      setSelectorTarget('EXPD1');
+                      setSelectorModalVisible(true);
+                    }}
+                  >
+                    <Users size={16} color={theme.textMuted} />
+                    <Text style={[styles.selectBtnText, { color: theme.text }]}>
+                      {selectedDia?.militar_expd_1_nome || selectedDia?.militar_expd1_nome || 'Selecionar Expediente 1...'}
+                    </Text>
+                  </TouchableOpacity>
 
-              {/* Seletor Expediente 2 */}
-              <Text style={[styles.fieldLabel, { color: theme.textSecondary, marginTop: 12 }]}>Expediente 2 (Opcional)</Text>
-              <TouchableOpacity
-                style={[styles.selectBtn, { backgroundColor: theme.surfaceVariant, borderColor: theme.border }]}
-                onPress={() => {
-                  setSelectorTarget('EXPD2');
-                  setSelectorModalVisible(true);
-                }}
-              >
-                <Users size={16} color={theme.textMuted} />
-                <Text style={[styles.selectBtnText, { color: theme.text }]}>
-                  {selectedDia?.militar_expd_2_nome || 'Selecionar Expediente 2...'}
-                </Text>
-              </TouchableOpacity>
+                  {/* Seletor Expediente 2 */}
+                  <Text style={[styles.fieldLabel, { color: theme.textSecondary, marginTop: 12 }]}>Expediente 2 (EXPD 2)</Text>
+                  <TouchableOpacity
+                    style={[styles.selectBtn, { backgroundColor: theme.surfaceVariant, borderColor: theme.border }]}
+                    onPress={() => {
+                      setSelectorTarget('EXPD2');
+                      setSelectorModalVisible(true);
+                    }}
+                  >
+                    <Users size={16} color={theme.textMuted} />
+                    <Text style={[styles.selectBtnText, { color: theme.text }]}>
+                      {selectedDia?.militar_expd_2_nome || selectedDia?.militar_expd2_nome || 'Selecionar Expediente 2...'}
+                    </Text>
+                  </TouchableOpacity>
+                </>
+              )}
             </ScrollView>
 
             <View style={styles.modalFooter}>
@@ -872,59 +989,117 @@ const styles = StyleSheet.create({
     padding: 16,
   },
   diaCard: {
+    borderRadius: 12,
+    borderWidth: 1,
+    padding: 12,
+    marginBottom: 10,
+  },
+  cardHeaderRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    borderRadius: 10,
-    borderWidth: 1,
-    padding: 10,
-    marginBottom: 8,
   },
   diaIndicator: {
-    width: 44,
-    height: 44,
-    borderRadius: 8,
+    width: 48,
+    height: 48,
+    borderRadius: 10,
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 12,
   },
   diaNumero: {
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: 'bold',
+    lineHeight: 22,
   },
   diaSemana: {
     fontSize: 10,
     fontWeight: '700',
+    marginTop: 1,
   },
-  diaContent: {
+  svInfoContainer: {
     flex: 1,
+    justifyContent: 'center',
   },
-  feriadoLabel: {
-    color: '#C084FC',
-    fontSize: 11,
-    fontWeight: 'bold',
-    marginBottom: 2,
-  },
-  escalacaoRow: {
+  svHeaderLine: {
     flexDirection: 'row',
     alignItems: 'center',
+    flexWrap: 'wrap',
     gap: 6,
+    marginBottom: 2,
   },
-  cargoLabel: {
-    fontSize: 12,
-    fontWeight: 'bold',
+  svTag: {
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
   },
-  militarNome: {
-    fontSize: 14,
+  svTagText: {
+    fontSize: 10,
+    fontWeight: '800',
+    letterSpacing: 0.5,
+  },
+  feriadoPill: {
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+    maxWidth: 160,
+  },
+  feriadoPillText: {
+    fontSize: 10,
     fontWeight: '600',
-    flex: 1,
   },
-  expdContainer: {
+  militarSvNome: {
+    fontSize: 15,
+    fontWeight: '700',
+  },
+  chevronBox: {
+    marginLeft: 6,
+    padding: 2,
+  },
+  expdSection: {
+    marginTop: 10,
+    paddingTop: 8,
+    borderTopWidth: 1,
+  },
+  expdGrid: {
     flexDirection: 'row',
-    gap: 12,
-    marginTop: 3,
+    gap: 8,
   },
-  expdText: {
+  expdCard: {
+    flex: 1,
+    paddingHorizontal: 8,
+    paddingVertical: 5,
+    borderRadius: 6,
+    flexDirection: 'column',
+  },
+  expdLabel: {
+    fontSize: 9,
+    fontWeight: '700',
+    letterSpacing: 0.5,
+    marginBottom: 1,
+  },
+  expdValue: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  weekendNoticeRow: {
+    marginTop: 8,
+    paddingTop: 6,
+    borderTopWidth: 1,
+  },
+  weekendNoticeText: {
     fontSize: 11,
+    fontStyle: 'italic',
+  },
+  modalWeekendBox: {
+    padding: 12,
+    borderRadius: 8,
+    borderWidth: 1,
+    marginTop: 14,
+  },
+  modalWeekendBoxText: {
+    fontSize: 12,
+    fontWeight: '600',
+    textAlign: 'center',
   },
   statsCard: {
     borderRadius: 12,
