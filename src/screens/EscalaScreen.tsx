@@ -33,6 +33,9 @@ import {
   X,
   Share2,
   ArrowLeft,
+  ArrowUp,
+  ArrowDown,
+  ListOrdered,
 } from 'lucide-react-native';
 
 const MESES = [
@@ -67,6 +70,11 @@ export const EscalaScreen: React.FC = () => {
   // Modal seletor de militar
   const [selectorTarget, setSelectorTarget] = useState<'SV' | 'EXPD1' | 'EXPD2' | null>(null);
   const [selectorModalVisible, setSelectorModalVisible] = useState<boolean>(false);
+
+  // Modal ordenar antiguidade
+  const [modalOrdemVisible, setModalOrdemVisible] = useState<boolean>(false);
+  const [listaMilitaresOrdem, setListaMilitaresOrdem] = useState<Military[]>([]);
+  const [savingOrdem, setSavingOrdem] = useState<boolean>(false);
 
   const loadEscala = useCallback(async () => {
     setLoading(true);
@@ -173,6 +181,37 @@ export const EscalaScreen: React.FC = () => {
     setSelectorModalVisible(false);
   };
 
+  const handleOpenOrdemModal = () => {
+    setListaMilitaresOrdem([...militaresInfo]);
+    setModalOrdemVisible(true);
+  };
+
+  const handleMoveMilitar = (index: number, direction: 'UP' | 'DOWN') => {
+    const targetIndex = direction === 'UP' ? index - 1 : index + 1;
+    if (targetIndex < 0 || targetIndex >= listaMilitaresOrdem.length) return;
+    const novaLista = [...listaMilitaresOrdem];
+    const item = novaLista.splice(index, 1)[0];
+    novaLista.splice(targetIndex, 0, item);
+    setListaMilitaresOrdem(novaLista);
+  };
+
+  const handleSaveOrdemAntiguidade = async () => {
+    setSavingOrdem(true);
+    try {
+      const ids = listaMilitaresOrdem
+        .map((m) => m.id)
+        .filter((id): id is number => typeof id === 'number');
+      await api.salvarOrdemAntiguidade(ids);
+      setModalOrdemVisible(false);
+      Alert.alert('Sucesso', 'Ordem de antiguidade atualizada com sucesso para todos os meses!');
+      await loadEscala();
+    } catch (err: any) {
+      Alert.alert('Erro', err.message || 'Falha ao salvar ordem de antiguidade.');
+    } finally {
+      setSavingOrdem(false);
+    }
+  };
+
   // Gerar PDF formatado A4 Paisagem idêntico ao modelo da FAB
   const handleExportPdf = async () => {
     if (!escala) return;
@@ -185,19 +224,21 @@ export const EscalaScreen: React.FC = () => {
         <head>
           <meta charset="utf-8">
           <style>
-            @page { size: A4 landscape; margin: 10mm; }
-            body { font-family: Arial, sans-serif; margin: 0; padding: 0; font-size: 9pt; }
-            .header { text-align: center; background: #1E293B; color: #FFF; padding: 6px; font-weight: bold; font-size: 11pt; border-radius: 4px; margin-bottom: 8px; }
-            .container { display: flex; flex-direction: row; gap: 8px; }
-            .table-main { width: 62%; border-collapse: collapse; }
-            .table-stats { width: 38%; border-collapse: collapse; }
-            th, td { border: 1px solid #CBD5E1; padding: 3px 4px; text-align: center; }
-            th { background: #334155; color: #FFF; font-weight: bold; font-size: 8pt; }
+            @page { size: A4 landscape; margin: 8mm; }
+            * { box-sizing: border-box; }
+            body { font-family: Arial, sans-serif; margin: 0; padding: 0; font-size: 8pt; width: 100%; }
+            .header { text-align: center; background: #1E293B; color: #FFF; padding: 5px; font-weight: bold; font-size: 10pt; border-radius: 4px; margin-bottom: 6px; }
+            .container { display: flex; flex-direction: row; gap: 8px; width: 100%; }
+            .table-main { width: 58%; border-collapse: collapse; }
+            .table-stats { width: 42%; border-collapse: collapse; }
+            th, td { border: 1px solid #CBD5E1; padding: 2.5px 3px; text-align: center; font-size: 7.5pt; }
+            th { background: #334155; color: #FFF; font-weight: bold; }
             .weekend { background-color: #FEE2E2 !important; color: #DC2626 !important; font-weight: bold; }
-            .holiday { background-color: #F3E8FF !important; color: #7E22CE !important; font-weight: bold; }
-            .name-cell { text-align: left; padding-left: 6px; font-weight: 600; }
-            .footer { margin-top: 15px; display: flex; justify-content: space-around; text-align: center; font-size: 8pt; }
-            .sign-line { border-top: 1px solid #000; width: 200px; margin: 25px auto 4px auto; }
+            .holiday-special { background-color: #F3E8FF !important; color: #7E22CE !important; font-weight: bold; }
+            .name-cell { text-align: left; padding-left: 4px; font-weight: 600; }
+            .legend { font-size: 7pt; color: #64748B; margin-top: 5px; }
+            .footer { margin-top: 10px; display: flex; justify-content: space-around; text-align: center; font-size: 7.5pt; }
+            .sign-line { border-top: 1px solid #000; width: 180px; margin: 18px auto 3px auto; }
           </style>
         </head>
         <body>
@@ -206,8 +247,8 @@ export const EscalaScreen: React.FC = () => {
             <table class="table-main">
               <thead>
                 <tr>
-                  <th style="width: 28px;">DIA</th>
-                  <th style="width: 40px;">SEM</th>
+                  <th style="width: 26px;">DIA</th>
+                  <th style="width: 36px;">SEM</th>
                   <th>MILITAR DE SERVIÇO (SV)</th>
                   <th>EXPEDIENTE 1</th>
                   <th>EXPEDIENTE 2</th>
@@ -215,10 +256,12 @@ export const EscalaScreen: React.FC = () => {
               </thead>
               <tbody>
                 ${escala.dias.map(d => {
-                  const rowClass = d.is_feriado ? 'holiday' : (d.is_weekend ? 'weekend' : '');
+                  const isEsp = Boolean(d.is_feriado_especial);
+                  const isRed = Boolean(d.is_weekend || d.is_feriado);
+                  const rowClass = isEsp ? 'holiday-special' : (isRed ? 'weekend' : '');
                   const svDisplay = d.militar_sv_nome ? `${d.militar_sv_posto || ''} ${d.militar_sv_nome}` : '-';
-                  const exp1Display = d.militar_expd_1_nome || '-';
-                  const exp2Display = d.militar_expd_2_nome || '-';
+                  const exp1Display = isRed ? '-' : (d.militar_expd_1_nome || '-');
+                  const exp2Display = isRed ? '-' : (d.militar_expd_2_nome || '-');
                   return `
                     <tr class="${rowClass}">
                       <td>${d.dia}</td>
@@ -261,6 +304,9 @@ export const EscalaScreen: React.FC = () => {
               </tbody>
             </table>
           </div>
+          <div class="legend">
+            <b>Legenda:</b> [Vermelho] Final de Semana / Feriado Comum | [Roxo] Natal, Ano Novo e Carnaval
+          </div>
           <div class="footer">
             <div>
               <div class="sign-line"></div>
@@ -275,7 +321,7 @@ export const EscalaScreen: React.FC = () => {
         </html>
       `;
 
-      const { uri } = await Print.printToFileAsync({ html: htmlContent });
+      const { uri } = await Print.printToFileAsync({ html: htmlContent, width: 842, height: 595 });
       await Sharing.shareAsync(uri, { UTI: '.pdf', mimeType: 'application/pdf' });
     } catch (err: any) {
       Alert.alert('Erro ao Exportar', err.message || 'Falha ao gerar arquivo PDF.');
@@ -306,6 +352,17 @@ export const EscalaScreen: React.FC = () => {
         </View>
 
         <View style={styles.headerActions}>
+          {isAdmin && (
+            <TouchableOpacity
+              style={[styles.btnHeaderIcon, { backgroundColor: theme.surfaceVariant }]}
+              onPress={handleOpenOrdemModal}
+              disabled={militaresInfo.length === 0}
+              accessibilityLabel="Ordenar Antiguidade"
+            >
+              <ListOrdered size={18} color={theme.primary} />
+            </TouchableOpacity>
+          )}
+
           <TouchableOpacity
             style={[styles.btnHeaderIcon, { backgroundColor: theme.surfaceVariant }]}
             onPress={handleExportPdf}
@@ -390,15 +447,20 @@ export const EscalaScreen: React.FC = () => {
           {escala?.dias.map((d) => {
             const isFds = d.is_weekend;
             const isFer = d.is_feriado;
+            const isFerEsp = Boolean(d.is_feriado_especial);
 
             let badgeBg = 'rgba(56, 189, 248, 0.15)';
             let badgeText = '#38BDF8';
-            if (isFer) {
+            let cardBorder = theme.border;
+
+            if (isFerEsp) {
               badgeBg = 'rgba(126, 34, 206, 0.2)';
               badgeText = '#C084FC';
-            } else if (isFds) {
+              cardBorder = '#7E22CE';
+            } else if (isFds || isFer) {
               badgeBg = 'rgba(239, 68, 68, 0.2)';
               badgeText = '#F87171';
+              cardBorder = '#EF4444';
             }
 
             return (
@@ -408,7 +470,7 @@ export const EscalaScreen: React.FC = () => {
                   styles.diaCard,
                   {
                     backgroundColor: theme.surface,
-                    borderColor: isFer ? '#7E22CE' : (isFds ? '#EF4444' : theme.border),
+                    borderColor: cardBorder,
                   },
                 ]}
                 onPress={() => {
@@ -428,7 +490,13 @@ export const EscalaScreen: React.FC = () => {
                 {/* Conteúdo das Escalações */}
                 <View style={styles.diaContent}>
                   {isFer && d.feriado_nome ? (
-                    <Text style={styles.feriadoLabel} numberOfLines={1}>
+                    <Text
+                      style={[
+                        styles.feriadoLabel,
+                        { color: isFerEsp ? '#C084FC' : '#F87171' }
+                      ]}
+                      numberOfLines={1}
+                    >
                       ★ {d.feriado_nome}
                     </Text>
                   ) : null}
@@ -615,6 +683,91 @@ export const EscalaScreen: React.FC = () => {
                 </TouchableOpacity>
               )}
             />
+          </View>
+        </View>
+      </Modal>
+
+      {/* MODAL: ORDEM DE ANTIGUIDADE (PERSISTENTE PARA TODOS OS MESES) */}
+      <Modal visible={modalOrdemVisible} animationType="slide" transparent onRequestClose={() => setModalOrdemVisible(false)}>
+        <View style={styles.modalBackdrop}>
+          <View style={[styles.modalCard, { backgroundColor: theme.surface, borderColor: theme.border, maxHeight: '85%' }]}>
+            <View style={[styles.modalHeader, { borderBottomColor: theme.border }]}>
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.modalTitle, { color: theme.text }]}>Ordem de Antiguidade</Text>
+                <Text style={{ fontSize: 11, color: theme.textSecondary }}>Esta ordem se aplica a todos os meses da escala</Text>
+              </View>
+              <TouchableOpacity onPress={() => setModalOrdemVisible(false)}>
+                <X size={20} color={theme.text} />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView showsVerticalScrollIndicator={false} style={{ marginVertical: 8, maxHeight: 380 }}>
+              {listaMilitaresOrdem.map((item, index) => {
+                const isFirst = index === 0;
+                const isLast = index === listaMilitaresOrdem.length - 1;
+                return (
+                  <View
+                    key={item.id ?? item.saram}
+                    style={[
+                      styles.ordemItemRow,
+                      {
+                        backgroundColor: theme.surfaceVariant,
+                        borderColor: theme.border,
+                      },
+                    ]}
+                  >
+                    <View style={[styles.ordemIndexBadge, { backgroundColor: theme.primary + '25' }]}>
+                      <Text style={[styles.ordemIndexText, { color: theme.primary }]}>{index + 1}º</Text>
+                    </View>
+                    <View style={{ flex: 1, marginHorizontal: 8 }}>
+                      <Text style={[styles.militarSelectText, { color: theme.text }]} numberOfLines={1}>
+                        {item.posto_graduacao} {item.nome_guerra}
+                      </Text>
+                      <Text style={[styles.militarSelectSub, { color: theme.textSecondary }]} numberOfLines={1}>
+                        SARAM: {item.saram} • {item.nome_completo || ''}
+                      </Text>
+                    </View>
+                    <View style={{ flexDirection: 'row', gap: 4 }}>
+                      <TouchableOpacity
+                        style={[styles.btnArrow, isFirst && { opacity: 0.3 }]}
+                        disabled={isFirst}
+                        onPress={() => handleMoveMilitar(index, 'UP')}
+                      >
+                        <ArrowUp size={16} color={theme.text} />
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        style={[styles.btnArrow, isLast && { opacity: 0.3 }]}
+                        disabled={isLast}
+                        onPress={() => handleMoveMilitar(index, 'DOWN')}
+                      >
+                        <ArrowDown size={16} color={theme.text} />
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                );
+              })}
+            </ScrollView>
+
+            <View style={[styles.modalFooter, { flexDirection: 'row', gap: 8 }]}>
+              <TouchableOpacity
+                style={[styles.btnModalCancel, { borderColor: theme.border, flex: 1 }]}
+                onPress={() => setModalOrdemVisible(false)}
+                disabled={savingOrdem}
+              >
+                <Text style={{ color: theme.textSecondary, fontWeight: '600', textAlign: 'center' }}>Cancelar</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.btnModalOk, { backgroundColor: theme.primary, flex: 2 }]}
+                onPress={handleSaveOrdemAntiguidade}
+                disabled={savingOrdem}
+              >
+                {savingOrdem ? (
+                  <ActivityIndicator size="small" color="#000000" />
+                ) : (
+                  <Text style={{ color: '#000000', fontWeight: 'bold' }}>Salvar Ordem</Text>
+                )}
+              </TouchableOpacity>
+            </View>
           </View>
         </View>
       </Modal>
@@ -887,5 +1040,39 @@ const styles = StyleSheet.create({
   },
   militarSelectSub: {
     fontSize: 12,
+  },
+  ordemItemRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 8,
+    borderRadius: 8,
+    borderWidth: 1,
+    marginBottom: 6,
+  },
+  ordemIndexBadge: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  ordemIndexText: {
+    fontSize: 11,
+    fontWeight: 'bold',
+  },
+  btnArrow: {
+    padding: 6,
+    borderRadius: 6,
+    backgroundColor: 'rgba(150, 150, 150, 0.15)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  btnModalCancel: {
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 });

@@ -1,5 +1,7 @@
 export interface Military {
+  id?: number;
   saram: number;
+  antiguidade?: number;
   nome_completo: string;
   nome_guerra: string;
   posto_graduacao: string;
@@ -216,6 +218,7 @@ export interface EscalaDia {
   dia_semana: string;
   is_weekend: boolean;
   is_feriado: boolean;
+  is_feriado_especial?: boolean;
   feriado_nome?: string | null;
   militar_sv_id?: number | null;
   militar_sv_saram?: number | null;

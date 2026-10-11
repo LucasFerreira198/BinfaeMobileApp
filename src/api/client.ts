@@ -699,6 +699,14 @@ export const api = {
     return await request<Military[]>('/escalas/militares');
   },
 
+  salvarOrdemAntiguidade: async (militaresIds: number[]): Promise<void> => {
+    return await request<void>('/escalas/ordem-antiguidade', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ militares_ids: militaresIds }),
+    });
+  },
+
   // --- MÓDULO RELATÓRIO DIÁRIO (24H) ---
   getRelatorioDiario: async (dataRef?: string): Promise<RelatorioDiario> => {
     const query = dataRef ? `?data_ref=${encodeURIComponent(dataRef)}` : '';
