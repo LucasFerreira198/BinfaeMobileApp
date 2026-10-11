@@ -47,15 +47,6 @@ export const initApiClient = async (): Promise<void> => {
     }
     currentLoginTimestamp = await AsyncStorage.getItem(LOGIN_TIMESTAMP_KEY);
 
-    // Validação estrita de 24 horas no mobile
-    if (currentLoginTimestamp) {
-      const diffHours = (Date.now() - new Date(currentLoginTimestamp).getTime()) / (1000 * 60 * 60);
-      if (diffHours >= 24) {
-        await clearAuthSession();
-        return;
-      }
-    }
-
     currentToken = await AsyncStorage.getItem(TOKEN_KEY);
     currentRefreshToken = await AsyncStorage.getItem(REFRESH_TOKEN_KEY);
   } catch (err) {
@@ -100,23 +91,18 @@ export const getRefreshToken = (): string | null => currentRefreshToken;
 const refreshAccessToken = async (): Promise<boolean> => {
   if (!currentRefreshToken) return false;
 
-  // Se tiver passado mais de 24 horas desde o login, não permite refresh
-  if (currentLoginTimestamp) {
-    const diffHours = (Date.now() - new Date(currentLoginTimestamp).getTime()) / (1000 * 60 * 60);
-    if (diffHours >= 24) {
-      await clearAuthSession();
-      return false;
-    }
-  }
-
   try {
     const res = await fetch(`${currentApiBase}/auth/refresh`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'Accept': 'application/json',
+        'X-Client-Platform': 'mobile',
       },
-      body: JSON.stringify({ refresh_token: currentRefreshToken }),
+      body: JSON.stringify({
+        refresh_token: currentRefreshToken,
+        platform: 'mobile',
+      }),
     });
 
     if (res.ok) {
@@ -131,9 +117,18 @@ const refreshAccessToken = async (): Promise<boolean> => {
       }
       return true;
     }
-  } catch {}
 
-  await clearAuthSession();
+    // Se o backend explicitamente recusou (401/403 - ex: usuário desativado ou senha trocada)
+    if (res.status === 401 || res.status === 403) {
+      await clearAuthSession();
+      return false;
+    }
+  } catch (err) {
+    // Erro de rede ou sem internet: NÃO limpa a sessão, para o usuário continuar logado
+    console.warn('Falha temporária de rede ao renovar token no mobile:', err);
+    return false;
+  }
+
   return false;
 };
 
@@ -141,6 +136,7 @@ const request = async <T>(path: string, options: RequestInit = {}, isRetry = fal
   const url = `${currentApiBase}${path.startsWith('/') ? path : '/' + path}`;
   const headers: Record<string, string> = {
     'Accept': 'application/json',
+    'X-Client-Platform': 'mobile',
     ...(options.headers as Record<string, string> || {}),
   };
 
@@ -224,12 +220,14 @@ export const api = {
     const body = new URLSearchParams();
     body.append('username', identifier.trim());
     body.append('password', password);
+    body.append('client_id', 'mobile');
 
     const res = await fetch(`${currentApiBase}/auth/login`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/x-www-form-urlencoded',
         'Accept': 'application/json',
+        'X-Client-Platform': 'mobile',
       },
       body: body.toString(),
     });

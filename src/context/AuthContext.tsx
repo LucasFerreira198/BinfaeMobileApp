@@ -60,8 +60,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             AsyncStorage.setItem(USER_STORAGE_KEY, JSON.stringify(freshUser));
           })
           .catch((err) => {
-            console.warn('Erro ao revalidar sessão:', err);
-            if (err.message?.includes('Sessão expirada')) {
+            console.warn('Erro ao revalidar sessão em segundo plano:', err);
+            // Em caso de erro de rede ou token precisando de refresh, NUNCA desloga no mobile.
+            // Apenas desloga se o usuário tiver sido desativado ou deletado pelo administrador.
+            if (err.message?.includes('desativado') || err.message?.includes('inexistente')) {
               logout();
             }
           });
