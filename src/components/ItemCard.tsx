@@ -2,14 +2,15 @@ import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { Item, ItemStatus } from '../types';
 import { useTheme } from '../context/ThemeContext';
-import { MapPin, Folder, ChevronRight, Hash } from 'lucide-react-native';
+import { MapPin, Folder, ChevronRight, Hash, Trash2 } from 'lucide-react-native';
 
 interface ItemCardProps {
   item: Item;
   onPress: () => void;
+  onDelete?: () => void;
 }
 
-export const ItemCard: React.FC<ItemCardProps> = ({ item, onPress }) => {
+export const ItemCard: React.FC<ItemCardProps> = ({ item, onPress, onDelete }) => {
   const { theme } = useTheme();
 
   const getStatusBadge = (status: ItemStatus) => {
@@ -158,6 +159,19 @@ export const ItemCard: React.FC<ItemCardProps> = ({ item, onPress }) => {
         </View>
 
         <View style={styles.actionWrap}>
+          {onDelete && (
+            <TouchableOpacity
+              onPress={(e) => {
+                e.stopPropagation?.();
+                onDelete();
+              }}
+              style={[styles.trashCardBtn, { backgroundColor: theme.dangerBg }]}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              accessibilityLabel="Excluir Material"
+            >
+              <Trash2 size={13} color={theme.danger} />
+            </TouchableOpacity>
+          )}
           <Text style={[styles.detailsText, { color: theme.primary }]}>Detalhes</Text>
           <ChevronRight size={14} color={theme.primary} />
         </View>
@@ -300,5 +314,13 @@ const styles = StyleSheet.create({
   maintCardBadgeText: {
     fontSize: 10,
     fontWeight: '700',
+  },
+  trashCardBtn: {
+    width: 26,
+    height: 26,
+    borderRadius: 6,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 6,
   },
 });

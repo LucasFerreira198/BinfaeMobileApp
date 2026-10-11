@@ -8,6 +8,7 @@ import {
   ActivityIndicator,
   BackHandler,
   TouchableOpacity,
+  Alert,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../context/ThemeContext';
@@ -38,6 +39,7 @@ export const StockScreen: React.FC = () => {
     clearFilters,
     locations,
     setLocationFilter,
+    deleteItem,
   } = useStock();
 
   const [selectedItem, setSelectedItem] = useState<Item | null>(null);
@@ -85,11 +87,52 @@ export const StockScreen: React.FC = () => {
     setMovementVisible(true);
   }, []);
 
+  const handleDeleteItem = useCallback((item: Item) => {
+    if (item.cautela_ativa || item.status === 'CAUTELADO') {
+      Alert.alert(
+        'Não é possível excluir',
+        'Este material está atualmente cautelado em uso em uma missão. Efetue a devolução antes de excluir.'
+      );
+      return;
+    }
+    if (item.status === 'EM_MANUTENCAO') {
+      Alert.alert(
+        'Não é possível excluir',
+        'Este material está com ordem de manutenção em andamento na bancada. Conclua o reparo ou dê baixa patrimonial na pendência.'
+      );
+      return;
+    }
+
+    Alert.alert(
+      'Excluir Material',
+      `Tem certeza que deseja excluir o material "${item.nome}" (ID #${item.id}) do inventário?\n\nEsta ação excluirá permanentemente o cadastro e histórico deste item.`,
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Excluir Definitivamente',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await deleteItem(item.id);
+              Alert.alert('Sucesso', 'Material excluído do estoque com sucesso.');
+            } catch (err: any) {
+              Alert.alert('Erro ao excluir material', err.message || 'Falha ao excluir material.');
+            }
+          },
+        },
+      ]
+    );
+  }, [deleteItem]);
+
   const renderItem = useCallback(
     ({ item }: { item: Item }) => (
-      <ItemCard item={item} onPress={() => handleOpenDetail(item)} />
+      <ItemCard
+        item={item}
+        onPress={() => handleOpenDetail(item)}
+        onDelete={() => handleDeleteItem(item)}
+      />
     ),
-    [handleOpenDetail]
+    [handleOpenDetail, handleDeleteItem]
   );
 
   const keyExtractor = useCallback((item: Item) => item.id.toString(), []);

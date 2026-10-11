@@ -1012,6 +1012,29 @@ const ItemDetailModalContent: React.FC<ItemDetailModalProps> = ({
                 </TouchableOpacity>
               </View>
             )}
+
+            {/* Botão de Exclusão Direto no Rodapé */}
+            <TouchableOpacity
+              style={[
+                styles.deleteFooterBtn,
+                {
+                  backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                  borderColor: 'rgba(239, 68, 68, 0.35)',
+                },
+              ]}
+              onPress={handleDeleteItem}
+              disabled={isDeleting}
+              activeOpacity={0.7}
+            >
+              {isDeleting ? (
+                <ActivityIndicator size="small" color="#EF4444" />
+              ) : (
+                <>
+                  <Trash2 size={16} color="#EF4444" />
+                  <Text style={styles.deleteFooterBtnText}>Excluir Este Material do Estoque</Text>
+                </>
+              )}
+            </TouchableOpacity>
           </View>
         </View>
       </View>
@@ -1437,6 +1460,21 @@ const styles = StyleSheet.create({
   },
   deleteItemBannerText: {
     fontSize: 14,
+    fontWeight: '700',
+  },
+  deleteFooterBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    borderRadius: 10,
+    borderWidth: 1,
+    marginTop: 10,
+    gap: 8,
+  },
+  deleteFooterBtnText: {
+    color: '#EF4444',
+    fontSize: 13,
     fontWeight: '700',
   },
 });
