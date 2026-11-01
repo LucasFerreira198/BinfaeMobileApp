@@ -4,8 +4,10 @@ import { useTheme } from '../context/ThemeContext';
 import { useStock } from '../context/StockContext';
 import { Box, CheckCircle2, Clock, AlertTriangle, AlertCircle } from 'lucide-react-native';
 
+const HIT_SLOP_METRIC = { top: 8, bottom: 8, left: 4, right: 4 };
+
 export const MetricCards: React.FC = () => {
-  const { theme } = useTheme();
+  const { theme, isDark } = useTheme();
   const { metrics, filters, setStatusFilter, toggleLowStockOnly, clearFilters } = useStock();
 
   const cards = [
@@ -15,7 +17,7 @@ export const MetricCards: React.FC = () => {
       count: metrics.total,
       icon: Box,
       color: theme.primary,
-      bgColor: theme.badgeBg,
+      bgColor: isDark ? 'rgba(0, 229, 192, 0.15)' : 'rgba(0, 137, 123, 0.12)',
       active: filters.status === null && !filters.lowStockOnly,
       onPress: () => clearFilters(),
     },
@@ -51,7 +53,7 @@ export const MetricCards: React.FC = () => {
     },
     {
       id: 'BAIXO_ESTOQUE',
-      label: 'Estoque Baixo',
+      label: 'Baixo Estoque',
       count: metrics.baixoEstoque,
       icon: AlertCircle,
       color: '#EC4899',
@@ -73,25 +75,37 @@ export const MetricCards: React.FC = () => {
           return (
             <TouchableOpacity
               key={card.id}
-              activeOpacity={0.7}
+              activeOpacity={0.75}
               onPress={card.onPress}
+              hitSlop={HIT_SLOP_METRIC}
               style={[
                 styles.card,
                 {
-                  backgroundColor: theme.card,
+                  backgroundColor: card.active
+                    ? (isDark ? 'rgba(0, 229, 192, 0.08)' : 'rgba(0, 137, 123, 0.06)')
+                    : theme.card,
                   borderColor: card.active ? card.color : theme.border,
-                  borderWidth: card.active ? 1.5 : StyleSheet.hairlineWidth,
+                  borderWidth: card.active ? 1.5 : 1,
                 },
               ]}
             >
               <View style={[styles.iconWrap, { backgroundColor: card.bgColor }]}>
-                <Icon size={14} color={card.color} />
+                <Icon size={14} color={card.color} strokeWidth={2.5} />
               </View>
               <View style={styles.info}>
                 <Text style={[styles.count, { color: theme.text }]}>
                   {card.count}
                 </Text>
-                <Text style={[styles.label, { color: theme.textSecondary }]} numberOfLines={1}>
+                <Text
+                  style={[
+                    styles.label,
+                    {
+                      color: card.active ? card.color : theme.textSecondary,
+                      fontWeight: card.active ? '700' : '500',
+                    },
+                  ]}
+                  numberOfLines={1}
+                >
                   {card.label}
                 </Text>
               </View>
@@ -114,15 +128,16 @@ const styles = StyleSheet.create({
   card: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 10,
+    paddingHorizontal: 12,
     paddingVertical: 8,
-    borderRadius: 12,
-    minWidth: 105,
+    borderRadius: 14,
+    minWidth: 108,
+    minHeight: 48,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 1,
+    shadowOffset: { width: 0, height: 1.5 },
+    shadowOpacity: 0.08,
+    shadowRadius: 3,
+    elevation: 2,
   },
   iconWrap: {
     width: 28,
@@ -136,13 +151,13 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   count: {
-    fontSize: 15,
-    fontWeight: '700',
-    lineHeight: 18,
+    fontSize: 16,
+    fontWeight: '800',
+    lineHeight: 19,
+    letterSpacing: -0.3,
   },
   label: {
-    fontSize: 10,
-    fontWeight: '500',
+    fontSize: 10.5,
     marginTop: 1,
   },
 });

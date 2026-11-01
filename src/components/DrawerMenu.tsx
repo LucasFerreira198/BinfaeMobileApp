@@ -246,8 +246,8 @@ export const DrawerMenu: React.FC = () => {
               onPress={() => navigateTo('escala')}
               activeOpacity={0.7}
             >
-              <View style={[styles.menuItemIcon, { backgroundColor: 'rgba(0, 210, 180, 0.15)' }]}>
-                <CalendarDays size={20} color="#00D2B4" />
+              <View style={[styles.menuItemIcon, { backgroundColor: theme.badgeBg }]}>
+                <CalendarDays size={20} color={theme.primary} />
               </View>
               <View style={styles.menuItemInfo}>
                 <Text style={[styles.menuItemTitle, { color: theme.text }]}>Escala de Serviço</Text>

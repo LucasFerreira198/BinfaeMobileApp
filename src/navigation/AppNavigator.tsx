@@ -283,21 +283,22 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-around',
-    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopWidth: 1,
     paddingTop: 8,
   },
   navItem: {
     alignItems: 'center',
     justifyContent: 'center',
     flex: 1,
+    minHeight: 52,
   },
   navIconWrap: {
-    paddingHorizontal: 16,
-    paddingVertical: 4,
-    borderRadius: 14,
+    width: 58,
+    height: 32,
+    borderRadius: 16,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 2,
+    marginBottom: 3,
   },
   labelContainer: {
     alignItems: 'center',
@@ -305,6 +306,7 @@ const styles = StyleSheet.create({
   },
   navLabel: {
     fontSize: 11,
+    letterSpacing: 0.2,
   },
   badgePill: {
     paddingHorizontal: 5,

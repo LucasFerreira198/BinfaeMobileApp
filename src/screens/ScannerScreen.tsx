@@ -357,9 +357,9 @@ const styles = StyleSheet.create({
     zIndex: 10,
   },
   verifyingText: {
-    color: '#00F0FF',
+    color: '#00E5C0',
     fontSize: 13,
-    fontWeight: '700',
+    fontWeight: '800',
     textAlign: 'center',
     letterSpacing: 0.3,
   },
@@ -412,11 +412,11 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   rescanBtn: {
-    backgroundColor: '#6366F1',
+    backgroundColor: '#00E5C0',
   },
   controlText: {
     color: '#FFFFFF',
     fontSize: 12,
-    fontWeight: '600',
+    fontWeight: '700',
   },
 });
