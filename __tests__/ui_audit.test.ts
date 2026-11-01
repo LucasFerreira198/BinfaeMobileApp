@@ -132,5 +132,19 @@ describe('Binfae Mobile UI/UX & Material 3 Audit Suite', () => {
         done();
       }, 100);
     });
+
+    test('não deve exibir barra de progresso para itens unitários ou de quantidade 1', () => {
+      const shouldShowStockBar = (item: { tipo_controle: string; quantidade: number; quantidade_minima: number }) => {
+        return item.tipo_controle === 'GRANEL' && item.quantidade > 1 && item.quantidade_minima > 0;
+      };
+
+      // Item Unitário ou 1 unidade: não deve exibir barra de 100% ou 95%
+      expect(shouldShowStockBar({ tipo_controle: 'UNITARIO', quantidade: 1, quantidade_minima: 0 })).toBe(false);
+      expect(shouldShowStockBar({ tipo_controle: 'UNITARIO', quantidade: 1, quantidade_minima: 1 })).toBe(false);
+      expect(shouldShowStockBar({ tipo_controle: 'GRANEL', quantidade: 1, quantidade_minima: 0 })).toBe(false);
+
+      // Apenas item a granel com quantidade > 1 e estoque mínimo deve exibir
+      expect(shouldShowStockBar({ tipo_controle: 'GRANEL', quantidade: 50, quantidade_minima: 10 })).toBe(true);
+    });
   });
 });

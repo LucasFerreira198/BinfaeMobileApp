@@ -38,8 +38,10 @@ import {
   CheckCircle2,
   RotateCcw,
   Trash2,
+  Pencil,
 } from 'lucide-react-native';
 import { MaintenanceActionModal, MaintenanceActionType } from './MaintenanceActionModal';
+import { EditItemModal } from './EditItemModal';
 
 interface ItemDetailModalProps {
   item: Item | null;
@@ -95,6 +97,14 @@ const ItemDetailModalContent: React.FC<ItemDetailModalProps> = ({
   const [isGeneratingPdf, setIsGeneratingPdf] = useState<boolean>(false);
   const [maintModalVisible, setMaintModalVisible] = useState<boolean>(false);
   const [maintActionType, setMaintActionType] = useState<MaintenanceActionType>('SEND_TO_MAINTENANCE');
+  const [editModalVisible, setEditModalVisible] = useState<boolean>(false);
+  const [currentItem, setCurrentItem] = useState<Item | null>(item);
+
+  useEffect(() => {
+    setCurrentItem(item);
+  }, [item]);
+
+  const displayItem = currentItem || item;
 
   // Tratamento nativo do botão Voltar do Android
   useEffect(() => {
@@ -214,26 +224,26 @@ const ItemDetailModalContent: React.FC<ItemDetailModalProps> = ({
     );
   };
 
-  if (!item) return null;
+  if (!displayItem) return null;
 
-  const locationPath = item.cautela_ativa?.tipo === 'FIXA'
-    ? `Setor: ${item.cautela_ativa.missao_nome}`
-    : item.local?.tipo === 'SETOR'
-    ? `Setor: ${item.local.nome}`
-    : item.cautela_ativa?.tipo === 'MISSAO'
-    ? `Missão: ${item.cautela_ativa.missao_nome}`
-    : item.local?.caminho_completo || item.local?.nome || 'Não definido';
-  const subCategory = item.subgrupo?.nome || 'Geral';
-  const itemStatus = item.status || 'DISPONIVEL';
-  const itemQty = item.quantidade !== undefined && item.quantidade !== null ? item.quantidade : 0;
-  const itemUnit = item.unidade_medida || 'UNIDADE';
-  const itemCondition = item.estado_conservacao || 'BOM';
-  const itemControl = item.tipo_controle || 'UNITARIO';
-  const itemMinQty = item.quantidade_minima !== undefined && item.quantidade_minima !== null ? item.quantidade_minima : 0;
-  const isMaintenance = item.status === 'EM_MANUTENCAO';
-  const maintInfo = item.caracteristicas?.manutencao;
+  const locationPath = displayItem.cautela_ativa?.tipo === 'FIXA'
+    ? `Setor: ${displayItem.cautela_ativa.missao_nome}`
+    : displayItem.local?.tipo === 'SETOR'
+    ? `Setor: ${displayItem.local.nome}`
+    : displayItem.cautela_ativa?.tipo === 'MISSAO'
+    ? `Missão: ${displayItem.cautela_ativa.missao_nome}`
+    : displayItem.local?.caminho_completo || displayItem.local?.nome || 'Não definido';
+  const subCategory = displayItem.subgrupo?.nome || 'Geral';
+  const itemStatus = displayItem.status || 'DISPONIVEL';
+  const itemQty = displayItem.quantidade !== undefined && displayItem.quantidade !== null ? displayItem.quantidade : 0;
+  const itemUnit = displayItem.unidade_medida || 'UNIDADE';
+  const itemCondition = displayItem.estado_conservacao || 'BOM';
+  const itemControl = displayItem.tipo_controle || 'UNITARIO';
+  const itemMinQty = displayItem.quantidade_minima !== undefined && displayItem.quantidade_minima !== null ? displayItem.quantidade_minima : 0;
+  const isMaintenance = displayItem.status === 'EM_MANUTENCAO';
+  const maintInfo = displayItem.caracteristicas?.manutencao;
   const isRepaired = isMaintenance && maintInfo?.status_etapa === 'CONSERTADO';
-  const isCautelado = item.status === 'CAUTELADO' || Boolean(item.cautela_ativa);
+  const isCautelado = displayItem.status === 'CAUTELADO' || Boolean(displayItem.cautela_ativa);
 
   const getMovementBadge = (tipo: string) => {
     switch (tipo) {
@@ -439,14 +449,24 @@ const ItemDetailModalContent: React.FC<ItemDetailModalProps> = ({
           <View style={styles.header}>
             <View style={styles.titleWrap}>
               <Text style={[styles.headerTitle, { color: theme.text }]} numberOfLines={1}>
-                {item.nome}
+                {displayItem.nome}
               </Text>
               <Text style={[styles.headerSubtitle, { color: theme.textSecondary }]}>
-                ID #{item.id} {Boolean(item.bmp) ? `• BMP ${item.bmp}` : ''}
+                ID #{displayItem.id} {Boolean(displayItem.bmp) ? `• BMP ${displayItem.bmp}` : ''}
               </Text>
             </View>
 
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+              <TouchableOpacity
+                onPress={() => setEditModalVisible(true)}
+                style={[styles.closeBtn, { backgroundColor: theme.badgeBg }]}
+                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                accessibilityRole="button"
+                accessibilityLabel="Editar Material"
+              >
+                <Pencil size={18} color={theme.primary} />
+              </TouchableOpacity>
+
               <TouchableOpacity
                 onPress={handleDeleteItem}
                 disabled={isDeleting}
@@ -1050,10 +1070,26 @@ const ItemDetailModalContent: React.FC<ItemDetailModalProps> = ({
             ) : (
               <View style={styles.footerBtnGroup}>
                 <TouchableOpacity
+                  style={[
+                    styles.footerBtn,
+                    {
+                      backgroundColor: theme.surfaceVariant,
+                      borderWidth: 1,
+                      borderColor: theme.border,
+                    },
+                  ]}
+                  onPress={() => setEditModalVisible(true)}
+                  activeOpacity={0.8}
+                >
+                  <Pencil size={17} color={theme.primary} />
+                  <Text style={[styles.footerBtnText, { color: theme.text }]}>Editar Dados</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
                   style={[styles.footerBtn, { backgroundColor: theme.primary }]}
                   onPress={() => {
                     onClose();
-                    onOpenMovement(item);
+                    onOpenMovement(displayItem);
                   }}
                   activeOpacity={0.8}
                 >
@@ -1104,13 +1140,23 @@ const ItemDetailModalContent: React.FC<ItemDetailModalProps> = ({
       </View>
 
       <MaintenanceActionModal
-        item={item}
+        item={displayItem}
         actionType={maintActionType}
         visible={maintModalVisible}
         onClose={() => setMaintModalVisible(false)}
         onSuccess={() => {
           setMaintModalVisible(false);
           onClose();
+        }}
+      />
+
+      <EditItemModal
+        item={displayItem}
+        visible={editModalVisible}
+        onClose={() => setEditModalVisible(false)}
+        onSuccess={(updated) => {
+          setCurrentItem(updated);
+          syncData(false);
         }}
       />
     </Modal>

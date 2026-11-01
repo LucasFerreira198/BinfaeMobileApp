@@ -2,7 +2,7 @@ import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { Item, ItemStatus } from '../types';
 import { useTheme } from '../context/ThemeContext';
-import { MapPin, Folder, Hash, ArrowRightLeft, QrCode, Shield, Wrench, ChevronRight } from 'lucide-react-native';
+import { MapPin, Folder, Hash, ArrowRightLeft, QrCode, Shield, Wrench, ChevronRight, Pencil } from 'lucide-react-native';
 
 const HIT_SLOP_ACTION = { top: 12, bottom: 12, left: 10, right: 10 };
 
@@ -10,9 +10,10 @@ interface ItemCardProps {
   item: Item;
   onPress: () => void;
   onMovement?: (item: Item) => void;
+  onEdit?: (item: Item) => void;
 }
 
-export const ItemCard: React.FC<ItemCardProps> = ({ item, onPress, onMovement }) => {
+export const ItemCard: React.FC<ItemCardProps> = ({ item, onPress, onMovement, onEdit }) => {
   const { theme, isDark } = useTheme();
 
   const getStatusBadge = (status: ItemStatus) => {
@@ -43,10 +44,11 @@ export const ItemCard: React.FC<ItemCardProps> = ({ item, onPress, onMovement })
     : item.local?.caminho_completo || item.local?.nome || 'Sem Local Definido';
   const subgroupName = item.subgrupo?.nome || 'Geral';
 
-  // Cálculo da taxa de estoque para a mini barra tática
-  const stockRatio = item.quantidade_minima > 0
-    ? Math.min(1.0, Math.max(0.08, item.quantidade / (item.quantidade_minima * 2.5)))
-    : item.quantidade > 0 ? 0.95 : 0.0;
+  // Barra de nível de estoque apenas para materiais a granel com quantidade > 1 e estoque mínimo configurado
+  const showStockBar = item.tipo_controle === 'GRANEL' && item.quantidade > 1 && item.quantidade_minima > 0;
+  const stockRatio = showStockBar
+    ? Math.min(1.0, Math.max(0.05, item.quantidade / (item.quantidade_minima * 2)))
+    : 0;
   const isLowStock = item.tipo_controle === 'GRANEL' && item.quantidade <= item.quantidade_minima;
   const manutencao = item.caracteristicas?.manutencao;
   const isConsertado = manutencao?.status_etapa === 'CONSERTADO';
@@ -175,9 +177,9 @@ export const ItemCard: React.FC<ItemCardProps> = ({ item, onPress, onMovement })
         </View>
       ) : null}
 
-      {/* 3. Micro-Bento Grid: Localização, Categoria e Barra de Nível */}
+      {/* 3. Micro-Bento Grid: Localização e Categoria */}
       <View style={[styles.bentoGrid, { backgroundColor: isDark ? '#0E1422' : '#F8FAFC' }]}>
-        <View style={styles.metaRow}>
+        <View style={[styles.metaRow, { marginBottom: showStockBar ? 6 : 0 }]}>
           <View style={styles.metaItem}>
             <MapPin size={13} color={isSetor ? '#8B5CF6' : theme.primary} />
             <Text style={[styles.metaText, { color: theme.textSecondary }]} numberOfLines={1}>
@@ -193,29 +195,45 @@ export const ItemCard: React.FC<ItemCardProps> = ({ item, onPress, onMovement })
           </View>
         </View>
 
-        {/* Barra de Nível de Estoque */}
-        <View style={styles.stockLevelWrap}>
-          <View style={[styles.stockTrack, { backgroundColor: isDark ? '#1C263B' : '#E2E8F0' }]}>
-            <View
-              style={[
-                styles.stockFill,
-                {
-                  width: `${Math.round(stockRatio * 100)}%`,
-                  backgroundColor: isLowStock
-                    ? theme.danger
-                    : theme.primary,
-                },
-              ]}
-            />
+        {/* Barra de Nível de Estoque (apenas para itens a granel com quantidade > 1 e estoque mínimo configurado) */}
+        {showStockBar && (
+          <View style={styles.stockLevelWrap}>
+            <View style={[styles.stockTrack, { backgroundColor: isDark ? '#1C263B' : '#E2E8F0' }]}>
+              <View
+                style={[
+                  styles.stockFill,
+                  {
+                    width: `${Math.round(stockRatio * 100)}%`,
+                    backgroundColor: isLowStock ? theme.danger : theme.primary,
+                  },
+                ]}
+              />
+            </View>
+            <Text style={[styles.stockRatioText, { color: theme.textMuted }]}>
+              {isLowStock ? 'Baixo' : `${Math.round(stockRatio * 100)}%`}
+            </Text>
           </View>
-          <Text style={[styles.stockRatioText, { color: theme.textMuted }]}>
-            {isLowStock ? 'Baixo' : `${Math.round(stockRatio * 100)}%`}
-          </Text>
-        </View>
+        )}
       </View>
 
       {/* 4. Barra de Ações Rápidas (1 Toque) */}
       <View style={[styles.quickActionsBar, { borderTopColor: theme.border }]}>
+        {onEdit && (
+          <TouchableOpacity
+            style={[styles.quickActionBtn, { backgroundColor: isDark ? '#0E1422' : '#F1F5F9' }]}
+            onPress={() => onEdit(item)}
+            activeOpacity={0.7}
+            hitSlop={HIT_SLOP_ACTION}
+            accessibilityRole="button"
+            accessibilityLabel="Editar este material"
+          >
+            <Pencil size={13} color={theme.primary} />
+            <Text style={[styles.quickActionBtnText, { color: theme.primary }]}>
+              Editar
+            </Text>
+          </TouchableOpacity>
+        )}
+
         {onMovement && (
           <TouchableOpacity
             style={[styles.quickActionBtn, { backgroundColor: isDark ? '#0E1422' : '#F1F5F9' }]}
@@ -225,8 +243,8 @@ export const ItemCard: React.FC<ItemCardProps> = ({ item, onPress, onMovement })
             accessibilityRole="button"
             accessibilityLabel="Transferir localização deste material"
           >
-            <ArrowRightLeft size={13} color={theme.primary} />
-            <Text style={[styles.quickActionBtnText, { color: theme.primary }]}>
+            <ArrowRightLeft size={13} color={onEdit ? theme.textSecondary : theme.primary} />
+            <Text style={[styles.quickActionBtnText, { color: onEdit ? theme.textSecondary : theme.primary }]}>
               Transferir
             </Text>
           </TouchableOpacity>

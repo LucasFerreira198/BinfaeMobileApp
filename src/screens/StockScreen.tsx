@@ -20,6 +20,7 @@ import { ItemCard } from '../components/ItemCard';
 import { ItemDetailModal } from '../components/ItemDetailModal';
 import { MovementModal } from '../components/MovementModal';
 import { AddItemModal } from '../components/AddItemModal';
+import { EditItemModal } from '../components/EditItemModal';
 import { AdvancedFilterModal } from '../components/AdvancedFilterModal';
 import { LocationsModal } from '../components/LocationsModal';
 import { Item } from '../types';
@@ -48,6 +49,8 @@ export const StockScreen: React.FC = () => {
   const [addItemVisible, setAddItemVisible] = useState<boolean>(false);
   const [filterModalVisible, setFilterModalVisible] = useState<boolean>(false);
   const [locationsModalVisible, setLocationsModalVisible] = useState<boolean>(false);
+  const [editItem, setEditItem] = useState<Item | null>(null);
+  const [editModalVisible, setEditModalVisible] = useState<boolean>(false);
 
   // Local ativo para contextualizar mensagem de vazio e barra de filtro
   const activeLocation =
@@ -85,6 +88,11 @@ export const StockScreen: React.FC = () => {
   const handleOpenMovement = useCallback((item: Item) => {
     setSelectedItem(item);
     setMovementVisible(true);
+  }, []);
+
+  const handleOpenEdit = useCallback((item: Item) => {
+    setEditItem(item);
+    setEditModalVisible(true);
   }, []);
 
   const handleDeleteItem = useCallback((item: Item) => {
@@ -130,9 +138,10 @@ export const StockScreen: React.FC = () => {
         item={item}
         onPress={() => handleOpenDetail(item)}
         onMovement={(item) => handleOpenMovement(item)}
+        onEdit={(item) => handleOpenEdit(item)}
       />
     ),
-    [handleOpenDetail, handleOpenMovement]
+    [handleOpenDetail, handleOpenMovement, handleOpenEdit]
   );
 
   const keyExtractor = useCallback((item: Item) => item.id.toString(), []);
@@ -265,6 +274,19 @@ export const StockScreen: React.FC = () => {
         visible={addItemVisible}
         onClose={() => setAddItemVisible(false)}
       />
+
+      {/* Modal de Edição de Material */}
+      {editItem && (
+        <EditItemModal
+          item={editItem}
+          visible={editModalVisible}
+          onClose={() => {
+            setEditModalVisible(false);
+            setEditItem(null);
+          }}
+          onSuccess={() => syncData(false)}
+        />
+      )}
 
       {/* Modal de Filtros Avançados */}
       <AdvancedFilterModal
