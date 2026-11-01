@@ -37,9 +37,11 @@ jobs:
 
       - name: Prepare Keystore
         run: |
-          if [ -f "release.keystore" ]; then
-            cp release.keystore android/app/release.keystore
+          if [ -n "${{ secrets.RELEASE_KEYSTORE_BASE64 }}" ]; then
+            echo "${{ secrets.RELEASE_KEYSTORE_BASE64 }}" | base64 --decode > android/app/release.keystore
           fi
+        env:
+          RELEASE_KEYSTORE_BASE64: ${{ secrets.RELEASE_KEYSTORE_BASE64 }}
 
       - name: Build Android Release APK
         run: |

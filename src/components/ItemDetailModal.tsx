@@ -129,8 +129,48 @@ const ItemDetailModalContent: React.FC<ItemDetailModalProps> = ({
     }
   };
 
-  const { deleteItem } = useStock();
+  const { deleteItem, syncData } = useStock();
   const [isDeleting, setIsDeleting] = useState<boolean>(false);
+  const [isReturning, setIsReturning] = useState<boolean>(false);
+
+  const handleDevolverMaterial = async () => {
+    if (!item) return;
+    const cautelaId = (item.cautela_ativa as any)?.cautela_id || (item.cautela_ativa as any)?.id;
+    if (!cautelaId) {
+      Alert.alert(
+        'Identificação da Cautela',
+        'Não foi possível localizar o identificador da missão/cautela para efetuar a devolução direta.'
+      );
+      return;
+    }
+
+    Alert.alert(
+      'Devolução de Material',
+      `Confirmar a devolução do material "${item.nome}" para o estoque disponível?`,
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Confirmar Devolução',
+          onPress: async () => {
+            setIsReturning(true);
+            try {
+              await api.devolverItemCautela(cautelaId, item.id);
+              await syncData();
+              try {
+                await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+              } catch {}
+              Alert.alert('Sucesso', 'Material devolvido ao estoque com sucesso!');
+              onClose();
+            } catch (err: any) {
+              Alert.alert('Erro ao devolver', err.message || 'Falha ao processar devolução.');
+            } finally {
+              setIsReturning(false);
+            }
+          },
+        },
+      ]
+    );
+  };
 
   const handleDeleteItem = () => {
     if (!item) return;
@@ -193,6 +233,7 @@ const ItemDetailModalContent: React.FC<ItemDetailModalProps> = ({
   const isMaintenance = item.status === 'EM_MANUTENCAO';
   const maintInfo = (item.caracteristicas as any)?.manutencao;
   const isRepaired = isMaintenance && maintInfo?.status_etapa === 'CONSERTADO';
+  const isCautelado = item.status === 'CAUTELADO' || Boolean(item.cautela_ativa);
 
   const getMovementBadge = (tipo: string) => {
     switch (tipo) {
@@ -985,6 +1026,24 @@ const ItemDetailModalContent: React.FC<ItemDetailModalProps> = ({
                   </>
                 )}
               </View>
+            ) : isCautelado ? (
+              <View style={styles.footerBtnGroup}>
+                <TouchableOpacity
+                  style={[styles.footerBtn, { backgroundColor: '#10B981', flex: 1 }]}
+                  onPress={handleDevolverMaterial}
+                  disabled={isReturning}
+                  activeOpacity={0.8}
+                >
+                  {isReturning ? (
+                    <ActivityIndicator size="small" color="#FFFFFF" />
+                  ) : (
+                    <>
+                      <RotateCcw size={18} color="#FFFFFF" />
+                      <Text style={styles.footerBtnText}>Devolver Material Cautelado</Text>
+                    </>
+                  )}
+                </TouchableOpacity>
+              </View>
             ) : (
               <View style={styles.footerBtnGroup}>
                 <TouchableOpacity
@@ -1013,28 +1072,30 @@ const ItemDetailModalContent: React.FC<ItemDetailModalProps> = ({
               </View>
             )}
 
-            {/* Botão de Exclusão Direto no Rodapé */}
-            <TouchableOpacity
-              style={[
-                styles.deleteFooterBtn,
-                {
-                  backgroundColor: 'rgba(239, 68, 68, 0.1)',
-                  borderColor: 'rgba(239, 68, 68, 0.35)',
-                },
-              ]}
-              onPress={handleDeleteItem}
-              disabled={isDeleting}
-              activeOpacity={0.7}
-            >
-              {isDeleting ? (
-                <ActivityIndicator size="small" color="#EF4444" />
-              ) : (
-                <>
-                  <Trash2 size={16} color="#EF4444" />
-                  <Text style={styles.deleteFooterBtnText}>Excluir Este Material do Estoque</Text>
-                </>
-              )}
-            </TouchableOpacity>
+            {/* Botão de Exclusão Direto no Rodapé (Oculto se cautelado ou em manutenção) */}
+            {!isCautelado && !isMaintenance && (
+              <TouchableOpacity
+                style={[
+                  styles.deleteFooterBtn,
+                  {
+                    backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                    borderColor: 'rgba(239, 68, 68, 0.35)',
+                  },
+                ]}
+                onPress={handleDeleteItem}
+                disabled={isDeleting}
+                activeOpacity={0.7}
+              >
+                {isDeleting ? (
+                  <ActivityIndicator size="small" color="#EF4444" />
+                ) : (
+                  <>
+                    <Trash2 size={16} color="#EF4444" />
+                    <Text style={styles.deleteFooterBtnText}>Excluir Este Material do Estoque</Text>
+                  </>
+                )}
+              </TouchableOpacity>
+            )}
           </View>
         </View>
       </View>

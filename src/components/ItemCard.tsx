@@ -7,10 +7,9 @@ import { MapPin, Folder, ChevronRight, Hash, Trash2 } from 'lucide-react-native'
 interface ItemCardProps {
   item: Item;
   onPress: () => void;
-  onDelete?: () => void;
 }
 
-export const ItemCard: React.FC<ItemCardProps> = ({ item, onPress, onDelete }) => {
+export const ItemCard: React.FC<ItemCardProps> = ({ item, onPress }) => {
   const { theme } = useTheme();
 
   const getStatusBadge = (status: ItemStatus) => {
@@ -159,19 +158,6 @@ export const ItemCard: React.FC<ItemCardProps> = ({ item, onPress, onDelete }) =
         </View>
 
         <View style={styles.actionWrap}>
-          {onDelete && (
-            <TouchableOpacity
-              onPress={(e) => {
-                e.stopPropagation?.();
-                onDelete();
-              }}
-              style={[styles.trashCardBtn, { backgroundColor: theme.dangerBg }]}
-              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-              accessibilityLabel="Excluir Material"
-            >
-              <Trash2 size={13} color={theme.danger} />
-            </TouchableOpacity>
-          )}
           <Text style={[styles.detailsText, { color: theme.primary }]}>Detalhes</Text>
           <ChevronRight size={14} color={theme.primary} />
         </View>

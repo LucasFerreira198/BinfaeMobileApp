@@ -160,8 +160,18 @@ const AppNavigatorInner: React.FC<{
 export const AppNavigator: React.FC = () => {
   const { theme } = useTheme();
   const { user, isAuthenticated, isLoading } = useAuth();
-  const [activeScreen, setActiveScreen] = useState<ScreenType>('stock');
+  const [screenHistory, setScreenHistory] = useState<ScreenType[]>(['stock']);
+  const activeScreen = screenHistory[screenHistory.length - 1] || 'stock';
   const [mandatoryUpdateVisible, setMandatoryUpdateVisible] = useState<boolean>(false);
+
+  const navigateToScreen = (screen: ScreenType) => {
+    if (screen === activeScreen) return;
+    setScreenHistory((prev) => {
+      // Evita duplicatas consecutivas
+      if (prev[prev.length - 1] === screen) return prev;
+      return [...prev, screen];
+    });
+  };
 
   // Verificação Crítica de Inicialização (Hard Update Obrigatório)
   useEffect(() => {
@@ -189,27 +199,30 @@ export const AppNavigator: React.FC = () => {
     checkCriticalUpdate();
   }, []);
 
-  // Se o usuário perder privilégios admin e estiver na tela admin, volta para stock
+  // Se o usuário perder privilégios admin e estiver na tela admin, remove do histórico
   useEffect(() => {
     if (activeScreen === 'admin' && !user?.admin) {
-      setActiveScreen('stock');
+      setScreenHistory((prev) => {
+        const filtered = prev.filter((s) => s !== 'admin');
+        return filtered.length > 0 ? filtered : ['stock'];
+      });
     }
   }, [user?.admin, activeScreen]);
 
-  // Gerenciamento completo do botão de voltar físico do Android
+  // Gerenciamento completo do botão de voltar físico do Android com histórico em pilha
   useEffect(() => {
     if (!isAuthenticated) return;
 
     const backAction = () => {
       if (mandatoryUpdateVisible) return true;
 
-      // Se estiver em outra tela, volta para a tela inicial de Materiais
-      if (activeScreen !== 'stock') {
-        setActiveScreen('stock');
+      // Se houver telas no histórico, desempilha para a tela anterior
+      if (screenHistory.length > 1) {
+        setScreenHistory((prev) => prev.slice(0, prev.length - 1));
         return true; // interceptou o evento
       }
 
-      // Se já estiver na tela inicial, confirma antes de sair
+      // Se já estiver na raiz do histórico, confirma antes de fechar o app
       Alert.alert('Sair do Aplicativo', 'Deseja realmente fechar o Binfae Mobile?', [
         { text: 'Não', style: 'cancel' },
         { text: 'Sim', onPress: () => BackHandler.exitApp() },
@@ -219,7 +232,7 @@ export const AppNavigator: React.FC = () => {
 
     const handler = BackHandler.addEventListener('hardwareBackPress', backAction);
     return () => handler.remove();
-  }, [activeScreen, isAuthenticated, mandatoryUpdateVisible]);
+  }, [screenHistory, isAuthenticated, mandatoryUpdateVisible]);
 
   if (isLoading) {
     return (
@@ -236,8 +249,8 @@ export const AppNavigator: React.FC = () => {
   }
 
   return (
-    <DrawerProvider activeScreen={activeScreen} onNavigate={setActiveScreen}>
-      <AppNavigatorInner activeScreen={activeScreen} setActiveScreen={setActiveScreen} />
+    <DrawerProvider activeScreen={activeScreen} onNavigate={navigateToScreen}>
+      <AppNavigatorInner activeScreen={activeScreen} setActiveScreen={navigateToScreen} />
 
       {/* Modal de Atualização Obrigatória (Hard Update) */}
       <UpdateModal

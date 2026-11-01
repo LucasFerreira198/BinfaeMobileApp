@@ -530,6 +530,8 @@ export const CautelasScreen: React.FC<CautelasScreenProps> = () => {
 
   // Submissão do formulário de cautela
   const submitAddMaterials = async () => {
+    if (isSubmittingCautela) return;
+
     if (!selectedCautela || !selectedMilitary) {
       Alert.alert('Atenção', 'Selecione o militar responsável pelo material.');
       return;

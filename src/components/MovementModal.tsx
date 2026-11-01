@@ -170,13 +170,15 @@ const MovementModalContent: React.FC<MovementModalProps> = ({
   }, [allLocations]);
 
   const handleSubmit = async () => {
-    const qty = parseFloat(quantidade);
+    if (isSubmitting) return;
+
+    const qty = parseFloat(quantidade.replace(',', '.'));
     if (isNaN(qty) || qty <= 0) {
       Alert.alert('Quantidade inválida', 'Informe uma quantidade válida maior que zero.');
       return;
     }
 
-    if (qty > item.quantidade && item.tipo_controle === 'UNITARIO') {
+    if (qty > item.quantidade) {
       Alert.alert('Quantidade indisponível', `O saldo atual deste material é ${item.quantidade}.`);
       return;
     }

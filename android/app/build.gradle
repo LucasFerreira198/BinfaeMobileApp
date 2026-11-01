@@ -124,14 +124,14 @@ android {
         release {
             if (project.hasProperty('MYAPP_UPLOAD_STORE_FILE')) {
                 storeFile file(MYAPP_UPLOAD_STORE_FILE)
-                storePassword MYAPP_UPLOAD_STORE_PASSWORD
-                keyAlias MYAPP_UPLOAD_KEY_ALIAS
-                keyPassword MYAPP_UPLOAD_KEY_PASSWORD
-            } else if (file('release.keystore').exists()) {
-                storeFile file('release.keystore')
-                storePassword 'binfae123456'
-                keyAlias 'binfae-key'
-                keyPassword 'binfae123456'
+                storePassword project.findProperty('MYAPP_UPLOAD_STORE_PASSWORD') ?: System.getenv('MYAPP_UPLOAD_STORE_PASSWORD') ?: ''
+                keyAlias project.findProperty('MYAPP_UPLOAD_KEY_ALIAS') ?: System.getenv('MYAPP_UPLOAD_KEY_ALIAS') ?: ''
+                keyPassword project.findProperty('MYAPP_UPLOAD_KEY_PASSWORD') ?: System.getenv('MYAPP_UPLOAD_KEY_PASSWORD') ?: ''
+            } else if (System.getenv('KEYSTORE_FILE') && file(System.getenv('KEYSTORE_FILE')).exists()) {
+                storeFile file(System.getenv('KEYSTORE_FILE'))
+                storePassword System.getenv('KEYSTORE_PASSWORD') ?: ''
+                keyAlias System.getenv('KEY_ALIAS') ?: ''
+                keyPassword System.getenv('KEY_PASSWORD') ?: ''
             } else {
                 storeFile file('debug.keystore')
                 storePassword 'android'

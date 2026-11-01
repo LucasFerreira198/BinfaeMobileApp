@@ -88,6 +88,8 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
   }, [visible, onClose]);
 
   const handleSubmit = async () => {
+    if (isSubmitting) return;
+
     if (!nome.trim()) {
       Alert.alert('Campo obrigatório', 'Informe o nome ou modelo do material.');
       return;

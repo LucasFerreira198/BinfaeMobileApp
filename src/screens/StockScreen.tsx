@@ -129,10 +129,9 @@ export const StockScreen: React.FC = () => {
       <ItemCard
         item={item}
         onPress={() => handleOpenDetail(item)}
-        onDelete={() => handleDeleteItem(item)}
       />
     ),
-    [handleOpenDetail, handleDeleteItem]
+    [handleOpenDetail]
   );
 
   const keyExtractor = useCallback((item: Item) => item.id.toString(), []);
