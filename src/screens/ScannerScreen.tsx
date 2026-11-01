@@ -6,6 +6,7 @@ import {
   TouchableOpacity,
   Alert,
   Dimensions,
+  ActivityIndicator,
 } from 'react-native';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import * as Haptics from 'expo-haptics';
@@ -26,17 +27,19 @@ export const ScannerScreen: React.FC = () => {
   const [permission, requestPermission] = useCameraPermissions();
 
   const [scanned, setScanned] = useState<boolean>(false);
+  const [isVerifying, setIsVerifying] = useState<boolean>(false);
   const [torchEnabled, setTorchEnabled] = useState<boolean>(false);
   const [matchedItem, setMatchedItem] = useState<Item | null>(null);
   const [detailVisible, setDetailVisible] = useState<boolean>(false);
   const [movementVisible, setMovementVisible] = useState<boolean>(false);
 
   const handleBarcodeScanned = async ({ data }: { data: string }) => {
-    if (scanned) return;
+    if (scanned || isVerifying) return;
     setScanned(true);
+    setIsVerifying(true);
 
     try {
-      await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     } catch {}
 
     const cleanData = data.trim();
@@ -67,6 +70,7 @@ export const ScannerScreen: React.FC = () => {
     // 3. Checa se o material está sob cautela ativa
     try {
       const cautelaStatus = await api.checkItemCautelaStatus(cleanData);
+      setIsVerifying(false);
       if (cautelaStatus && cautelaStatus.cautelado) {
         const c = cautelaStatus.cautela;
         const mil = cautelaStatus.militar || c?.militar || (cautelaStatus as any).militar_responsavel;
@@ -122,7 +126,11 @@ export const ScannerScreen: React.FC = () => {
         );
         return;
       }
-    } catch (_) {}
+    } catch (_) {
+      setIsVerifying(false);
+    } finally {
+      setIsVerifying(false);
+    }
 
     if (found) {
       setMatchedItem(found);
@@ -192,6 +200,13 @@ export const ScannerScreen: React.FC = () => {
             <View style={[styles.corner, styles.cornerTR]} />
             <View style={[styles.corner, styles.cornerBL]} />
             <View style={[styles.corner, styles.cornerBR]} />
+
+            {isVerifying ? (
+              <View style={styles.verifyingOverlay}>
+                <ActivityIndicator size="large" color="#00F0FF" />
+                <Text style={styles.verifyingText}>Consultando inventário...</Text>
+              </View>
+            ) : null}
           </View>
           <View style={styles.sideMask} />
         </View>
@@ -329,7 +344,24 @@ const styles = StyleSheet.create({
     position: 'absolute',
     width: 24,
     height: 24,
-    borderColor: '#6366F1',
+    borderColor: '#00F0FF',
+  },
+  verifyingOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(10, 15, 29, 0.85)',
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+    padding: 16,
+    zIndex: 10,
+  },
+  verifyingText: {
+    color: '#00F0FF',
+    fontSize: 13,
+    fontWeight: '700',
+    textAlign: 'center',
+    letterSpacing: 0.3,
   },
   cornerTL: {
     top: 0,

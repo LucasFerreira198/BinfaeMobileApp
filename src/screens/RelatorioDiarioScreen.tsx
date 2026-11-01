@@ -52,6 +52,8 @@ import {
   ShieldCheck,
   ArrowLeft,
   RefreshCw,
+  Sparkles,
+  Plus,
 } from 'lucide-react-native';
 
 const getActiveServiceDate = (): Date => {
@@ -72,6 +74,14 @@ const formatDateYMD = (d: Date): string => {
   const day = String(d.getDate()).padStart(2, '0');
   return `${y}-${m}-${day}`;
 };
+
+const QUICK_SUGGESTIONS = [
+  'Sem alterações nas instalações durante o quarto de serviço.',
+  'Ronda técnica realizada em todos os servidores e switches sem avarias.',
+  'Equipamentos em bancada aguardando chegada de peças de reposição.',
+  'Atendimento e suporte técnico aos setores do BINF-AE concluídos com êxito.',
+  'Passagem de serviço realizada sem pendências operacionais pendentes.',
+];
 
 interface OcorrenciasEditorProps {
   initialValue: string;
@@ -319,6 +329,14 @@ export const RelatorioDiarioScreen: React.FC = () => {
       saveLocalDraftOcorrencias(currentDay, text);
     }, 400);
   }, []);
+
+  const handleApplySuggestion = useCallback((sug: string) => {
+    const current = currentOcorrenciasRef.current || '';
+    const updated = current.trim()
+      ? `${current.trim()}\n• ${sug}`
+      : `• ${sug}`;
+    handleOcorrenciasChange(updated);
+  }, [handleOcorrenciasChange]);
 
   const handleSalvarRascunho = async () => {
     if (!relatorio?.id) return;
@@ -856,6 +874,42 @@ export const RelatorioDiarioScreen: React.FC = () => {
             OCORRÊNCIAS REGISTRADAS PELO MILITAR DE SERVIÇO
           </Text>
 
+          {!isLancado && (
+            <View style={styles.suggestionsContainer}>
+              <View style={styles.suggestionsHeader}>
+                <Sparkles size={13} color={theme.primary} />
+                <Text style={[styles.suggestionsLabel, { color: theme.primary }]}>
+                  Sugestões Rápidas de Ocorrência (Toque para Inserir)
+                </Text>
+              </View>
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.suggestionsScroll}
+              >
+                {QUICK_SUGGESTIONS.map((sug, idx) => (
+                  <TouchableOpacity
+                    key={idx}
+                    style={[
+                      styles.suggestionChip,
+                      { backgroundColor: theme.surfaceVariant, borderColor: theme.border },
+                    ]}
+                    onPress={() => handleApplySuggestion(sug)}
+                    activeOpacity={0.7}
+                    hitSlop={{ top: 8, bottom: 8, left: 6, right: 6 }}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Inserir ocorrência: ${sug}`}
+                  >
+                    <Plus size={12} color={theme.primary} />
+                    <Text style={[styles.suggestionChipText, { color: theme.text }]}>
+                      {sug}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+            </View>
+          )}
+
           <OcorrenciasEditor
             key={`editor-${activeDateStr}`}
             initialValue={ocorrencias}
@@ -1098,6 +1152,39 @@ const styles = StyleSheet.create({
   itemDetailSub: {
     fontSize: 12,
     marginTop: 2,
+  },
+  suggestionsContainer: {
+    marginBottom: 10,
+    gap: 6,
+  },
+  suggestionsHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginLeft: 2,
+  },
+  suggestionsLabel: {
+    fontSize: 12,
+    fontWeight: '700',
+    letterSpacing: 0.3,
+  },
+  suggestionsScroll: {
+    gap: 8,
+    paddingVertical: 4,
+  },
+  suggestionChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 18,
+    borderWidth: StyleSheet.hairlineWidth,
+    maxWidth: 320,
+  },
+  suggestionChipText: {
+    fontSize: 12,
+    fontWeight: '500',
   },
   ocorrenciasBox: {
     borderRadius: 12,

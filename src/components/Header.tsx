@@ -15,6 +15,8 @@ interface HeaderProps {
   onBack?: () => void;
 }
 
+const HIT_SLOP_EXPAND = { top: 10, bottom: 10, left: 10, right: 10 };
+
 export const Header: React.FC<HeaderProps> = ({
   title,
   subtitle,
@@ -55,8 +57,9 @@ export const Header: React.FC<HeaderProps> = ({
           <TouchableOpacity
             style={[styles.menuButton, { backgroundColor: theme.surfaceVariant }]}
             onPress={handleBack}
+            accessibilityRole="button"
             accessibilityLabel="Voltar para materiais"
-            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            hitSlop={HIT_SLOP_EXPAND}
           >
             <ArrowLeft size={20} color={theme.text} />
           </TouchableOpacity>
@@ -64,8 +67,9 @@ export const Header: React.FC<HeaderProps> = ({
           <TouchableOpacity
             style={[styles.menuButton, { backgroundColor: theme.surfaceVariant }]}
             onPress={openDrawer}
+            accessibilityRole="button"
             accessibilityLabel="Abrir menu lateral"
-            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            hitSlop={HIT_SLOP_EXPAND}
           >
             <Menu size={20} color={theme.text} />
           </TouchableOpacity>
@@ -87,7 +91,9 @@ export const Header: React.FC<HeaderProps> = ({
             style={[styles.actionButton, { backgroundColor: theme.surfaceVariant }]}
             onPress={() => syncData(true)}
             disabled={isSyncing}
+            accessibilityRole="button"
             accessibilityLabel="Sincronizar dados"
+            hitSlop={HIT_SLOP_EXPAND}
           >
             {isSyncing ? (
               <ActivityIndicator size="small" color={theme.primary} />
@@ -100,7 +106,9 @@ export const Header: React.FC<HeaderProps> = ({
         <TouchableOpacity
           style={[styles.actionButton, { backgroundColor: theme.surfaceVariant }]}
           onPress={toggleTheme}
+          accessibilityRole="button"
           accessibilityLabel="Alternar tema"
+          hitSlop={HIT_SLOP_EXPAND}
         >
           {isDark ? (
             <Sun size={18} color="#FBBF24" />
@@ -111,8 +119,10 @@ export const Header: React.FC<HeaderProps> = ({
 
         <TouchableOpacity
           onPress={openDrawer}
+          accessibilityRole="button"
           accessibilityLabel="Abrir perfil e menu"
           activeOpacity={0.8}
+          hitSlop={HIT_SLOP_EXPAND}
           style={{ marginLeft: 2 }}
         >
           <UserAvatar user={user} size={34} showBorder={true} />

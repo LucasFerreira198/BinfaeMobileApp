@@ -122,6 +122,8 @@ export const DrawerMenu: React.FC = () => {
                 onPress={closeDrawer}
                 style={[styles.closeBtn, { backgroundColor: theme.surfaceVariant }]}
                 hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                accessibilityRole="button"
+                accessibilityLabel="Fechar menu lateral"
               >
                 <X size={18} color={theme.text} />
               </TouchableOpacity>

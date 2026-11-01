@@ -189,6 +189,9 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
             <TouchableOpacity
               onPress={onClose}
               style={[styles.closeBtn, { backgroundColor: theme.surfaceVariant }]}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              accessibilityRole="button"
+              accessibilityLabel="Fechar modal de cadastro"
             >
               <X size={18} color={theme.text} />
             </TouchableOpacity>
@@ -516,9 +519,9 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   closeBtn: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -539,7 +542,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     borderWidth: 1,
     paddingHorizontal: 12,
-    height: 46,
+    height: 48,
     justifyContent: 'center',
   },
   textAreaBox: {
@@ -558,8 +561,9 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   chip: {
-    paddingHorizontal: 12,
-    paddingVertical: 7,
+    paddingHorizontal: 14,
+    paddingVertical: 9,
+    minHeight: 38,
     borderRadius: 8,
     borderWidth: StyleSheet.hairlineWidth,
     marginRight: 8,

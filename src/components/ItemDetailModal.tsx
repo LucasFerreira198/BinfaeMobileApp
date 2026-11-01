@@ -452,6 +452,7 @@ const ItemDetailModalContent: React.FC<ItemDetailModalProps> = ({
                 disabled={isDeleting}
                 style={[styles.closeBtn, { backgroundColor: theme.dangerBg }]}
                 hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                accessibilityRole="button"
                 accessibilityLabel="Excluir Material"
               >
                 {isDeleting ? (
@@ -465,6 +466,8 @@ const ItemDetailModalContent: React.FC<ItemDetailModalProps> = ({
                 onPress={onClose}
                 style={[styles.closeBtn, { backgroundColor: theme.surfaceVariant }]}
                 hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                accessibilityRole="button"
+                accessibilityLabel="Fechar detalhes do material"
               >
                 <X size={20} color={theme.text} />
               </TouchableOpacity>

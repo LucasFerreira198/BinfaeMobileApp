@@ -222,20 +222,22 @@ export const StockScreen: React.FC = () => {
         }
       />
 
-      {/* Botão Flutuante (FAB) para Adicionar Material */}
+      {/* Botão Flutuante (FAB) Material 3 para Adicionar Material na Zona do Polegar */}
       <TouchableOpacity
         style={[
           styles.fab,
           {
             backgroundColor: theme.primary,
-            bottom: Math.max(insets.bottom, 16) + 16,
+            bottom: Math.max(insets.bottom, 16) + 68,
           },
         ]}
         onPress={() => setAddItemVisible(true)}
         activeOpacity={0.85}
-        accessibilityLabel="Adicionar novo material"
+        accessibilityRole="button"
+        accessibilityLabel="Adicionar novo material patrimonial"
       >
-        <Plus size={24} color="#FFFFFF" />
+        <Plus size={20} color="#0A0F1D" strokeWidth={2.5} />
+        <Text style={styles.fabText}>Novo Material</Text>
       </TouchableOpacity>
 
       {/* Modal de Detalhes Completo */}
@@ -313,17 +315,25 @@ const styles = StyleSheet.create({
   },
   fab: {
     position: 'absolute',
-    right: 20,
-    width: 56,
-    height: 56,
-    borderRadius: 28,
+    right: 16,
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#4F46E5',
+    gap: 8,
+    paddingHorizontal: 18,
+    height: 52,
+    borderRadius: 16,
+    shadowColor: '#000000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.35,
     shadowRadius: 8,
     elevation: 6,
+    zIndex: 99,
+  },
+  fabText: {
+    color: '#0A0F1D',
+    fontSize: 14,
+    fontWeight: '700',
+    letterSpacing: 0.2,
   },
   activeLocBar: {
     flexDirection: 'row',
@@ -357,7 +367,7 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     borderRadius: 12,
     marginTop: 18,
-    shadowColor: '#4F46E5',
+    shadowColor: '#000000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.2,
     shadowRadius: 4,
