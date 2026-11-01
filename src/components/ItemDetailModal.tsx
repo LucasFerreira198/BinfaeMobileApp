@@ -231,7 +231,7 @@ const ItemDetailModalContent: React.FC<ItemDetailModalProps> = ({
   const itemControl = item.tipo_controle || 'UNITARIO';
   const itemMinQty = item.quantidade_minima !== undefined && item.quantidade_minima !== null ? item.quantidade_minima : 0;
   const isMaintenance = item.status === 'EM_MANUTENCAO';
-  const maintInfo = (item.caracteristicas as any)?.manutencao;
+  const maintInfo = item.caracteristicas?.manutencao;
   const isRepaired = isMaintenance && maintInfo?.status_etapa === 'CONSERTADO';
   const isCautelado = item.status === 'CAUTELADO' || Boolean(item.cautela_ativa);
 

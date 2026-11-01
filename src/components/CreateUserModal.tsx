@@ -20,6 +20,7 @@ import { useTheme } from '../context/ThemeContext';
 import { useKeyboardHeight } from '../hooks/useKeyboardHeight';
 import { api } from '../api/client';
 import { Military } from '../types';
+import { isValidSaram, cleanSaram } from '../utils/militaryConstants';
 import { X, UserPlus, Shield, User, Lock, IdCard, Search, Check } from 'lucide-react-native';
 
 interface CreateUserModalProps {
@@ -98,9 +99,11 @@ export const CreateUserModal: React.FC<CreateUserModalProps> = ({
   if (!visible) return null;
 
   const handleSubmit = async () => {
-    if (mode === 'militar' && !selectedSaram.trim()) {
-      Alert.alert('SARAM Obrigatório', 'Por favor, informe o SARAM do militar para vincular.');
-      return;
+    if (mode === 'militar') {
+      if (!isValidSaram(selectedSaram)) {
+        Alert.alert('SARAM Inválido', 'Por favor, selecione ou informe um SARAM válido (5 a 7 dígitos numéricos).');
+        return;
+      }
     }
 
     if (mode === 'avulso' && !username.trim()) {
@@ -116,12 +119,7 @@ export const CreateUserModal: React.FC<CreateUserModalProps> = ({
     setSubmitting(true);
     try {
       if (mode === 'militar') {
-        const saramNum = parseInt(selectedSaram.trim(), 10);
-        if (isNaN(saramNum)) {
-          Alert.alert('SARAM Inválido', 'O SARAM deve ser um número válido.');
-          setSubmitting(false);
-          return;
-        }
+        const saramNum = parseInt(cleanSaram(selectedSaram), 10);
 
         await api.createUser({
           saram: saramNum,

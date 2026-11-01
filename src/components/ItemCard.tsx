@@ -48,6 +48,8 @@ export const ItemCard: React.FC<ItemCardProps> = ({ item, onPress, onMovement })
     ? Math.min(1.0, Math.max(0.08, item.quantidade / (item.quantidade_minima * 2.5)))
     : item.quantidade > 0 ? 0.95 : 0.0;
   const isLowStock = item.tipo_controle === 'GRANEL' && item.quantidade <= item.quantidade_minima;
+  const manutencao = item.caracteristicas?.manutencao;
+  const isConsertado = manutencao?.status_etapa === 'CONSERTADO';
 
   return (
     <TouchableOpacity
@@ -141,45 +143,34 @@ export const ItemCard: React.FC<ItemCardProps> = ({ item, onPress, onMovement })
       ) : null}
 
       {/* Alerta de Manutenção em Andamento (se aplicável) */}
-      {item.status === 'EM_MANUTENCAO' && (item.caracteristicas as any)?.manutencao ? (
+      {item.status === 'EM_MANUTENCAO' && manutencao ? (
         <View
           style={[
             styles.maintCardBadge,
             {
-              backgroundColor:
-                (item.caracteristicas as any)?.manutencao?.status_etapa === 'CONSERTADO'
-                  ? 'rgba(16, 185, 129, 0.12)'
-                  : 'rgba(239, 68, 68, 0.12)',
-              borderColor:
-                (item.caracteristicas as any)?.manutencao?.status_etapa === 'CONSERTADO'
-                  ? 'rgba(16, 185, 129, 0.3)'
-                  : 'rgba(239, 68, 68, 0.3)',
+              backgroundColor: isConsertado
+                ? 'rgba(16, 185, 129, 0.12)'
+                : 'rgba(239, 68, 68, 0.12)',
+              borderColor: isConsertado
+                ? 'rgba(16, 185, 129, 0.3)'
+                : 'rgba(239, 68, 68, 0.3)',
             },
           ]}
         >
           <Wrench
             size={12}
-            color={
-              (item.caracteristicas as any)?.manutencao?.status_etapa === 'CONSERTADO'
-                ? '#10B981'
-                : '#EF4444'
-            }
+            color={isConsertado ? '#10B981' : '#EF4444'}
           />
           <Text
             style={[
               styles.maintCardBadgeText,
-              {
-                color:
-                  (item.caracteristicas as any)?.manutencao?.status_etapa === 'CONSERTADO'
-                    ? '#10B981'
-                    : '#EF4444',
-              },
+              { color: isConsertado ? '#10B981' : '#EF4444' },
             ]}
             numberOfLines={1}
           >
-            {(item.caracteristicas as any)?.manutencao?.status_etapa === 'CONSERTADO'
-              ? `CONSERTADO: ${(item.caracteristicas as any)?.manutencao?.laudo_reparo || 'Aguardando devolução'}`
-              : `DEFEITO: ${(item.caracteristicas as any)?.manutencao?.defeito || 'Em bancada técnica'}`}
+            {isConsertado
+              ? `CONSERTADO: ${manutencao.laudo_reparo || 'Aguardando devolução'}`
+              : `DEFEITO: ${manutencao.defeito || 'Em bancada técnica'}`}
           </Text>
         </View>
       ) : null}

@@ -1,4 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { setSecureItem, getSecureItem, multiRemoveSecure } from '../storage/secureStorage';
 import {
   User,
   Item,
@@ -31,7 +32,7 @@ export const clearAuthSession = async (): Promise<void> => {
   currentToken = null;
   currentRefreshToken = null;
   currentLoginTimestamp = null;
-  await AsyncStorage.multiRemove([TOKEN_KEY, REFRESH_TOKEN_KEY, LOGIN_TIMESTAMP_KEY, '@binfae_auth_user']);
+  await multiRemoveSecure([TOKEN_KEY, REFRESH_TOKEN_KEY, LOGIN_TIMESTAMP_KEY, '@binfae_auth_user']);
 };
 
 export const initApiClient = async (): Promise<void> => {
@@ -45,10 +46,10 @@ export const initApiClient = async (): Promise<void> => {
         await AsyncStorage.setItem(API_URL_KEY, DEFAULT_API_BASE);
       }
     }
-    currentLoginTimestamp = await AsyncStorage.getItem(LOGIN_TIMESTAMP_KEY);
+    currentLoginTimestamp = await getSecureItem(LOGIN_TIMESTAMP_KEY);
 
-    currentToken = await AsyncStorage.getItem(TOKEN_KEY);
-    currentRefreshToken = await AsyncStorage.getItem(REFRESH_TOKEN_KEY);
+    currentToken = await getSecureItem(TOKEN_KEY);
+    currentRefreshToken = await getSecureItem(REFRESH_TOKEN_KEY);
   } catch (err) {
     console.warn('Erro ao inicializar client API:', err);
   }
@@ -58,6 +59,17 @@ export const getApiBaseUrl = (): string => currentApiBase;
 
 export const setApiBaseUrl = async (url: string): Promise<void> => {
   const cleanUrl = url.trim().replace(/\/+$/, '');
+  const isSecure = cleanUrl.startsWith('https://');
+  const isPrivateTestIp =
+    cleanUrl.startsWith('http://10.') ||
+    cleanUrl.startsWith('http://192.168.') ||
+    cleanUrl.startsWith('http://localhost') ||
+    cleanUrl.startsWith('http://127.0.0.1');
+
+  if (!isSecure && !isPrivateTestIp) {
+    throw new Error('Apenas conexões criptografadas (HTTPS) são autorizadas para proteger dados da FAB.');
+  }
+
   currentApiBase = cleanUrl;
   await AsyncStorage.setItem(API_URL_KEY, cleanUrl);
 };
@@ -67,14 +79,14 @@ export const setAuthTokens = async (token: string | null, refreshToken?: string 
   currentRefreshToken = refreshToken ?? null;
 
   if (token) {
-    await AsyncStorage.setItem(TOKEN_KEY, token);
+    await setSecureItem(TOKEN_KEY, token);
     if (refreshToken) {
-      await AsyncStorage.setItem(REFRESH_TOKEN_KEY, refreshToken);
+      await setSecureItem(REFRESH_TOKEN_KEY, refreshToken);
     }
     if (!currentLoginTimestamp) {
       const nowStr = new Date().toISOString();
       currentLoginTimestamp = nowStr;
-      await AsyncStorage.setItem(LOGIN_TIMESTAMP_KEY, nowStr);
+      await setSecureItem(LOGIN_TIMESTAMP_KEY, nowStr);
     }
   } else {
     await clearAuthSession();
@@ -111,9 +123,9 @@ const refreshAccessToken = async (): Promise<boolean> => {
       if (data.refresh_token) {
         currentRefreshToken = data.refresh_token;
       }
-      await AsyncStorage.setItem(TOKEN_KEY, currentToken!);
+      await setSecureItem(TOKEN_KEY, currentToken!);
       if (currentRefreshToken) {
-        await AsyncStorage.setItem(REFRESH_TOKEN_KEY, currentRefreshToken);
+        await setSecureItem(REFRESH_TOKEN_KEY, currentRefreshToken);
       }
       return true;
     }

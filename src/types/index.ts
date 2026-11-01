@@ -64,6 +64,22 @@ export interface ItemCautelaAtiva {
   data_cautela: string;
 }
 
+export interface MaintenanceInfo {
+  id?: number;
+  status_etapa?: string;
+  defeito?: string;
+  laudo_reparo?: string;
+  responsavel?: string;
+  data_entrada?: string;
+  data_conclusao?: string;
+  [key: string]: any;
+}
+
+export interface ItemCharacteristics {
+  manutencao?: MaintenanceInfo | null;
+  [key: string]: any;
+}
+
 export interface Item {
   id: number;
   uuid?: string | null;
@@ -78,7 +94,7 @@ export interface Item {
   estado_conservacao: ItemCondition;
   status: ItemStatus;
   observacoes?: string | null;
-  caracteristicas?: Record<string, any>;
+  caracteristicas?: ItemCharacteristics | null;
   subgrupo_id?: number | null;
   local_id?: number | null;
   parent_id?: number | null;

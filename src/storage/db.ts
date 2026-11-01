@@ -1,4 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { setSecureItem, getSecureItem } from './secureStorage';
 import {
   Item,
   Group,
@@ -70,10 +71,10 @@ export const loadLocalDatabase = async (): Promise<{
       AsyncStorage.getItem(STORAGE_KEY_SUBGROUPS),
       AsyncStorage.getItem(STORAGE_KEY_LOCATIONS),
       AsyncStorage.getItem(STORAGE_KEY_LAST_SYNC),
-      AsyncStorage.getItem(STORAGE_KEY_CAUTELAS),
-      AsyncStorage.getItem(STORAGE_KEY_PENDENCIAS),
-      AsyncStorage.getItem(STORAGE_KEY_MILITARES),
-      AsyncStorage.getItem(STORAGE_KEY_RELATORIO),
+      getSecureItem(STORAGE_KEY_CAUTELAS),
+      getSecureItem(STORAGE_KEY_PENDENCIAS),
+      getSecureItem(STORAGE_KEY_MILITARES),
+      getSecureItem(STORAGE_KEY_RELATORIO),
       AsyncStorage.getItem(STORAGE_KEY_CONFIG_TI),
     ]);
 
@@ -152,14 +153,14 @@ export const persistLocalDatabase = async (
 export const persistLocalCautelas = async (cautelas: Cautela[]): Promise<void> => {
   memoryCautelas = cautelas;
   try {
-    await AsyncStorage.setItem(STORAGE_KEY_CAUTELAS, JSON.stringify(cautelas));
+    await setSecureItem(STORAGE_KEY_CAUTELAS, JSON.stringify(cautelas));
   } catch (_) {}
 };
 
 export const loadLocalCautelas = async (): Promise<Cautela[]> => {
   if (memoryCautelas.length > 0) return memoryCautelas;
   try {
-    const raw = await AsyncStorage.getItem(STORAGE_KEY_CAUTELAS);
+    const raw = await getSecureItem(STORAGE_KEY_CAUTELAS);
     if (raw) memoryCautelas = JSON.parse(raw);
   } catch (_) {}
   return memoryCautelas;
@@ -170,14 +171,14 @@ export const getLocalCautelas = (): Cautela[] => memoryCautelas;
 export const persistLocalPendencias = async (pendencias: Pendencia[]): Promise<void> => {
   memoryPendencias = pendencias;
   try {
-    await AsyncStorage.setItem(STORAGE_KEY_PENDENCIAS, JSON.stringify(pendencias));
+    await setSecureItem(STORAGE_KEY_PENDENCIAS, JSON.stringify(pendencias));
   } catch (_) {}
 };
 
 export const loadLocalPendencias = async (): Promise<Pendencia[]> => {
   if (memoryPendencias.length > 0) return memoryPendencias;
   try {
-    const raw = await AsyncStorage.getItem(STORAGE_KEY_PENDENCIAS);
+    const raw = await getSecureItem(STORAGE_KEY_PENDENCIAS);
     if (raw) memoryPendencias = JSON.parse(raw);
   } catch (_) {}
   return memoryPendencias;
@@ -188,14 +189,14 @@ export const getLocalPendencias = (): Pendencia[] => memoryPendencias;
 export const persistLocalMilitares = async (militares: Military[]): Promise<void> => {
   memoryMilitares = militares;
   try {
-    await AsyncStorage.setItem(STORAGE_KEY_MILITARES, JSON.stringify(militares));
+    await setSecureItem(STORAGE_KEY_MILITARES, JSON.stringify(militares));
   } catch (_) {}
 };
 
 export const loadLocalMilitares = async (): Promise<Military[]> => {
   if (memoryMilitares.length > 0) return memoryMilitares;
   try {
-    const raw = await AsyncStorage.getItem(STORAGE_KEY_MILITARES);
+    const raw = await getSecureItem(STORAGE_KEY_MILITARES);
     if (raw) memoryMilitares = JSON.parse(raw);
   } catch (_) {}
   return memoryMilitares;
@@ -207,14 +208,14 @@ export const persistLocalRelatorio = async (relatorio: RelatorioDiario, dataStr?
   memoryRelatorio = relatorio;
   const promises: Promise<any>[] = [];
   try {
-    promises.push(AsyncStorage.setItem(STORAGE_KEY_RELATORIO, JSON.stringify(relatorio)));
+    promises.push(setSecureItem(STORAGE_KEY_RELATORIO, JSON.stringify(relatorio)));
   } catch (_) {}
 
   const keyDate = dataStr || (relatorio?.data_referencia ? relatorio.data_referencia.substring(0, 10) : undefined);
   if (keyDate) {
     memoryRelatoriosPorData[keyDate] = relatorio;
     try {
-      promises.push(AsyncStorage.setItem(STORAGE_KEY_RELATORIO_PREFIX + keyDate, JSON.stringify(relatorio)));
+      promises.push(setSecureItem(STORAGE_KEY_RELATORIO_PREFIX + keyDate, JSON.stringify(relatorio)));
     } catch (_) {}
   }
   await Promise.all(promises);

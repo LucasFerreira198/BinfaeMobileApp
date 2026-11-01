@@ -19,14 +19,13 @@ import { useTheme } from '../context/ThemeContext';
 import { useKeyboardHeight } from '../hooks/useKeyboardHeight';
 import { api } from '../api/client';
 import { X, UserPlus, IdCard, User, Briefcase, Mail, Phone, Building2 } from 'lucide-react-native';
+import { COMMON_RANKS, isValidSaram, cleanSaram, isValidEmail, isValidPhone } from '../utils/militaryConstants';
 
 interface CreateMilitaryModalProps {
   visible: boolean;
   onClose: () => void;
   onSuccess: () => void;
 }
-
-const COMMON_RANKS = ['S2', 'S1', 'CB', '3S', '2S', '1S', 'SO', '2T', '1T', 'CAP', 'MAJ', 'TC', 'CEL'];
 
 export const CreateMilitaryModal: React.FC<CreateMilitaryModalProps> = ({
   visible,
@@ -73,11 +72,11 @@ export const CreateMilitaryModal: React.FC<CreateMilitaryModalProps> = ({
   if (!visible) return null;
 
   const handleSubmit = async () => {
-    const saramNum = parseInt(saram.trim(), 10);
-    if (!saram.trim() || isNaN(saramNum)) {
-      Alert.alert('SARAM Obrigatório', 'Por favor, informe um número de SARAM válido.');
+    if (!isValidSaram(saram)) {
+      Alert.alert('SARAM Inválido', 'Por favor, informe um SARAM válido contendo de 5 a 7 dígitos numéricos.');
       return;
     }
+    const saramNum = parseInt(cleanSaram(saram), 10);
 
     if (!nomeCompleto.trim() || nomeCompleto.trim().length < 5) {
       Alert.alert('Nome Completo Inválido', 'O nome completo deve ter no mínimo 5 caracteres.');
@@ -91,6 +90,16 @@ export const CreateMilitaryModal: React.FC<CreateMilitaryModalProps> = ({
 
     if (!nomeGuerra.trim() || nomeGuerra.trim().length < 2) {
       Alert.alert('Nome de Guerra Obrigatório', 'O nome de guerra deve ter no mínimo 2 caracteres.');
+      return;
+    }
+
+    if (email.trim() && !isValidEmail(email)) {
+      Alert.alert('E-mail Inválido', 'Informe um endereço de e-mail institucional válido (ex: militar@fab.mil.br).');
+      return;
+    }
+
+    if (celular.trim() && !isValidPhone(celular)) {
+      Alert.alert('Telefone Inválido', 'Informe um número de telefone válido com DDD (10 ou 11 dígitos).');
       return;
     }
 

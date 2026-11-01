@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { User } from '../types';
 import { api, setAuthTokens, clearAuthSession, getAuthToken, initApiClient } from '../api/client';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { setSecureItem, getSecureItem, removeSecureItem } from '../storage/secureStorage';
 
 interface AuthContextType {
   user: User | null;
@@ -47,7 +47,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       await initApiClient();
       const storedToken = getAuthToken();
-      const storedUser = await AsyncStorage.getItem(USER_STORAGE_KEY);
+      const storedUser = await getSecureItem(USER_STORAGE_KEY);
 
       if (storedToken && storedUser) {
         setTokenState(storedToken);
@@ -57,7 +57,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         api.getMe()
           .then((freshUser) => {
             setUser(freshUser);
-            AsyncStorage.setItem(USER_STORAGE_KEY, JSON.stringify(freshUser));
+            setSecureItem(USER_STORAGE_KEY, JSON.stringify(freshUser));
           })
           .catch((err) => {
             console.warn('Erro ao revalidar sessão em segundo plano:', err);
@@ -87,7 +87,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       const me = await api.getMe();
       setUser(me);
-      await AsyncStorage.setItem(USER_STORAGE_KEY, JSON.stringify(me));
+      await setSecureItem(USER_STORAGE_KEY, JSON.stringify(me));
     } finally {
       setIsLoading(false);
     }
@@ -97,14 +97,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     await clearAuthSession();
     setTokenState(null);
     setUser(null);
-    await AsyncStorage.removeItem(USER_STORAGE_KEY);
+    await removeSecureItem(USER_STORAGE_KEY);
   };
 
   const reloadUser = async () => {
     try {
       const me = await api.getMe();
       setUser(me);
-      await AsyncStorage.setItem(USER_STORAGE_KEY, JSON.stringify(me));
+      await setSecureItem(USER_STORAGE_KEY, JSON.stringify(me));
     } catch {}
   };
 
@@ -118,7 +118,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }): Promise<User> => {
     const updated = await api.updateMe(data);
     setUser(updated);
-    await AsyncStorage.setItem(USER_STORAGE_KEY, JSON.stringify(updated));
+    await setSecureItem(USER_STORAGE_KEY, JSON.stringify(updated));
     return updated;
   };
 

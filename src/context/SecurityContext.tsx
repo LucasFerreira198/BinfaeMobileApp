@@ -3,6 +3,7 @@ import { AppState, AppStateStatus, Alert } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as LocalAuthentication from 'expo-local-authentication';
 import { useAuth } from './AuthContext';
+import { setSecureItem, getSecureItem } from '../storage/secureStorage';
 
 export type SecurityMode = 'NONE' | 'BIOMETRICS' | 'PIN';
 
@@ -20,10 +21,32 @@ interface SecurityContextType {
 
 const STORAGE_KEY_SECURITY_MODE = '@binfae_security_mode';
 const STORAGE_KEY_PIN = '@binfae_security_pin';
+const DEVICE_SALT_KEY = '@binfae_device_pin_salt';
 const USER_STORAGE_KEY = '@binfae_auth_user';
+const LEGACY_SALT = 'BINFAE_MILITARY_PIN_SALT_v1';
+
+// Gera ou recupera salt criptográfico exclusivo gerado para este dispositivo
+export async function getOrCreateDeviceSalt(): Promise<string> {
+  try {
+    let salt = await getSecureItem(DEVICE_SALT_KEY);
+    if (!salt) {
+      const hexParts: string[] = [];
+      const now = Date.now();
+      for (let i = 0; i < 16; i++) {
+        const val = (Math.floor(Math.random() * 256) ^ ((now >> (i % 4)) & 0xff)) & 0xff;
+        hexParts.push(val.toString(16).padStart(2, '0'));
+      }
+      salt = `FAB_MIL_${hexParts.join('')}_${now.toString(16)}`;
+      await setSecureItem(DEVICE_SALT_KEY, salt);
+    }
+    return salt;
+  } catch {
+    return 'FAB_FALLBACK_DEVICE_ENTROPY_2026';
+  }
+}
 
 // Algoritmo criptográfico SHA-256 com salt seguro para armazenar PIN sem texto puro
-function hashPinWithSalt(pin: string, salt = 'BINFAE_MILITARY_PIN_SALT_v1'): string {
+export function hashPinWithSalt(pin: string, salt: string): string {
   function rightRotate(value: number, amount: number) {
     return (value >>> amount) | (value << (32 - amount));
   }
@@ -114,8 +137,8 @@ export const SecurityProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       // 2. Carrega modo salvo, PIN e verifica se o usuário está previamente logado (cold start)
       const [savedMode, savedPin, storedUser] = await Promise.all([
         AsyncStorage.getItem(STORAGE_KEY_SECURITY_MODE),
-        AsyncStorage.getItem(STORAGE_KEY_PIN),
-        AsyncStorage.getItem(USER_STORAGE_KEY),
+        getSecureItem(STORAGE_KEY_PIN),
+        getSecureItem(USER_STORAGE_KEY),
       ]);
 
       if (savedPin) {
@@ -191,9 +214,10 @@ export const SecurityProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   };
 
   const savePin = async (newPin: string) => {
-    const hashed = hashPinWithSalt(newPin);
+    const salt = await getOrCreateDeviceSalt();
+    const hashed = hashPinWithSalt(newPin, salt);
     setStoredPin(hashed);
-    await AsyncStorage.setItem(STORAGE_KEY_PIN, hashed);
+    await setSecureItem(STORAGE_KEY_PIN, hashed);
     await setSecurityMode('PIN');
     failedAttemptsRef.current = 0;
     lockoutUntilRef.current = 0;
@@ -212,13 +236,15 @@ export const SecurityProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
     if (!storedPin) return false;
 
-    // Validação comparando hash com suporte a migração de PIN antigo em plaintext
-    const inputHash = hashPinWithSalt(inputPin);
-    const isValid = storedPin === inputHash || storedPin === inputPin;
+    // Validação comparando hash com suporte a migração de PIN antigo em plaintext ou legacy salt
+    const salt = await getOrCreateDeviceSalt();
+    const inputHash = hashPinWithSalt(inputPin, salt);
+    const legacyHash = hashPinWithSalt(inputPin, LEGACY_SALT);
+    const isValid = storedPin === inputHash || storedPin === legacyHash || storedPin === inputPin;
 
     if (isValid) {
-      if (storedPin === inputPin) {
-        // Migra automaticamente de texto puro para hash
+      if (storedPin !== inputHash) {
+        // Migra automaticamente de legado ou texto puro para novo hash com salt exclusivo
         await savePin(inputPin);
       }
       failedAttemptsRef.current = 0;

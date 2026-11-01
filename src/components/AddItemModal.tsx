@@ -101,8 +101,17 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
     }
 
     const qty = parseFloat(quantidade.replace(',', '.'));
-    if (isNaN(qty) || qty < 0) {
-      Alert.alert('Quantidade inválida', 'Informe uma quantidade válida.');
+    if (isNaN(qty) || qty <= 0) {
+      Alert.alert('Quantidade inválida', 'Informe uma quantidade válida e maior que zero.');
+      return;
+    }
+
+    const isIndividual = tipoControle === 'UNITARIO' || bmp.trim().length > 0 || numeroSerie.trim().length > 0;
+    if (isIndividual && qty !== 1) {
+      Alert.alert(
+        'Quantidade Incompatível',
+        'Itens com controle Unitário, BMP (Patrimônio) ou Número de Série devem ter quantidade estritamente igual a 1.'
+      );
       return;
     }
 
@@ -354,13 +363,25 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
             {/* Quantidade e Estoque Mínimo */}
             <View style={styles.row}>
               <View style={styles.flexItem}>
-                <Text style={[styles.label, { color: theme.textSecondary }]}>Quantidade Inicial</Text>
-                <View style={[styles.inputBox, { backgroundColor: theme.inputBg, borderColor: theme.inputBorder }]}>
+                <Text style={[styles.label, { color: theme.textSecondary }]}>
+                  Quantidade Inicial {tipoControle === 'UNITARIO' || bmp.trim().length > 0 || numeroSerie.trim().length > 0 ? '(Fixo 1)' : ''}
+                </Text>
+                <View
+                  style={[
+                    styles.inputBox,
+                    {
+                      backgroundColor: theme.inputBg,
+                      borderColor: theme.inputBorder,
+                      opacity: tipoControle === 'UNITARIO' || bmp.trim().length > 0 || numeroSerie.trim().length > 0 ? 0.75 : 1,
+                    },
+                  ]}
+                >
                   <TextInput
                     style={[styles.input, { color: theme.text }]}
                     keyboardType="numeric"
-                    value={quantidade}
+                    value={tipoControle === 'UNITARIO' || bmp.trim().length > 0 || numeroSerie.trim().length > 0 ? '1' : quantidade}
                     onChangeText={setQuantidade}
+                    editable={!(tipoControle === 'UNITARIO' || bmp.trim().length > 0 || numeroSerie.trim().length > 0)}
                     placeholder="1"
                     placeholderTextColor={theme.textMuted}
                   />

@@ -18,6 +18,7 @@ import { useKeyboardHeight } from '../hooks/useKeyboardHeight';
 import { api } from '../api/client';
 import { Military } from '../types';
 import { X, Check, Shield, User, Mail, Phone, Award, Trash2 } from 'lucide-react-native';
+import { COMMON_RANKS, isValidEmail, isValidPhone } from '../utils/militaryConstants';
 
 interface EditMilitaryModalProps {
   military: Military | null;
@@ -25,24 +26,6 @@ interface EditMilitaryModalProps {
   onClose: () => void;
   onSuccess: () => void;
 }
-
-const POSTOS_GRADUACOES = [
-  'S2',
-  'S1',
-  'CB',
-  '3S',
-  '2S',
-  '1S',
-  'SO',
-  'Asp',
-  '2º Ten',
-  '1º Ten',
-  'Cap',
-  'Maj',
-  'Ten Cel',
-  'Cel',
-  'CV',
-];
 
 export const EditMilitaryModal: React.FC<EditMilitaryModalProps> = ({
   military,
@@ -96,6 +79,16 @@ export const EditMilitaryModal: React.FC<EditMilitaryModalProps> = ({
 
     if (!nomeCompleto.trim() || nomeCompleto.trim().length < 5) {
       Alert.alert('Nome Completo Obrigatório', 'Informe o nome completo com pelo menos 5 caracteres.');
+      return;
+    }
+
+    if (email.trim() && !isValidEmail(email)) {
+      Alert.alert('E-mail Inválido', 'Informe um endereço de e-mail válido (ex: militar@fab.mil.br).');
+      return;
+    }
+
+    if (celular.trim() && !isValidPhone(celular)) {
+      Alert.alert('Telefone Inválido', 'Informe um número de telefone válido com DDD (10 ou 11 dígitos).');
       return;
     }
 
@@ -201,7 +194,7 @@ export const EditMilitaryModal: React.FC<EditMilitaryModalProps> = ({
               style={styles.ranksScroll}
               contentContainerStyle={{ gap: 8 }}
             >
-              {POSTOS_GRADUACOES.map((pg) => {
+              {COMMON_RANKS.map((pg) => {
                 const isSelected = postoGraduacao === pg;
                 return (
                   <TouchableOpacity
