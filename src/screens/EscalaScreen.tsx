@@ -76,20 +76,70 @@ export const EscalaScreen: React.FC = () => {
   const [listaMilitaresOrdem, setListaMilitaresOrdem] = useState<Military[]>([]);
   const [savingOrdem, setSavingOrdem] = useState<boolean>(false);
 
+  // Helper para obter nome formatado de SV sem duplicação de posto/graduação
+  const getSvFullName = (dia?: EscalaDia | null): string | null => {
+    if (!dia) return null;
+    const nome = dia.militar_sv_nome;
+    const posto = dia.militar_sv_posto;
+    const guerra = dia.militar_sv_guerra;
+    if (!nome && !guerra) return null;
+    if (nome) {
+      if (posto && nome.startsWith(posto)) {
+        return nome;
+      }
+      return posto ? `${posto} ${nome}`.trim() : nome;
+    }
+    return posto ? `${posto} ${guerra}`.trim() : (guerra || null);
+  };
+
   // Helper para normalizar dia garantindo dia_mes, dia, fds e campos de expedientes
-  const normalizeDia = (d: any): EscalaDia => {
+  const normalizeDia = (d: any, militarsList: Military[] = militaresInfo): EscalaDia => {
     const diaNum = Number(d.dia_mes ?? d.dia ?? 0);
     const isFds = Boolean(d.is_fim_de_semana ?? d.is_weekend);
     const expd1Id = d.militar_expd1_id ?? d.militar_expd_1_id ?? null;
-    const expd1Nome = d.militar_expd1_nome ?? d.militar_expd_1_nome ?? null;
+    let expd1Nome = d.militar_expd1_nome ?? d.militar_expd_1_nome ?? null;
     const expd2Id = d.militar_expd2_id ?? d.militar_expd_2_id ?? null;
-    const expd2Nome = d.militar_expd2_nome ?? d.militar_expd_2_nome ?? null;
+    let expd2Nome = d.militar_expd2_nome ?? d.militar_expd_2_nome ?? null;
+
+    const svId = d.militar_sv_id ?? null;
+    let svNome = d.militar_sv_nome ?? null;
+    let svPosto = d.militar_sv_posto ?? null;
+    let svGuerra = d.militar_sv_guerra ?? null;
+
+    // Resgata nomes completos a partir da lista em memória caso estejam nulos na resposta
+    if (svId && (!svNome || svNome.trim() === '')) {
+      const mil = militarsList.find((m) => m.id === svId);
+      if (mil) {
+        svPosto = mil.posto_graduacao;
+        svGuerra = mil.nome_guerra;
+        svNome = `${mil.posto_graduacao} ${mil.nome_guerra}`;
+      }
+    }
+
+    if (expd1Id && (!expd1Nome || expd1Nome.trim() === '')) {
+      const mil = militarsList.find((m) => m.id === expd1Id);
+      if (mil) {
+        expd1Nome = `${mil.posto_graduacao} ${mil.nome_guerra}`;
+      }
+    }
+
+    if (expd2Id && (!expd2Nome || expd2Nome.trim() === '')) {
+      const mil = militarsList.find((m) => m.id === expd2Id);
+      if (mil) {
+        expd2Nome = `${mil.posto_graduacao} ${mil.nome_guerra}`;
+      }
+    }
+
     return {
       ...d,
       dia: diaNum,
       dia_mes: diaNum,
       is_weekend: isFds,
       is_fim_de_semana: isFds,
+      militar_sv_id: svId,
+      militar_sv_nome: svNome,
+      militar_sv_posto: svPosto,
+      militar_sv_guerra: svGuerra,
       militar_expd1_id: expd1Id,
       militar_expd_1_id: expd1Id,
       militar_expd1_nome: expd1Nome,
@@ -109,7 +159,7 @@ export const EscalaScreen: React.FC = () => {
         api.getMilitaresInformatica(),
       ]);
       if (data && Array.isArray(data.dias)) {
-        data.dias = data.dias.map(normalizeDia);
+        data.dias = data.dias.map((d: any) => normalizeDia(d, mils));
       }
       setEscala(data);
       setMilitaresInfo(mils);
@@ -169,10 +219,12 @@ export const EscalaScreen: React.FC = () => {
         })),
       };
       const saved = await api.salvarEscalaMensal(payload);
-      if (saved && Array.isArray(saved.dias)) {
-        saved.dias = saved.dias.map(normalizeDia);
+      if (saved && Array.isArray(saved.dias) && saved.dias.length > 0) {
+        saved.dias = saved.dias.map((d: any) => normalizeDia(d, militaresInfo));
+        setEscala(saved);
+      } else {
+        await loadEscala();
       }
-      setEscala(saved);
       Alert.alert('Sucesso', 'Escala de serviço do mês salva com sucesso!');
     } catch (err: any) {
       Alert.alert('Erro', err.message || 'Falha ao salvar escala.');
@@ -307,7 +359,7 @@ export const EscalaScreen: React.FC = () => {
                   const isEsp = Boolean(d.is_feriado_especial);
                   const isFds = Boolean(d.is_weekend || d.is_fim_de_semana);
                   const rowClass = isEsp ? 'holiday-special' : (isFds ? 'weekend' : '');
-                  const svDisplay = d.militar_sv_nome ? `${d.militar_sv_posto || ''} ${d.militar_sv_nome}` : '-';
+                  const svDisplay = getSvFullName(d) || '-';
                   const exp1 = d.militar_expd_1_nome || d.militar_expd1_nome || '-';
                   const exp2 = d.militar_expd_2_nome || d.militar_expd2_nome || '-';
                   const exp1Display = isFds ? '-' : exp1;
@@ -520,9 +572,7 @@ export const EscalaScreen: React.FC = () => {
 
             const expd1Nome = d.militar_expd_1_nome || d.militar_expd1_nome;
             const expd2Nome = d.militar_expd_2_nome || d.militar_expd2_nome;
-            const svNomeCompleto = d.militar_sv_nome
-              ? `${d.militar_sv_posto ? d.militar_sv_posto + ' ' : ''}${d.militar_sv_nome}`
-              : null;
+            const svNomeCompleto = getSvFullName(d);
 
             return (
               <TouchableOpacity
@@ -705,8 +755,8 @@ export const EscalaScreen: React.FC = () => {
               >
                 <User size={16} color={theme.primary} />
                 <Text style={[styles.selectBtnText, { color: theme.text }]}>
-                  {selectedDia?.militar_sv_nome
-                    ? `${selectedDia.militar_sv_posto ? selectedDia.militar_sv_posto + ' ' : ''}${selectedDia.militar_sv_nome}`
+                  {selectedDia && getSvFullName(selectedDia)
+                    ? getSvFullName(selectedDia)
                     : 'Selecionar Militar de SV...'}
                 </Text>
               </TouchableOpacity>
