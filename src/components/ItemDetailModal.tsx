@@ -13,6 +13,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
+import * as Haptics from 'expo-haptics';
 import { PureQrCode } from './PureQrCode';
 import { Item, ItemMovement } from '../types';
 import { useTheme } from '../context/ThemeContext';
@@ -435,6 +436,7 @@ const ItemDetailModalContent: React.FC<ItemDetailModalProps> = ({
       setIsGeneratingPdf(false);
     }
   };
+  if (!item) return null;
 
   return (
     <Modal
@@ -538,7 +540,7 @@ const ItemDetailModalContent: React.FC<ItemDetailModalProps> = ({
                 <View style={styles.maintFieldRow}>
                   <Text style={[styles.maintFieldLabel, { color: theme.textMuted }]}>Defeito:</Text>
                   <Text style={[styles.maintFieldValue, { color: theme.text }]}>
-                    {maintInfo.defeito}
+                    {maintInfo?.defeito}
                   </Text>
                 </View>
               ) : null}
@@ -546,7 +548,7 @@ const ItemDetailModalContent: React.FC<ItemDetailModalProps> = ({
                 <View style={styles.maintFieldRow}>
                   <Text style={[styles.maintFieldLabel, { color: '#10B981' }]}>Laudo:</Text>
                   <Text style={[styles.maintFieldValue, { color: theme.text, fontWeight: '700' }]}>
-                    {maintInfo.laudo_reparo}
+                    {maintInfo?.laudo_reparo}
                   </Text>
                 </View>
               ) : null}
@@ -554,7 +556,7 @@ const ItemDetailModalContent: React.FC<ItemDetailModalProps> = ({
                 <View style={styles.maintFieldRow}>
                   <Text style={[styles.maintFieldLabel, { color: theme.textMuted }]}>Origem:</Text>
                   <Text style={[styles.maintFieldValue, { color: theme.textSecondary }]}>
-                    {maintInfo.origem_local_nome}
+                    {maintInfo?.origem_local_nome}
                   </Text>
                 </View>
               ) : null}

@@ -347,7 +347,7 @@ const styles = StyleSheet.create({
     borderColor: '#00F0FF',
   },
   verifyingOverlay: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     backgroundColor: 'rgba(10, 15, 29, 0.85)',
     borderRadius: 16,
     alignItems: 'center',
