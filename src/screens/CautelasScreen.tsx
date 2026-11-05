@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import {
   View,
   Text,
@@ -104,6 +104,27 @@ export const CautelasScreen: React.FC<CautelasScreenProps> = () => {
   const [selectedMilitary, setSelectedMilitary] = useState<Military | null>(null);
   const [militarySearch, setMilitarySearch] = useState<string>('');
   const [militaryPhone, setMilitaryPhone] = useState<string>('');
+
+  const filteredMilitariesForModal = useMemo(() => {
+    if (!militaries || !Array.isArray(militaries)) return [];
+    const q = (militarySearch || '').trim().toLowerCase();
+    if (!q) return militaries.slice(0, 6);
+    return militaries
+      .filter((m) => {
+        if (!m) return false;
+        const guerra = (m.nome_guerra || '').toLowerCase();
+        const completo = (m.nome_completo || '').toLowerCase();
+        const saramStr = m.saram != null ? String(m.saram) : '';
+        const secaoStr = (m.secao || '').toLowerCase();
+        return (
+          guerra.includes(q) ||
+          completo.includes(q) ||
+          saramStr.includes(q) ||
+          secaoStr.includes(q)
+        );
+      })
+      .slice(0, 8);
+  }, [militaries, militarySearch]);
   const [isBatchMode, setIsBatchMode] = useState<boolean>(false);
   const [batchItems, setBatchItems] = useState<Item[]>([]);
   const [selectedSingleItem, setSelectedSingleItem] = useState<Item | null>(null);
@@ -1248,37 +1269,26 @@ export const CautelasScreen: React.FC<CautelasScreenProps> = () => {
                   </View>
 
                   <ScrollView style={styles.militaryListMaxHeight} nestedScrollEnabled>
-                    {militaries
-                      .filter((m) => {
-                        if (!militarySearch.trim()) return true;
-                        const q = militarySearch.toLowerCase();
-                        return (
-                          m.nome_guerra.toLowerCase().includes(q) ||
-                          m.nome_completo.toLowerCase().includes(q) ||
-                          m.saram.toString().includes(q)
-                        );
-                      })
-                      .slice(0, 6)
-                      .map((mil) => (
-                        <TouchableOpacity
-                          key={mil.saram}
-                          style={[styles.militarOptionRow, { borderBottomColor: theme.border }]}
-                          onPress={() => {
-                            setSelectedMilitary(mil);
-                            setMilitaryPhone(mil.celular || mil.telefone || '');
-                          }}
-                        >
-                          <UserAvatar militar={mil} size={32} />
-                          <View style={{ flex: 1 }}>
-                            <Text style={[styles.militarOptionName, { color: theme.text }]}>
-                              {mil.posto_graduacao} {mil.nome_guerra}
-                            </Text>
-                            <Text style={[styles.militarOptionSaram, { color: theme.textSecondary }]}>
-                              SARAM: {mil.saram}
-                            </Text>
-                          </View>
-                        </TouchableOpacity>
-                      ))}
+                    {filteredMilitariesForModal.map((mil, idx) => (
+                      <TouchableOpacity
+                        key={mil?.saram != null ? String(mil.saram) : `mil-${idx}`}
+                        style={[styles.militarOptionRow, { borderBottomColor: theme.border }]}
+                        onPress={() => {
+                          setSelectedMilitary(mil);
+                          setMilitaryPhone(mil.celular || mil.telefone || '');
+                        }}
+                      >
+                        <UserAvatar militar={mil} size={32} />
+                        <View style={{ flex: 1 }}>
+                          <Text style={[styles.militarOptionName, { color: theme.text }]}>
+                            {mil.posto_graduacao || ''} {mil.nome_guerra || ''}
+                          </Text>
+                          <Text style={[styles.militarOptionSaram, { color: theme.textSecondary }]}>
+                            SARAM: {mil.saram ?? ''}
+                          </Text>
+                        </View>
+                      </TouchableOpacity>
+                    ))}
                   </ScrollView>
                 </View>
               )}

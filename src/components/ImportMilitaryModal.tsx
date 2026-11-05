@@ -321,14 +321,15 @@ export const ImportMilitaryModal: React.FC<ImportMilitaryModalProps> = ({
                 {activeTab === 'imported' && (
                   <>
                     <Text style={[styles.sectionTitle, { color: theme.textMuted }]}>
-                      Militares que serão incluídos no efetivo ({result.imported.length}):
+                      Militares que serão incluídos no efetivo ({result.imported.length}
+                      {result.imported.length > 40 ? ' — exibindo 40 primeiros' : ''}):
                     </Text>
                     {result.imported.length === 0 ? (
                       <Text style={[styles.emptyText, { color: theme.textMuted }]}>
                         Nenhum militar novo a adicionar. Todos os militares da planilha já constam no sistema.
                       </Text>
                     ) : (
-                      result.imported.map((item, idx) => (
+                      result.imported.slice(0, 40).map((item, idx) => (
                         <View key={idx} style={[styles.itemCard, { backgroundColor: theme.surfaceVariant }]}>
                           <View style={styles.itemHeader}>
                             <View style={[styles.saramBadge, { backgroundColor: theme.primary + '20' }]}>
@@ -351,14 +352,15 @@ export const ImportMilitaryModal: React.FC<ImportMilitaryModalProps> = ({
                 {activeTab === 'skipped' && (
                   <>
                     <Text style={[styles.sectionTitle, { color: theme.textMuted }]}>
-                      Militares já cadastrados no sistema — não serão repetidos ({result.skipped.length}):
+                      Militares já cadastrados no sistema — não serão repetidos ({result.skipped.length}
+                      {result.skipped.length > 40 ? ' — exibindo 40 primeiros' : ''}):
                     </Text>
                     {result.skipped.length === 0 ? (
                       <Text style={[styles.emptyText, { color: theme.textMuted }]}>
                         Nenhuma duplicidade detectada.
                       </Text>
                     ) : (
-                      result.skipped.map((item, idx) => (
+                      result.skipped.slice(0, 40).map((item, idx) => (
                         <View key={idx} style={[styles.itemCard, { backgroundColor: theme.surfaceVariant }]}>
                           <View style={styles.itemHeader}>
                             <View style={[styles.saramBadge, { backgroundColor: '#F59E0B20' }]}>

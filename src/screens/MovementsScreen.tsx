@@ -85,14 +85,14 @@ export const MovementsScreen: React.FC = () => {
 
   const filtered = movements.filter((m) => {
     if (!search.trim()) return true;
-    const q = search.toLowerCase();
+    const q = search.trim().toLowerCase();
     return (
-      m.item_nome?.toLowerCase().includes(q) ||
-      m.motivo?.toLowerCase().includes(q) ||
-      m.tipo_movimentacao?.toLowerCase().includes(q) ||
-      m.usuario_nome?.toLowerCase().includes(q) ||
-      m.origem_nome?.toLowerCase().includes(q) ||
-      m.destino_nome?.toLowerCase().includes(q)
+      (m.item_nome && m.item_nome.toLowerCase().includes(q)) ||
+      (m.motivo && m.motivo.toLowerCase().includes(q)) ||
+      (m.tipo_movimentacao && m.tipo_movimentacao.toLowerCase().includes(q)) ||
+      (m.usuario_nome && m.usuario_nome.toLowerCase().includes(q)) ||
+      (m.origem_nome && m.origem_nome.toLowerCase().includes(q)) ||
+      (m.destino_nome && m.destino_nome.toLowerCase().includes(q))
     );
   });
 

@@ -64,26 +64,29 @@ export const CreateUserModal: React.FC<CreateUserModalProps> = ({
   }, [visible]);
 
   const filteredMilitaries = useMemo(() => {
-    if (!militaryList || militaryList.length === 0) return [];
-    const q = militarySearch.trim().toLowerCase();
-    if (!q) return militaryList.slice(0, 30);
-    return militaryList.filter((m) => {
-      const nomeGuerra = (m.nome_guerra || '').toLowerCase();
-      const nomeCompleto = (m.nome_completo || '').toLowerCase();
-      const saramStr = m.saram ? m.saram.toString() : '';
-      const secaoStr = (m.secao || '').toLowerCase();
-      return (
-        nomeGuerra.includes(q) ||
-        nomeCompleto.includes(q) ||
-        saramStr.includes(q) ||
-        secaoStr.includes(q)
-      );
-    });
+    if (!militaryList || !Array.isArray(militaryList) || militaryList.length === 0) return [];
+    const q = (militarySearch || '').trim().toLowerCase();
+    if (!q) return militaryList.slice(0, 25);
+    return militaryList
+      .filter((m) => {
+        if (!m) return false;
+        const nomeGuerra = (m.nome_guerra || '').toLowerCase();
+        const nomeCompleto = (m.nome_completo || '').toLowerCase();
+        const saramStr = m.saram != null ? String(m.saram) : '';
+        const secaoStr = (m.secao || '').toLowerCase();
+        return (
+          nomeGuerra.includes(q) ||
+          nomeCompleto.includes(q) ||
+          saramStr.includes(q) ||
+          secaoStr.includes(q)
+        );
+      })
+      .slice(0, 30);
   }, [militaryList, militarySearch]);
 
   const selectedMilitary = useMemo(() => {
-    if (!selectedSaram || !militaryList) return null;
-    return militaryList.find((m) => m.saram.toString() === selectedSaram) || null;
+    if (!selectedSaram || !militaryList || !Array.isArray(militaryList)) return null;
+    return militaryList.find((m) => m?.saram != null && String(m.saram) === selectedSaram) || null;
   }, [militaryList, selectedSaram]);
 
   useEffect(() => {
@@ -331,11 +334,11 @@ export const CreateUserModal: React.FC<CreateUserModalProps> = ({
                         </Text>
                       </View>
                     ) : (
-                      filteredMilitaries.map((m) => {
-                        const isSelected = selectedSaram === m.saram.toString();
+                      filteredMilitaries.map((m, idx) => {
+                        const isSelected = m?.saram != null && selectedSaram === String(m.saram);
                         return (
                           <TouchableOpacity
-                            key={m.saram}
+                            key={m?.saram != null ? String(m.saram) : `mil-${idx}`}
                             style={[
                               styles.milItemRow,
                               {
@@ -343,7 +346,7 @@ export const CreateUserModal: React.FC<CreateUserModalProps> = ({
                                 backgroundColor: isSelected ? theme.badgeBg : 'transparent',
                               },
                             ]}
-                            onPress={() => setSelectedSaram(m.saram.toString())}
+                            onPress={() => m?.saram != null && setSelectedSaram(String(m.saram))}
                             activeOpacity={0.7}
                           >
                             <View style={styles.milItemLeft}>

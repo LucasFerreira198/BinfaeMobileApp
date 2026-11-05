@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   View,
   Text,
@@ -12,6 +12,7 @@ import {
   ScrollView,
   Switch,
   Modal,
+  Platform,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../context/ThemeContext';
@@ -250,192 +251,218 @@ export const AdminScreen: React.FC = () => {
     }
   };
 
-  const filteredUsers = users.filter((u) => {
-    if (!search.trim()) return true;
-    const q = search.toLowerCase();
-    return (
-      u.username.toLowerCase().includes(q) ||
-      (u.militar?.nome_guerra && u.militar.nome_guerra.toLowerCase().includes(q)) ||
-      (u.militar?.nome_completo && u.militar.nome_completo.toLowerCase().includes(q)) ||
-      (u.militar?.saram && u.militar.saram.toString().includes(q))
-    );
-  });
+  const filteredUsers = useMemo(() => {
+    if (!users || !Array.isArray(users)) return [];
+    const q = (search || '').trim().toLowerCase();
+    if (!q) return users;
+    return users.filter((u) => {
+      if (!u) return false;
+      const uname = (u.username || '').toLowerCase();
+      const guerra = (u.militar?.nome_guerra || '').toLowerCase();
+      const completo = (u.militar?.nome_completo || '').toLowerCase();
+      const saram = u.militar?.saram != null ? String(u.militar.saram) : '';
+      return (
+        uname.includes(q) ||
+        guerra.includes(q) ||
+        completo.includes(q) ||
+        saram.includes(q)
+      );
+    });
+  }, [users, search]);
 
-  const filteredMilitary = militaryList.filter((m) => {
-    if (!search.trim()) return true;
-    const q = search.toLowerCase();
-    return (
-      m.nome_guerra.toLowerCase().includes(q) ||
-      m.nome_completo.toLowerCase().includes(q) ||
-      m.saram.toString().includes(q) ||
-      (m.secao && m.secao.toLowerCase().includes(q))
-    );
-  });
+  const filteredMilitary = useMemo(() => {
+    if (!militaryList || !Array.isArray(militaryList)) return [];
+    const q = (search || '').trim().toLowerCase();
+    if (!q) return militaryList;
+    return militaryList.filter((m) => {
+      if (!m) return false;
+      const guerra = (m.nome_guerra || '').toLowerCase();
+      const completo = (m.nome_completo || '').toLowerCase();
+      const saram = m.saram != null ? String(m.saram) : '';
+      const secao = (m.secao || '').toLowerCase();
+      const posto = (m.posto_graduacao || '').toLowerCase();
+      return (
+        guerra.includes(q) ||
+        completo.includes(q) ||
+        saram.includes(q) ||
+        secao.includes(q) ||
+        posto.includes(q)
+      );
+    });
+  }, [militaryList, search]);
 
-  const renderUserItem = ({ item }: { item: User }) => {
-    const mil = item.militar;
-    return (
-      <View
-        style={[
-          styles.card,
-          {
-            backgroundColor: theme.card,
-            borderColor: theme.border,
-          },
-        ]}
-      >
-        <View style={styles.cardHeader}>
-          <View style={styles.userTitleWrap}>
-            <Text style={[styles.userName, { color: theme.text }]}>@{item.username}</Text>
-            {mil && (
-              <Text style={[styles.userMilInfo, { color: theme.textSecondary }]}>
-                {mil.posto_graduacao} {mil.nome_guerra} (SARAM {mil.saram})
-              </Text>
-            )}
-          </View>
-
-          <View style={styles.badgeRow}>
-            <View
-              style={[
-                styles.badge,
-                {
-                  backgroundColor: item.admin ? theme.primary : theme.surfaceVariant,
-                },
-              ]}
-            >
-              <Text
-                style={[
-                  styles.badgeText,
-                  { color: item.admin ? '#FFFFFF' : theme.textSecondary },
-                ]}
-              >
-                {item.admin ? 'ADMIN' : 'OPERADOR'}
-              </Text>
+  const renderUserItem = useCallback(
+    ({ item }: { item: User }) => {
+      if (!item) return null;
+      const mil = item.militar;
+      return (
+        <View
+          style={[
+            styles.card,
+            {
+              backgroundColor: theme.card,
+              borderColor: theme.border,
+            },
+          ]}
+        >
+          <View style={styles.cardHeader}>
+            <View style={styles.userTitleWrap}>
+              <Text style={[styles.userName, { color: theme.text }]}>@{item.username}</Text>
+              {mil && (
+                <Text style={[styles.userMilInfo, { color: theme.textSecondary }]}>
+                  {mil.posto_graduacao || ''} {mil.nome_guerra || ''} (SARAM {mil.saram ?? ''})
+                </Text>
+              )}
             </View>
 
-            <View
-              style={[
-                styles.badge,
-                {
-                  backgroundColor: item.ativo ? theme.successBg : theme.dangerBg,
-                },
-              ]}
-            >
-              <Text
+            <View style={styles.badgeRow}>
+              <View
                 style={[
-                  styles.badgeText,
-                  { color: item.ativo ? theme.success : theme.danger },
+                  styles.badge,
+                  {
+                    backgroundColor: item.admin ? theme.primary : theme.surfaceVariant,
+                  },
                 ]}
               >
-                {item.ativo ? 'ATIVO' : 'INATIVO'}
-              </Text>
+                <Text
+                  style={[
+                    styles.badgeText,
+                    { color: item.admin ? '#FFFFFF' : theme.textSecondary },
+                  ]}
+                >
+                  {item.admin ? 'ADMIN' : 'OPERADOR'}
+                </Text>
+              </View>
+
+              <View
+                style={[
+                  styles.badge,
+                  {
+                    backgroundColor: item.ativo ? theme.successBg : theme.dangerBg,
+                  },
+                ]}
+              >
+                <Text
+                  style={[
+                    styles.badgeText,
+                    { color: item.ativo ? theme.success : theme.danger },
+                  ]}
+                >
+                  {item.ativo ? 'ATIVO' : 'INATIVO'}
+                </Text>
+              </View>
             </View>
           </View>
-        </View>
 
-        {mil?.secao && (
-          <View style={styles.footerRow}>
-            <Briefcase size={13} color={theme.textMuted} />
-            <Text style={[styles.footerText, { color: theme.textSecondary }]}>
-              Seção: {mil.secao}
-            </Text>
-          </View>
-        )}
-
-        <View style={[styles.userCardActions, { borderTopColor: theme.border }]}>
-          <TouchableOpacity
-            style={[styles.manageBtn, { backgroundColor: theme.surfaceVariant, flex: 1, marginRight: 8 }]}
-            onPress={() => {
-              setSelectedUser(item);
-              setEditUserVisible(true);
-            }}
-            activeOpacity={0.7}
-          >
-            <UserCog size={14} color={theme.primary} />
-            <Text style={[styles.manageBtnText, { color: theme.primary }]}>
-              Editar Usuário
-            </Text>
-          </TouchableOpacity>
-        </View>
-      </View>
-    );
-  };
-
-  const renderMilitaryItem = ({ item }: { item: Military }) => {
-    return (
-      <View
-        style={[
-          styles.card,
-          {
-            backgroundColor: theme.card,
-            borderColor: theme.border,
-          },
-        ]}
-      >
-        <View style={styles.cardHeader}>
-          <View style={styles.userTitleWrap}>
-            <Text style={[styles.userName, { color: theme.text }]}>
-              {item.posto_graduacao} {item.nome_guerra}
-            </Text>
-            <Text style={[styles.userMilInfo, { color: theme.textSecondary }]}>
-              {item.nome_completo}
-            </Text>
-          </View>
-
-          <View style={[styles.saramPill, { backgroundColor: theme.surfaceVariant }]}>
-            <Text style={[styles.saramText, { color: theme.textSecondary }]}>
-              SARAM {item.saram}
-            </Text>
-          </View>
-        </View>
-
-        <View style={styles.milDetailsWrap}>
-          {item.secao && (
+          {mil?.secao && (
             <View style={styles.footerRow}>
               <Briefcase size={13} color={theme.textMuted} />
               <Text style={[styles.footerText, { color: theme.textSecondary }]}>
-                Seção: {item.secao}
+                Seção: {mil.secao}
               </Text>
             </View>
           )}
 
-          {item.celular && (
-            <View style={styles.footerRow}>
-              <Phone size={13} color={theme.textMuted} />
-              <Text style={[styles.footerText, { color: theme.textSecondary }]}>
-                {item.celular}
+          <View style={[styles.userCardActions, { borderTopColor: theme.border }]}>
+            <TouchableOpacity
+              style={[styles.manageBtn, { backgroundColor: theme.surfaceVariant, flex: 1, marginRight: 8 }]}
+              onPress={() => {
+                setSelectedUser(item);
+                setEditUserVisible(true);
+              }}
+              activeOpacity={0.7}
+            >
+              <UserCog size={14} color={theme.primary} />
+              <Text style={[styles.manageBtnText, { color: theme.primary }]}>
+                Editar Usuário
               </Text>
-            </View>
-          )}
-
-          {item.email && (
-            <View style={styles.footerRow}>
-              <Mail size={13} color={theme.textMuted} />
-              <Text style={[styles.footerText, { color: theme.textSecondary }]}>
-                {item.email}
-              </Text>
-            </View>
-          )}
+            </TouchableOpacity>
+          </View>
         </View>
+      );
+    },
+    [theme]
+  );
 
-        <View style={[styles.userCardActions, { borderTopColor: theme.border }]}>
-          <TouchableOpacity
-            style={[styles.manageBtn, { backgroundColor: theme.surfaceVariant, flex: 1 }]}
-            onPress={() => {
-              setSelectedMilitary(item);
-              setEditMilitaryVisible(true);
-            }}
-            activeOpacity={0.7}
-          >
-            <UserCog size={14} color={theme.primary} />
-            <Text style={[styles.manageBtnText, { color: theme.primary }]}>
-              Editar Militar
-            </Text>
-          </TouchableOpacity>
+  const renderMilitaryItem = useCallback(
+    ({ item }: { item: Military }) => {
+      if (!item) return null;
+      return (
+        <View
+          style={[
+            styles.card,
+            {
+              backgroundColor: theme.card,
+              borderColor: theme.border,
+            },
+          ]}
+        >
+          <View style={styles.cardHeader}>
+            <View style={styles.userTitleWrap}>
+              <Text style={[styles.userName, { color: theme.text }]}>
+                {item.posto_graduacao || ''} {item.nome_guerra || ''}
+              </Text>
+              <Text style={[styles.userMilInfo, { color: theme.textSecondary }]}>
+                {item.nome_completo || ''}
+              </Text>
+            </View>
+
+            <View style={[styles.saramPill, { backgroundColor: theme.surfaceVariant }]}>
+              <Text style={[styles.saramText, { color: theme.textSecondary }]}>
+                SARAM {item.saram ?? ''}
+              </Text>
+            </View>
+          </View>
+
+          <View style={styles.milDetailsWrap}>
+            {Boolean(item.secao) && (
+              <View style={styles.footerRow}>
+                <Briefcase size={13} color={theme.textMuted} />
+                <Text style={[styles.footerText, { color: theme.textSecondary }]}>
+                  Seção: {item.secao}
+                </Text>
+              </View>
+            )}
+
+            {Boolean(item.celular) && (
+              <View style={styles.footerRow}>
+                <Phone size={13} color={theme.textMuted} />
+                <Text style={[styles.footerText, { color: theme.textSecondary }]}>
+                  {item.celular}
+                </Text>
+              </View>
+            )}
+
+            {Boolean(item.email) && (
+              <View style={styles.footerRow}>
+                <Mail size={13} color={theme.textMuted} />
+                <Text style={[styles.footerText, { color: theme.textSecondary }]}>
+                  {item.email}
+                </Text>
+              </View>
+            )}
+          </View>
+
+          <View style={[styles.userCardActions, { borderTopColor: theme.border }]}>
+            <TouchableOpacity
+              style={[styles.manageBtn, { backgroundColor: theme.surfaceVariant, flex: 1 }]}
+              onPress={() => {
+                setSelectedMilitary(item);
+                setEditMilitaryVisible(true);
+              }}
+              activeOpacity={0.7}
+            >
+              <UserCog size={14} color={theme.primary} />
+              <Text style={[styles.manageBtnText, { color: theme.primary }]}>
+                Editar Militar
+              </Text>
+            </TouchableOpacity>
+          </View>
         </View>
-      </View>
-    );
-  };
+      );
+    },
+    [theme]
+  );
 
   return (
     <View style={[styles.container, { backgroundColor: theme.background }]}>
@@ -767,12 +794,16 @@ export const AdminScreen: React.FC = () => {
           ) : activeTab === 'users' ? (
             <FlatList
               data={filteredUsers}
-              keyExtractor={(item) => item.id.toString()}
+              keyExtractor={(item, index) => (item?.id != null ? String(item.id) : `user-${index}`)}
               renderItem={renderUserItem}
               contentContainerStyle={[
                 styles.listContent,
                 { paddingBottom: Math.max(insets.bottom, 16) + 20 + keyboardHeight },
               ]}
+              initialNumToRender={12}
+              maxToRenderPerBatch={10}
+              windowSize={5}
+              removeClippedSubviews={Platform.OS === 'android'}
               refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.primary} />}
               ListEmptyComponent={
                 <View style={styles.emptyBox}>
@@ -784,12 +815,17 @@ export const AdminScreen: React.FC = () => {
           ) : (
             <FlatList
               data={filteredMilitary}
-              keyExtractor={(item) => item.saram.toString()}
+              keyExtractor={(item, index) => (item?.saram != null ? String(item.saram) : `mil-${index}`)}
               renderItem={renderMilitaryItem}
               contentContainerStyle={[
                 styles.listContent,
                 { paddingBottom: Math.max(insets.bottom, 16) + 20 + keyboardHeight },
               ]}
+              initialNumToRender={12}
+              maxToRenderPerBatch={10}
+              windowSize={5}
+              removeClippedSubviews={Platform.OS === 'android'}
+              updateCellsBatchingPeriod={50}
               refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.primary} />}
               ListEmptyComponent={
                 <View style={styles.emptyBox}>

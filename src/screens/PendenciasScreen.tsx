@@ -116,9 +116,9 @@ export const PendenciasScreen: React.FC = () => {
   // Filtragem local por busca
   const filteredList = pendencias.filter((p) => {
     if (!search.trim()) return true;
-    const q = search.toLowerCase();
+    const q = search.trim().toLowerCase();
     return (
-      p.titulo.toLowerCase().includes(q) ||
+      (p.titulo && p.titulo.toLowerCase().includes(q)) ||
       (p.descricao && p.descricao.toLowerCase().includes(q)) ||
       (p.item_nome && p.item_nome.toLowerCase().includes(q)) ||
       (p.responsavel_nome && p.responsavel_nome.toLowerCase().includes(q))
