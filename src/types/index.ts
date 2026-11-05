@@ -354,3 +354,31 @@ export interface InformaticaConfig {
   smtp_from?: string | null;
   has_smtp_password?: boolean;
 }
+
+// --- IMPORTAÇÃO DE MILITARES VIA PLANILHA ---
+export interface ImportMilitaryRowResult {
+  row: number;
+  saram?: number | null;
+  posto_graduacao?: string | null;
+  nome_guerra?: string | null;
+  nome_completo?: string | null;
+  secao?: string | null;
+  email?: string | null;
+  celular?: string | null;
+  status: 'imported' | 'skipped' | 'error';
+  reason?: string | null;
+}
+
+export interface ImportMilitaryResponse {
+  success: boolean;
+  message: string;
+  total_rows: number;
+  imported_count: number;
+  skipped_count: number;
+  error_count: number;
+  imported: ImportMilitaryRowResult[];
+  skipped: ImportMilitaryRowResult[];
+  errors: ImportMilitaryRowResult[];
+  dry_run: boolean;
+}
+

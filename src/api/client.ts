@@ -15,6 +15,7 @@ import {
   EscalaMensal,
   RelatorioDiario,
   InformaticaConfig,
+  ImportMilitaryResponse,
 } from '../types';
 
 export const DEFAULT_API_BASE = 'https://backend-info-binfae.vercel.app';
@@ -436,6 +437,17 @@ export const api = {
       method: 'DELETE',
     });
   },
+
+  importMilitaryExcel: async (
+    formData: FormData,
+    dryRun = false
+  ): Promise<ImportMilitaryResponse> => {
+    return await request<ImportMilitaryResponse>(`/military/import-excel?dry_run=${dryRun}`, {
+      method: 'POST',
+      body: formData,
+    });
+  },
+
 
   createGroup: async (data: { nome: string; descricao?: string }): Promise<Group> => {
     return await request<Group>('/stock/groups', {

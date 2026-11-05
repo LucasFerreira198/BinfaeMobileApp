@@ -23,6 +23,7 @@ import { CreateUserModal } from '../components/CreateUserModal';
 import { EditUserModal } from '../components/EditUserModal';
 import { CreateMilitaryModal } from '../components/CreateMilitaryModal';
 import { EditMilitaryModal } from '../components/EditMilitaryModal';
+import { ImportMilitaryModal } from '../components/ImportMilitaryModal';
 import { loadLocalConfigTI, persistLocalConfigTI, getLocalConfigTI } from '../storage/db';
 import {
   ShieldAlert,
@@ -43,6 +44,7 @@ import {
   CheckCircle2,
   Eye,
   EyeOff,
+  FileSpreadsheet,
 } from 'lucide-react-native';
 
 export const AdminScreen: React.FC = () => {
@@ -62,6 +64,7 @@ export const AdminScreen: React.FC = () => {
   const [editUserVisible, setEditUserVisible] = useState<boolean>(false);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [createMilitaryVisible, setCreateMilitaryVisible] = useState<boolean>(false);
+  const [importMilitaryVisible, setImportMilitaryVisible] = useState<boolean>(false);
   const [editMilitaryVisible, setEditMilitaryVisible] = useState<boolean>(false);
   const [selectedMilitary, setSelectedMilitary] = useState<Military | null>(null);
 
@@ -724,14 +727,32 @@ export const AdminScreen: React.FC = () => {
                 <Text style={styles.addBtnText}>Novo Usuário</Text>
               </TouchableOpacity>
             ) : (
-              <TouchableOpacity
-                style={[styles.addBtn, { backgroundColor: theme.primary }]}
-                onPress={() => setCreateMilitaryVisible(true)}
-                activeOpacity={0.8}
-              >
-                <Plus size={16} color="#FFFFFF" />
-                <Text style={styles.addBtnText}>Cadastrar Militar</Text>
-              </TouchableOpacity>
+              <View style={{ flexDirection: 'row', gap: 8 }}>
+                <TouchableOpacity
+                  style={[
+                    styles.addBtn,
+                    {
+                      backgroundColor: 'transparent',
+                      borderWidth: 1,
+                      borderColor: theme.primary,
+                    },
+                  ]}
+                  onPress={() => setImportMilitaryVisible(true)}
+                  activeOpacity={0.8}
+                >
+                  <FileSpreadsheet size={15} color={theme.primary} />
+                  <Text style={[styles.addBtnText, { color: theme.primary }]}>Importar Planilha</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[styles.addBtn, { backgroundColor: theme.primary }]}
+                  onPress={() => setCreateMilitaryVisible(true)}
+                  activeOpacity={0.8}
+                >
+                  <Plus size={16} color="#FFFFFF" />
+                  <Text style={styles.addBtnText}>Cadastrar Militar</Text>
+                </TouchableOpacity>
+              </View>
             )}
           </View>
 
@@ -894,6 +915,12 @@ export const AdminScreen: React.FC = () => {
       <CreateMilitaryModal
         visible={createMilitaryVisible}
         onClose={() => setCreateMilitaryVisible(false)}
+        onSuccess={() => loadData()}
+      />
+
+      <ImportMilitaryModal
+        visible={importMilitaryVisible}
+        onClose={() => setImportMilitaryVisible(false)}
         onSuccess={() => loadData()}
       />
 
