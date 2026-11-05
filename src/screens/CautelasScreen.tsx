@@ -22,6 +22,7 @@ import { UserAvatar } from '../components/UserAvatar';
 import { api } from '../api/client';
 import { loadLocalCautelas, persistLocalCautelas, getLocalCautelas, invalidateLocalRelatorio } from '../storage/db';
 import { Cautela, CautelaItem, Military, Item } from '../types';
+import { sortMilitariesByAntiquity } from '../utils/militaryConstants';
 import {
   Rocket,
   Lock,
@@ -300,7 +301,7 @@ export const CautelasScreen: React.FC<CautelasScreenProps> = () => {
   const openAddMaterialModal = async () => {
     try {
       const mils = await api.listMilitary();
-      setMilitaries(mils);
+      setMilitaries(sortMilitariesByAntiquity(mils));
     } catch (_) {}
     setSelectedMilitary(null);
     setMilitarySearch('');

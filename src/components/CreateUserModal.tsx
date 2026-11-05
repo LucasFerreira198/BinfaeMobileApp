@@ -20,7 +20,7 @@ import { useTheme } from '../context/ThemeContext';
 import { useKeyboardHeight } from '../hooks/useKeyboardHeight';
 import { api } from '../api/client';
 import { Military } from '../types';
-import { isValidSaram, cleanSaram } from '../utils/militaryConstants';
+import { isValidSaram, cleanSaram, sortMilitariesByAntiquity } from '../utils/militaryConstants';
 import { X, UserPlus, Shield, User, Lock, IdCard, Search, Check } from 'lucide-react-native';
 
 interface CreateUserModalProps {
@@ -65,9 +65,10 @@ export const CreateUserModal: React.FC<CreateUserModalProps> = ({
 
   const filteredMilitaries = useMemo(() => {
     if (!militaryList || !Array.isArray(militaryList) || militaryList.length === 0) return [];
+    const sorted = sortMilitariesByAntiquity(militaryList);
     const q = (militarySearch || '').trim().toLowerCase();
-    if (!q) return militaryList.slice(0, 25);
-    return militaryList
+    if (!q) return sorted.slice(0, 25);
+    return sorted
       .filter((m) => {
         if (!m) return false;
         const nomeGuerra = (m.nome_guerra || '').toLowerCase();

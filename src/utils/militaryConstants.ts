@@ -81,3 +81,94 @@ export function formatPhone(phone: string): string {
   }
   return phone;
 }
+
+/**
+ * Tabela de Pesos de Antiguidade Hierárquica da Força Aérea Brasileira (FAB).
+ * Menor peso = mais antigo (primeiro na listagem).
+ * Ordem: Oficiais Superiores (TC, MAJ), Oficiais Intermediários (CAP),
+ * Oficiais Subalternos (1T, 2T, ASP), Graduados (SO, 1S, 2S, 3S) e Praças (CB, S1, S2).
+ */
+export const RANK_ANTIQUITY_WEIGHTS: Record<string, number> = {
+  TB: 1,
+  MB: 1,
+  BB: 1,
+  BRIG: 1,
+  CEL: 2,
+  TC: 3,
+  'TEN CEL': 3,
+  'TEN-CEL': 3,
+  'TENENTE CORONEL': 3,
+  'TENENTE-CORONEL': 3,
+  MAJ: 4,
+  MJ: 4,
+  MAJOR: 4,
+  CAP: 5,
+  CP: 5,
+  CAPITAO: 5,
+  CAPITÃO: 5,
+  '1T': 6,
+  '1TEN': 6,
+  '1º TEN': 6,
+  '1 TEN': 6,
+  'PRIMEIRO TENENTE': 6,
+  '2T': 7,
+  '2TEN': 7,
+  '2º TEN': 7,
+  '2 TEN': 7,
+  'SEGUNDO TENENTE': 7,
+  ASP: 8,
+  ASPIRANTE: 8,
+  SO: 9,
+  SUBOFICIAL: 9,
+  '1S': 10,
+  '1SGT': 10,
+  '1º SGT': 10,
+  '1 SGT': 10,
+  'PRIMEIRO SARGENTO': 10,
+  '2S': 11,
+  '2SGT': 11,
+  '2º SGT': 11,
+  '2 SGT': 11,
+  'SEGUNDO SARGENTO': 11,
+  '3S': 12,
+  '3SGT': 12,
+  '3º SGT': 12,
+  '3 SGT': 12,
+  'TERCEIRO SARGENTO': 12,
+  CB: 13,
+  CABO: 13,
+  S1: 14,
+  'SOLDADO 1ª CLASSE': 14,
+  'SOLDADO 1 CLASSE': 14,
+  S2: 15,
+  'SOLDADO 2ª CLASSE': 15,
+  'SOLDADO 2 CLASSE': 15,
+  TM: 16,
+  T1: 16,
+  T2: 16,
+  TAIFEIRO: 16,
+};
+
+export function getRankAntiquityWeight(posto?: string | null): number {
+  if (!posto) return 99;
+  const p = posto.trim().toUpperCase();
+  if (RANK_ANTIQUITY_WEIGHTS[p] !== undefined) {
+    return RANK_ANTIQUITY_WEIGHTS[p];
+  }
+  for (const [key, weight] of Object.entries(RANK_ANTIQUITY_WEIGHTS)) {
+    if (p.startsWith(key)) return weight;
+  }
+  return 99;
+}
+
+export function sortMilitariesByAntiquity<T extends { posto_graduacao?: string | null; id?: number | null; saram: number | string }>(list: T[]): T[] {
+  if (!list || !Array.isArray(list)) return [];
+  return [...list].sort((a, b) => {
+    const wa = getRankAntiquityWeight(a?.posto_graduacao);
+    const wb = getRankAntiquityWeight(b?.posto_graduacao);
+    if (wa !== wb) return wa - wb;
+    const ida = Number(a?.id ?? a?.saram ?? 0);
+    const idb = Number(b?.id ?? b?.saram ?? 0);
+    return ida - idb;
+  });
+}

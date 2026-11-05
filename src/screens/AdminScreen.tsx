@@ -19,6 +19,7 @@ import { useTheme } from '../context/ThemeContext';
 import { useKeyboardHeight } from '../hooks/useKeyboardHeight';
 import { api } from '../api/client';
 import { User, Military, InformaticaConfig } from '../types';
+import { sortMilitariesByAntiquity } from '../utils/militaryConstants';
 import { Header } from '../components/Header';
 import { CreateUserModal } from '../components/CreateUserModal';
 import { EditUserModal } from '../components/EditUserModal';
@@ -119,7 +120,7 @@ export const AdminScreen: React.FC = () => {
       ]);
 
       setUsers(userRes);
-      setMilitaryList(milRes);
+      setMilitaryList(sortMilitariesByAntiquity(milRes));
 
       if (cfgRes) {
         setConfigTI(cfgRes);
